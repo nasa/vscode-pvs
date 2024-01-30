@@ -152,6 +152,9 @@ export class PvsProofExplorer {
 	setProofId(proofIdentifier: string) {
 		this.proofId = proofIdentifier;
 	}
+	getProofId(): string {
+		return this.proofId;
+	}
 
 	constructor(connection: Connection, pvsProxy: PvsProxy, pvsLanguageServer: PvsLanguageServer) {
 		this.connection = connection;
@@ -336,7 +339,7 @@ export class PvsProofExplorer {
 	 */
 	async runSubtree(desc: { selected: ProofItem }): Promise<void> {
 		if (desc?.selected && desc.selected.contextValue !== "ghost") {
-			// fast forward to the last node of the brannch and then execute the last node
+			// fast forward to the last node of the branch and then execute the last node
 			const lastNode: ProofItem = desc.selected.contextValue === "proof-branch" ?
 				desc.selected.getLastChildInSubtree()
 				: desc.selected.parent?.getLastChildInSubtree();
@@ -1452,7 +1455,7 @@ export class PvsProofExplorer {
 		}
 	}
 	/**
-	 * Converts a nodex structure sent by the servwr to a proof item for the tree view
+	 * Converts a nodeX structure sent by the server to a proof item for the tree view
 	 */
 	convertNodeX2ProofItem(elem: ProofNodeX, parent?: ProofItem): ProofItem[] {
 		const fromNodeX2 = (elem: ProofNodeX, parent?: ProofItem): ProofItem => {
@@ -1496,7 +1499,7 @@ export class PvsProofExplorer {
 				return true;
 			}
 			if (this.clipboardTree && this.clipboardTree.length) {
-				// append just the first node from clipboardtree
+				// append just the first node from the ClipboardTree
 				this.appendNode({ selected: desc.selected, elem: this.clipboardTree[0].cloneTree(), sequent: null });
 				return true;
 			}
@@ -1980,7 +1983,7 @@ export class PvsProofExplorer {
 		});
 		// const proofliteExists: boolean = await utils.containsProoflite(fname, this.formula.formulaName);
 		if (this.root.proofStatusChanged() || this.dirtyFlag || this.origin !== ".prf") { // || !proofliteExists) {
-			await this.quitProofAndSave(); // proof descriptor is automatically updated by saveproof
+			await this.quitProofAndSave(); // proof descriptor is automatically updated by save proof
 		} else {
 			// update proof descriptor, i.e., proof status and shasum
 			this.proofDescriptor = this.makeProofDescriptor(this.origin);
@@ -2041,7 +2044,7 @@ export class PvsProofExplorer {
 			this.root.setProofStatus(this.proofDescriptor.info.status);
 			// select either the first child or the root if children are not present
 			const selected: ProofItem = (this.root.children && this.root.children.length) ? this.root.children[0] : this.root;
-			// initialise this.activeNode
+			// initialize this.activeNode
 			this.initActiveNode({ selected });
 			// update the user interface
 			this.markAsActive({ selected: this.activeNode }, { force: true });
@@ -2076,8 +2079,8 @@ export class PvsProofExplorer {
 	}
 
 	/**
-	 * Internal function, initialises data structures necessary for handling of activeNode, including ghostNode and tooltips.
-	 * @param desc Descriptor used for the initialisation of activeNode
+	 * Internal function, initializes data structures necessary for handling of activeNode, including ghostNode and tooltips.
+	 * @param desc Descriptor used for the initialization of activeNode
 	 */
 	protected initActiveNode(desc: { selected: ProofItem, tooltip?: string }): void {
 		if (desc && desc.selected) {
@@ -2182,7 +2185,7 @@ export class PvsProofExplorer {
 				});
 			}
 		}
-		// initialise
+		// initialize
 		this.root = null;
 		if (desc && desc.info) {
 			this.root = new RootNode({
@@ -2419,7 +2422,7 @@ export class PvsProofExplorer {
 		// update proof descriptor so it reflects the current proof structure
 		this.proofDescriptor = this.makeProofDescriptor(this.origin);
 		await saveProofDescriptor(this.formula, this.proofDescriptor, { saveProofTree: true });
-		// save proof backup file -- just to be save in the case pvs hungs up and is unable to save
+		// save proof backup file -- just to be save in the case pvs hangs up and is unable to save
 		const script: string = this.copyTree({ selected: this.root }, { updateClipboard: false });
 		let success: boolean = true;
 		let msg: string = null;
@@ -3169,7 +3172,7 @@ export abstract class ProofItem extends TreeItem {
 		const proofState: SequentDescriptor = opt.proofState || this.sequentDescriptor;
 		if (this.children && this.children.length) {
 			if (!proofState) {
-				console.error(`[pvs-explorer] Error: proofstate is null. Please restart the proof and report this error to the vscode-pvs developers.`, {
+				console.error(`[pvs-explorer] Error: Proof State is null. Please restart the proof and report this error to the vscode-pvs developers.`, {
 					opt,
 					contextValue: this.contextValue,
 					name: this.name
