@@ -152,7 +152,7 @@ export class PvsProxy {
 		// this.pvsLibPath = path.join(pvsPath, "lib");
 		// this.nasalibPath = path.join(pvsPath, "nasalib");
 		this.pvsLibraryPath = opt.pvsLibraryPath || "";
-		this.webSocketPort = (!!opt.webSocketPort) ? opt.webSocketPort : 23456;
+		this.webSocketPort = (!!opt.webSocketPort) ? opt.webSocketPort : 23457;
 		this.client_methods.forEach(mth => {
 			this.handlers[mth] = (params: string[]): string[] => {
 				// console.info("info", params);
@@ -1551,11 +1551,12 @@ export class PvsProxy {
 			// const success: boolean = await fsUtils.writeFile(fname, JSON.stringify(proofFile, null, " "));
 			// await this.proofCommand({ cmd: "(quit)" });
 			const fullTheoryName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName);
-			const response: PvsResponse = await this.pvsRequest("store-last-attempted-proof", [formula.formulaName, fullTheoryName, 't']);
-			if (response && response.result) {
-				await this.pvsRequest("change-context", [formula.contextFolder]);
-				await this.pvsRequest("save-all-proofs", [fullTheoryName]); // it's pointless to return the result of 'save-all-proofs' because the result is null all the times
-			}
+
+			// const response: PvsResponse = await this.pvsRequest("store-last-attempted-proof", [formula.formulaName, fullTheoryName, 't']);
+			// if (response && response.result) {
+				// await this.pvsRequest("change-context", [formula.contextFolder]);
+				const response: PvsResponse = await this.pvsRequest("save-all-proofs", [fullTheoryName]); // it's pointless to return the result of 'save-all-proofs' because the result is null all the times
+			// }
 			return response;
 		}
 		// else
@@ -2294,8 +2295,8 @@ export class PvsProxy {
 	/**
 	 * interrupts the prover
 	 */
-	async interruptProver(): Promise<PvsResponse | null> {
-		return await this.pvsRequest('interrupt-proof');
+	async interruptProver(proofId: string): Promise<PvsResponse | null> {
+		return await this.pvsRequest('interrupt-proof', [proofId]);
 	}
 
 }

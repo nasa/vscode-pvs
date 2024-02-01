@@ -2472,12 +2472,13 @@ export class PvsProofExplorer {
 		opt = opt || {};
 		this.runningFlag = false;
 
-		// interrupt proof commands if necessary
-		let res: PvsResponse = await this.pvsProxy.interruptProver();
+		// @M3 the way to interrupt PVS has changed... this part needs rethinking
+		// // interrupt proof commands if necessary
+		// let res: PvsResponse = await this.pvsProxy.interruptProver();
 
 		// const inchecker: boolean = await this.inChecker();
 		// if (this.formula && inchecker) {
-		res = await this.pvsProxy.proofCommand({ proofId: opt.proofId, cmd: "(quit)" });
+		let res: PvsResponse = await this.pvsProxy.proofCommand({ proofId: (opt.proofId) ? opt.proofId : this.proofId, cmd: "(quit)" });
 		// reset dirty flag --- the proof is over
 		this.updateDirtyFlag(false);
 		//}
@@ -2512,7 +2513,7 @@ export class PvsProofExplorer {
 		if (this.pvsProxy && !this.interruptFlag) {
 			this.interruptFlag = true;
 			this.runningFlag = false;
-			return await this.pvsProxy.interruptProver();
+			return await this.pvsProxy.interruptProver(this.proofId);
 		}
 		return null;
 	}
