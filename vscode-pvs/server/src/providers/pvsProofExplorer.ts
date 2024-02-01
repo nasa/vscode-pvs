@@ -141,7 +141,7 @@ export class PvsProofExplorer {
 	protected initialProofState: SequentDescriptor;
 
 	/**
-	 * Current proof state
+	 * Current proof state as returned by the PVS server
 	 */
 	protected proofState: SequentDescriptor;
 
@@ -775,6 +775,8 @@ export class PvsProofExplorer {
 					return;
 				}
 
+				let branchFocusHasChanged = false;
+
 				if (languageUtils.isHelpCommand(userCmd) || languageUtils.isHelpBangCommand(userCmd)) {
 					// do nothing, CLI will show the help message
 					// return;
@@ -834,7 +836,7 @@ export class PvsProofExplorer {
 					// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
 					if (!(isSameCommand(activeNode.name, cmd) || isSameCommand(activeNode.name, userCmd)) || this.ghostNode.isActive()) {
 						// concatenate new command
-						const elem: ProofCommand = new ProofCommand(cmd, activeNode.branchId, activeNode.parent, this.connection);
+						const elem: ProofCommand = new ProofCommand(userCmd, activeNode.branchId, activeNode.parent, this.connection);
 						// append before selected node (the active not has not been executed yet)
 						if (activeNode.isActive()) {
 							const sequent: SequentDescriptor = activeNode.sequentDescriptor;
@@ -847,11 +849,12 @@ export class PvsProofExplorer {
 						this.markAsActive({ selected: elem }); // this is necessary to correctly update the data structures in endNode --- elem will become the parent of endNode
 						activeNode = this.activeNode; // update local variable because the following instructions are using it
 						// if the branch has changed, then we will be moving to a sub-goal --- we need to trim the node
-						if (languageUtils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
+						branchFocusHasChanged = languageUtils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName });
+						if (branchFocusHasChanged) {
 							this.trimNode({ selected: activeNode });
 						}
 					}
-					if (isSameCommand(activeNode.name, cmd) || isSameCommand(activeNode.name, userCmd)) {
+					if (!branchFocusHasChanged && (isSameCommand(activeNode.name, cmd) || isSameCommand(activeNode.name, userCmd))) {
 						// replace the command entered by the user with the one polished by pvs
 						this.activeNode.rename(cmd);
 					}
