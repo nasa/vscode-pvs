@@ -1,5 +1,5 @@
 import * as fsUtils from "../server/src/common/fsUtils";
-import { configFile, sandboxExamples } from './test-utils';
+import { configFile, label, sandboxExamples } from './test-utils';
 import * as path from 'path';
 import { PvsProofExplorer } from "../server/src/providers/pvsProofExplorer";
 import { ProofNodeX, ProveFormulaResponse, PvsFormula, PvsProofCommand, SequentDescriptor } from "../server/src/common/serverInterface";
@@ -24,6 +24,10 @@ describe("proof-explorer", () => {
         console.log("----------------------");
     });
     after(async () => {
+        await server.getPvsProxy().killPvsServer();
+        await server.getPvsProxy().killPvsProxy();
+        // delete pvsbin files and .pvscontext
+        await fsUtils.cleanBin(contextFolder);
     });
 
     const baseFolder: string = path.join(__dirname, "proof-explorer");
@@ -69,25 +73,28 @@ describe("proof-explorer", () => {
         // 		await server.getPvsProxy().proofCommand({ cmd: 'quit' });
         // 	}
         // await server.getPvsProxy().quitProofIfInProver();
+        label(`can step single proof commands`);
 
         let response = await server.proveFormulaRequest(request);
 
         const proofExplorer: PvsProofExplorer = server.getProofExplorer();
         let root: ProofNodeX = proofExplorer.getProofX();
         expect(root.name).to.deep.equal(request.formulaName);
-        expect(root.rules.length).to.equal(1); // @M3 PVS8.0 returns at least a (postpone) 
+        expect(root.rules.length).to.equal(0);
 
         request.cmd = "(skosimp*)";
         await proofExplorer.proofCommandRequest(request);
         root = proofExplorer.getProofX();
         // console.dir(root);
         expect(root.name).to.deep.equal(request.formulaName);
-        expect(root.rules[0].name).to.deep.equal("(SKOSIMP*)");
+        expect(root.rules[0].name.toLowerCase()).to.deep.equal("(skosimp*)");
         expect(root.rules[0].type).to.deep.equal("proof-command");
         expect(root.rules[0].parent).to.deep.equal(root.id);
-    }).timeout(0);
+    });
     
     it(`can step a series of proof commands`, async () => {
+        label(`can step a series of proof commands`);
+
         request.cmd = `(assert)(grind)(case "x!1 > 0")(postpone)(grind)`;
         const proofExplorer: PvsProofExplorer = server.getProofExplorer();
 
@@ -95,22 +102,23 @@ describe("proof-explorer", () => {
         const root: ProofNodeX = proofExplorer.getProofX();
         // console.dir(root, { depth: null });
         expect(root.rules.length).to.equal(4);
-        expect(root.rules[0].name).to.deep.equal("(skosimp*)");
-        expect(root.rules[1].name).to.deep.equal("(assert)");
-        expect(root.rules[2].name).to.deep.equal("(grind)");
-        expect(root.rules[3].name).to.deep.equal(`(case "x!1 > 0")`);
+        expect(root.rules[0].name.toLowerCase()).to.deep.equal("(skosimp*)");
+        expect(root.rules[1].name.toLowerCase()).to.deep.equal("(assert)");
+        expect(root.rules[2].name.toLowerCase()).to.deep.equal("(grind)");
+        expect(root.rules[3].name.toLowerCase()).to.deep.equal(`(case "x!1 > 0")`);
         expect(root.rules[3].rules.length).to.equal(2);
         expect(root.rules[3].rules[0].name).to.deep.equal("(1)");
         expect(root.rules[3].rules[0].rules.length).to.equal(0); // postpone is never added to the proof
         expect(root.rules[3].rules[1].name).to.deep.equal("(2)");
         expect(root.rules[3].rules[1].rules.length).to.equal(1);
-        expect(root.rules[3].rules[1].rules[0].name).to.deep.equal("(grind)"); // this will close branch 2
+        expect(root.rules[3].rules[1].rules[0].name.toLowerCase()).to.deep.equal("(grind)"); // this will close branch 2
 
         const activeNode: ProofNodeX = proofExplorer.getActiveNode();
         // console.dir(activeNode);
         expect(activeNode.name).to.deep.equal("(1)");
         expect(proofExplorer.ghostNodeIsActive()).to.equal(true);
     });
+
     it(`can perform (undo)`, async () => {
         request.cmd = "(undo)";
         const proofExplorer: PvsProofExplorer = server.getProofExplorer();
@@ -120,22 +128,23 @@ describe("proof-explorer", () => {
         const root: ProofNodeX = proofExplorer.getProofX();
         // console.dir(root, { depth: null });
         expect(root.rules.length).to.equal(4);
-        expect(root.rules[0].name).to.deep.equal("(skosimp*)");
-        expect(root.rules[1].name).to.deep.equal("(assert)");
-        expect(root.rules[2].name).to.deep.equal("(grind)");
-        expect(root.rules[3].name).to.deep.equal(`(case "x!1 > 0")`);
+        expect(root.rules[0].name.toLowerCase()).to.deep.equal("(skosimp*)");
+        expect(root.rules[1].name.toLowerCase()).to.deep.equal("(assert)");
+        expect(root.rules[2].name.toLowerCase()).to.deep.equal("(grind)");
+        expect(root.rules[3].name.toLowerCase()).to.deep.equal(`(case "x!1 > 0")`);
         expect(root.rules[3].rules.length).to.equal(2);
         expect(root.rules[3].rules[0].name).to.deep.equal("(1)");
         expect(root.rules[3].rules[0].rules.length).to.equal(0); // postpone is never added to the proof
         expect(root.rules[3].rules[1].name).to.deep.equal("(2)");
         expect(root.rules[3].rules[1].rules.length).to.equal(1);
-        expect(root.rules[3].rules[1].rules[0].name).to.deep.equal("(grind)"); // this will close branch 2
+        expect(root.rules[3].rules[1].rules[0].name.toLowerCase()).to.deep.equal("(grind)"); // this will close branch 2
 
         const activeNode: ProofNodeX = proofExplorer.getActiveNode();
         // console.dir(activeNode);
         expect(activeNode.name).to.deep.equal(`(case "x!1 > 0")`);
         expect(proofExplorer.ghostNodeIsActive()).to.equal(false);
     }).timeout(6000);
+
     it(`can perform (undo undo)`, async () => {
         request.cmd = "(undo undo)";
         const proofExplorer: PvsProofExplorer = server.getProofExplorer();
@@ -145,16 +154,16 @@ describe("proof-explorer", () => {
         let root: ProofNodeX = proofExplorer.getProofX();
         // console.dir(root, { depth: null });
         expect(root.rules.length).to.equal(4);
-        expect(root.rules[0].name).to.deep.equal("(skosimp*)");
-        expect(root.rules[1].name).to.deep.equal("(assert)");
-        expect(root.rules[2].name).to.deep.equal("(grind)");
-        expect(root.rules[3].name).to.deep.equal(`(case "x!1 > 0")`);
+        expect(root.rules[0].name.toLowerCase()).to.deep.equal("(skosimp*)");
+        expect(root.rules[1].name.toLowerCase()).to.deep.equal("(assert)");
+        expect(root.rules[2].name.toLowerCase()).to.deep.equal("(grind)");
+        expect(root.rules[3].name.toLowerCase()).to.deep.equal(`(case "x!1 > 0")`);
         expect(root.rules[3].rules.length).to.equal(2);
-        expect(root.rules[3].rules[0].name).to.deep.equal("(1)");
+        expect(root.rules[3].rules[0].name.toLowerCase()).to.deep.equal("(1)");
         expect(root.rules[3].rules[0].rules.length).to.equal(0); // postpone is never added to the proof
-        expect(root.rules[3].rules[1].name).to.deep.equal("(2)");
+        expect(root.rules[3].rules[1].name.toLowerCase()).to.deep.equal("(2)");
         expect(root.rules[3].rules[1].rules.length).to.equal(1);
-        expect(root.rules[3].rules[1].rules[0].name).to.deep.equal("(grind)"); // this will close branch 2
+        expect(root.rules[3].rules[1].rules[0].name.toLowerCase()).to.deep.equal("(grind)"); // this will close branch 2
 
         const activeNode: ProofNodeX = proofExplorer.getActiveNode();
         // console.dir(activeNode);
@@ -166,9 +175,9 @@ describe("proof-explorer", () => {
         await proofExplorer.proofCommandRequest(request);
         // the proof structure should be unchanged, and the active node should be (1)
         root = proofExplorer.getProofX();
-        expect(root.rules[3].rules[0].name).to.deep.equal("(1)");
+        expect(root.rules[3].rules[0].name.toLowerCase()).to.deep.equal("(1)");
         expect(root.rules[3].rules[0].rules.length).to.equal(1); // postpone is never added to the proof
-        expect(root.rules[3].rules[0].rules[0].name).to.deep.equal("(all-typepreds)");
+        expect(root.rules[3].rules[0].rules[0].name.toLowerCase()).to.deep.equal("(all-typepreds)");
         expect(proofExplorer.ghostNodeIsActive()).to.equal(true);
         expect(activeNode.name).to.deep.equal(`ghost`);
     }).timeout(6000);
@@ -182,17 +191,17 @@ describe("proof-explorer", () => {
         let root: ProofNodeX = proofExplorer.getProofX();
         // console.dir(root, { depth: null });
         expect(root.rules.length).to.equal(4);
-        expect(root.rules[0].name).to.deep.equal("(skosimp*)");
-        expect(root.rules[1].name).to.deep.equal("(assert)");
-        expect(root.rules[2].name).to.deep.equal("(grind)");
-        expect(root.rules[3].name).to.deep.equal(`(case "x!1 > 0")`);
+        expect(root.rules[0].name.toLowerCase()).to.deep.equal("(skosimp*)");
+        expect(root.rules[1].name.toLowerCase()).to.deep.equal("(assert)");
+        expect(root.rules[2].name.toLowerCase()).to.deep.equal("(grind)");
+        expect(root.rules[3].name.toLowerCase()).to.deep.equal(`(case "x!1 > 0")`);
         expect(root.rules[3].rules.length).to.equal(2);
-        expect(root.rules[3].rules[0].name).to.deep.equal("(1)");
+        expect(root.rules[3].rules[0].name.toLowerCase()).to.deep.equal("(1)");
         expect(root.rules[3].rules[0].rules.length).to.equal(1); // the first proof branch is automatically proved by pvs
-        expect(root.rules[3].rules[0].rules[0].name).to.deep.equal(`(case "x!1 > 2")`);
-        expect(root.rules[3].rules[1].name).to.deep.equal("(2)");
+        expect(root.rules[3].rules[0].rules[0].name.toLowerCase()).to.deep.equal(`(case "x!1 > 2")`);
+        expect(root.rules[3].rules[1].name.toLowerCase()).to.deep.equal("(2)");
         expect(root.rules[3].rules[1].rules.length).to.equal(1);
-        expect(root.rules[3].rules[1].rules[0].name).to.deep.equal("(grind)"); // this will close branch 2
+        expect(root.rules[3].rules[1].rules[0].name.toLowerCase()).to.deep.equal("(grind)"); // this will close branch 2
 
         let activeNode: ProofNodeX = proofExplorer.getActiveNode();
         expect(proofExplorer.ghostNodeIsActive()).to.equal(true);
@@ -206,17 +215,17 @@ describe("proof-explorer", () => {
         root = proofExplorer.getProofX();
         // console.dir(root, { depth: null });
         expect(root.rules.length).to.equal(4);
-        expect(root.rules[0].name).to.deep.equal("(skosimp*)");
-        expect(root.rules[1].name).to.deep.equal("(assert)");
-        expect(root.rules[2].name).to.deep.equal("(grind)");
-        expect(root.rules[3].name).to.deep.equal(`(case "x!1 > 0")`);
+        expect(root.rules[0].name.toLowerCase()).to.deep.equal("(skosimp*)");
+        expect(root.rules[1].name.toLowerCase()).to.deep.equal("(assert)");
+        expect(root.rules[2].name.toLowerCase()).to.deep.equal("(grind)");
+        expect(root.rules[3].name.toLowerCase()).to.deep.equal(`(case "x!1 > 0")`);
         expect(root.rules[3].rules.length).to.equal(2);
-        expect(root.rules[3].rules[0].name).to.deep.equal("(1)");
+        expect(root.rules[3].rules[0].name.toLowerCase()).to.deep.equal("(1)");
         expect(root.rules[3].rules[0].rules.length).to.equal(1); // the first proof branch is automatically proved by pvs
-        expect(root.rules[3].rules[0].rules[0].name).to.deep.equal(`(case "x!1 > 1")`); // <<<<<
-        expect(root.rules[3].rules[1].name).to.deep.equal("(2)");
+        expect(root.rules[3].rules[0].rules[0].name.toLowerCase()).to.deep.equal(`(case "x!1 > 1")`); // <<<<<
+        expect(root.rules[3].rules[1].name.toLowerCase()).to.deep.equal("(2)");
         expect(root.rules[3].rules[1].rules.length).to.equal(1);
-        expect(root.rules[3].rules[1].rules[0].name).to.deep.equal("(grind)"); // this will close branch 2
+        expect(root.rules[3].rules[1].rules[0].name.toLowerCase()).to.deep.equal("(grind)"); // this will close branch 2
 
         activeNode = proofExplorer.getActiveNode();
         expect(proofExplorer.ghostNodeIsActive()).to.equal(true);
@@ -225,9 +234,6 @@ describe("proof-explorer", () => {
 
     //-----
     it(`can start another proof when a prover session has already started`, async () => {
-        // @M3: proofCommand now recieves also proofid, not sure where this
-        //      information can be obtained right now. 
-        // await server.getPvsProxy().proofCommand({ cmd: "(quit)" });
         const response: PvsResponse | null = await server.proveFormula(request5);
 
         // console.log(response);
@@ -252,8 +258,8 @@ describe("proof-explorer", () => {
 
         expect(root.name).to.deep.equal(request5.formulaName);
         expect(root.rules.length).to.equal(2);
-        expect(root.rules[0].name).to.deep.equal("(skosimp*)");
-        expect(root.rules[1].name).to.deep.equal("(grind)");
+        expect(root.rules[0].name.toLowerCase()).to.deep.equal("(skosimp*)");
+        expect(root.rules[1].name.toLowerCase()).to.deep.equal("(grind)");
 
         // const initial_tooltip: string = proofExplorer.getTooltip({ selected: root.rules[0] });
         // expect(initial_tooltip).to.contain(request5.formulaName);
@@ -275,9 +281,6 @@ describe("proof-explorer", () => {
     });
 
     it(`can automatically trim branches at the beginning of a proof, if proof structure has changed`, async () => {
-        // @M3: proofCommand now recieves also proofid, not sure where this
-        //      information can be obtained right now. 
-        // await server.getPvsProxy().proofCommand({ cmd: "(quit)" });
         await server.proveFormulaRequest(request2);
         const proofExplorer: PvsProofExplorer = server.getProofExplorer();
 
@@ -290,7 +293,7 @@ describe("proof-explorer", () => {
 
         let root: ProofNodeX = proofExplorer.getProofX();
         expect(root.name).to.deep.equal(request2.formulaName);
-        expect(root.rules[0].name).to.deep.equal("(skosimp*)");
+        expect(root.rules[0].name.toLowerCase()).to.deep.equal("(skosimp*)");
 
         expect(proofExplorer.ghostNodeIsActive()).not.to.equal(true);
         let activeNode: ProofNodeX = proofExplorer.getActiveNode();
@@ -302,16 +305,13 @@ describe("proof-explorer", () => {
         expect(proofExplorer.ghostNodeIsActive()).to.equal(true);
 
         root = proofExplorer.getProofX();
-        expect(root.rules[0].name).to.deep.equal("(grind)");
-        expect(root.rules[0].rules[0].name).to.deep.equal("(1)");
+        expect(root.rules[0].name.toLowerCase()).to.deep.equal("(grind)");
+        expect(root.rules[0].rules[0].name.toLowerCase()).to.deep.equal("(1)");
         activeNode = proofExplorer.getActiveNode();
         expect(activeNode.name).to.deep.equal(`(1)`);
     });
 
     it(`can trim branches with active nodes and correctly re-position the active node`, async () => {
-        // @M3: proofCommand now recieves also proofid, not sure where this
-        //      information can be obtained right now. 
-        // await server.getPvsProxy().proofCommand({ cmd: "(quit)" });
         await server.proveFormulaRequest(request2a);
         const proofExplorer: PvsProofExplorer = server.getProofExplorer();
 
@@ -324,7 +324,7 @@ describe("proof-explorer", () => {
 
         let root: ProofNodeX = proofExplorer.getProofX();
         expect(root.name).to.deep.equal(request2a.formulaName);
-        expect(root.rules[0].name).to.deep.equal("(grind)");
+        expect(root.rules[0].name.toLowerCase()).to.deep.equal("(grind)");
 
         expect(proofExplorer.ghostNodeIsActive()).not.to.equal(true);
         let activeNode: ProofNodeX = proofExplorer.getActiveNode();
@@ -337,10 +337,10 @@ describe("proof-explorer", () => {
 
         root = proofExplorer.getProofX();
         expect(root.rules.length).to.equal(2);
-        expect(root.rules[0].name).to.deep.equal(`(skosimp*)`);
-        expect(root.rules[1].name).to.deep.equal(`(grind)`);
+        expect(root.rules[0].name.toLowerCase()).to.deep.equal(`(skosimp*)`);
+        expect(root.rules[1].name.toLowerCase()).to.deep.equal(`(grind)`);
         activeNode = proofExplorer.getActiveNode();
-        expect(activeNode.name).to.deep.equal(`(grind)`);
+        expect(activeNode.name.toLowerCase()).to.deep.equal(`(grind)`);
 
         proofExplorer.trimNodeX({ action: "trim-node", selected: { id: root.rules[0].id, name: root.rules[0].name } });
         root = proofExplorer.getProofX();
@@ -353,9 +353,6 @@ describe("proof-explorer", () => {
     });
 
     it(`can save current proof`, async () => {
-        // @M3: quitProof now recieves also proofid, not sure where this
-        //      information can be obtained right now. 
-        // await server.getPvsProxy().quitProof();
         await server.getPvsProxy().quitAllProofs();
 
         const formula: PvsFormula = {
@@ -390,7 +387,7 @@ describe("proof-explorer", () => {
         await server.proveFormulaRequest(formula);
         const proofExplorer1: PvsProofExplorer = server.getProofExplorer();
         await server.getPvsProxy().proofCommand({ proofId: proofExplorer1.getProofId(), cmd: "skosimp*" });
-        await server.getPvsProxy().interruptProver();
+        await server.getPvsProxy().interruptProver(proofExplorer1.getProofId());
         const res: { success: boolean, msg?: string } = await server.getProofExplorer().quitProofAndSave();
         // console.dir(res);
         expect(res.success).to.equal(true);
