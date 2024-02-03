@@ -427,7 +427,6 @@ export class PvsProofExplorer {
 	 * The command can also be specified as function argument -- this is useful for handling commands entered by the used at the prover prompt. 
 	 * @param cmd Optional parameter, specifying the command to be executed.
 	 */
-	// @M3 #TODO proofId seems to be mandatory in pvs-8.0
 	async step(opt?: { proofId?: string, cmd?: string, feedbackToTerminal?: boolean }): Promise<PvsResponse | null> {
 		opt = opt || {};
 		// return new Promise (async (resolve, reject) => {
@@ -2472,13 +2471,12 @@ export class PvsProofExplorer {
 		opt = opt || {};
 		this.runningFlag = false;
 
-		// @M3 the way to interrupt PVS has changed... this part needs rethinking
-		// // interrupt proof commands if necessary
-		// let res: PvsResponse = await this.pvsProxy.interruptProver();
+		// interrupt proof commands if necessary
+		let res: PvsResponse = await this.pvsProxy.pvsInterrupt(this.proofId);
 
 		// const inchecker: boolean = await this.inChecker();
 		// if (this.formula && inchecker) {
-		let res: PvsResponse = await this.pvsProxy.proofCommand({ proofId: (opt.proofId) ? opt.proofId : this.proofId, cmd: "(quit)" });
+		res = await this.pvsProxy.proofCommand({ proofId: (opt.proofId) ? opt.proofId : this.proofId, cmd: "(quit)" });
 		// reset dirty flag --- the proof is over
 		this.updateDirtyFlag(false);
 		//}
