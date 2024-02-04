@@ -10,7 +10,7 @@ import { expect } from 'chai';
 //----------------------------
 //   Test cases for checking behavior of pvs with corrupted .pvscontext
 //----------------------------
-describe("pvs", () => {
+describe("test-pvs-context", () => {
     let pvsProxy: PvsProxy | undefined = undefined;
     //    let pvsioProxy: PvsIoProxy = null;
 
@@ -54,10 +54,7 @@ describe("pvs", () => {
         })
     });
 
-    // this test fails -- grind does not terminate
-    // this test case requires pvs-experimental/monitors in the pvs-library-path
-    // or alternatively folder vscode-pvs/test/pvs-context/nasalib-monitors-stack-limit-error in the library path
-    xit(`can prove null_null_after_satisfaction_ft (nasalib-monitors-stack-limit-error.zip)`, async () => {
+    it(`can prove null_null_after_satisfaction_ft (nasalib-monitors-stack-limit-error.zip)`, async () => {
         await pvsProxy?.quitAllProofs();
 
         // Need to clear-theories, in case rerunning with the same server.
@@ -126,7 +123,7 @@ describe("pvs", () => {
             theoryName: "trace",
             formulaName: "null_null_always_satisfaction"
         });
-        expect(undefined).not.to.be.undefined;
+        expect(response).not.to.be.undefined;
         expect(response?.result).not.to.be.undefined;
         expect(response?.error).to.be.undefined;
         // console.dir(response);
