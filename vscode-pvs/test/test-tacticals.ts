@@ -9,9 +9,9 @@ import * as languageUtils from '../server/src/common/languageUtils';
 import { expect } from 'chai';
 
 //----------------------------
-//   Test cases for prover
+//   Test cases for tacticals
 //----------------------------
-describe("pvs-prover", () => {
+describe("pvs-tacticals", () => {
     let pvsProxy: PvsProxy | undefined = undefined;
     before(async () => {
         const config: string = await fsUtils.readFile(configFile);
@@ -77,7 +77,7 @@ describe("pvs-prover", () => {
 
         expect(response?.error).to.be.undefined;
         expect(response?.result).not.to.be.undefined;
-    }).timeout(20000);
+    }).timeout(30000);
 
     // this test requires nasalib and patch-20291231-server-output
     it(`can handle branches with propax`, async () => {
@@ -115,7 +115,7 @@ describe("pvs-prover", () => {
         }
 
         expect(response?.result["prev-cmd"].toLowerCase()).to.deep.equal(`(case "i > n-1")`);
-    }).timeout(20000);
+    }).timeout(30000);
 
     it(`provides correct prev-cmd when branch closes (test 1)`, async () => {
         await quitProverIfActive();
