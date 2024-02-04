@@ -47,8 +47,9 @@ describe("pvsio", () => {
         };
         let res1: PvsResult | undefined = await pvsioProxy?.evalExpression(req1);
         expect(res1).not.to.be.undefined;
+        expect(res1?.error).to.be.undefined;
 
-        console.log({ res1 });
+        // console.log({ res1 });
         expect(removeWhiteSpace(res1?.result)).to.be.deep.equal(removeWhiteSpace("(0, 1, 2, 0)"));
 
         const req2: EvalExpressionRequest = {
