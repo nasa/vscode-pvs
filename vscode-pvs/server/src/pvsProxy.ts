@@ -152,7 +152,7 @@ export class PvsProxy {
 		// this.pvsLibPath = path.join(pvsPath, "lib");
 		// this.nasalibPath = path.join(pvsPath, "nasalib");
 		this.pvsLibraryPath = opt.pvsLibraryPath || "";
-		this.webSocketPort = (!!opt.webSocketPort) ? opt.webSocketPort : 23457;
+		this.webSocketPort = (!!opt.webSocketPort) ? opt.webSocketPort : 23456;
 		this.client_methods.forEach(mth => {
 			this.handlers[mth] = (params: string[]): string[] => {
 				// console.info("info", params);
@@ -223,7 +223,7 @@ export class PvsProxy {
 	async pvsRequest(method: string, params?: string[]): Promise<PvsResponse> {
 		params = params || [];
 		if (this.webSocket) {
-			console.log("[pvsRequest] method = ", method);
+			// console.log("[pvsRequest] method = ", method); // debug @M3
 			return new Promise(async (resolve, reject) => {
 				const id = this.get_fresh_id();
 				const req = { method: method, params: params, jsonrpc: "2.0", id: id };
@@ -1356,6 +1356,35 @@ export class PvsProxy {
 	}
 
 	/**
+	 * Returns all the proofs associated with the given formula.
+	 * @author M3
+	 */
+	async getAllProofScripts(formula: PvsFormula, opt?: { externalServer?: boolean }): Promise<PvsResponse> {
+		if (formula) {
+			opt = opt || {};
+			formula = fsUtils.decodeURIComponents(formula);
+			// extension is forced to .pvs, this is necessary as the request may come for a .tccs file
+			const fname: string = fsUtils.desc2fname({ contextFolder: formula.contextFolder, fileName: formula.fileName, fileExtension: ".pvs" });
+			const formName: string = fname + "#" + formula.formulaName;
+			return await this.pvsRequest('all-proofs-of-formula', [formName]);
+		}
+		return null;
+	}
+
+	/**
+	 * 
+	 * @param pvsFileName a string, which may include an absolute or relative (to 
+	 *   current workspace) directory, and may or may not include the .pvs extension.
+	 * @returns the proof scripts extracted from the .prf file associated with the given filename.
+	 * @author M3
+	 */
+	async getProofScriptsInPrfFile(pvsFileName: string): Promise<PvsResponse> {
+		const ans: PvsResponse = await this.pvsRequest("get-proof-scripts", [pvsFileName]);
+		return ans;
+	}
+
+	
+	/**
 	 * Opens a proof file
 	 * @param desc Proof file descriptor (name, extension, folder)
 	 * @param formula Formula descriptor
@@ -2062,7 +2091,7 @@ export class PvsProxy {
 	}
 
 	/**
-	 * Utility function, restarts the xml-rpc server
+	 * Utility function, restarts the pvs server
 	 * @param opt 
 	 */
 	async restartPvsServer(opt?: { pvsPath?: string, pvsLibraryPath?: string, externalServer?: boolean }): Promise<boolean> {
