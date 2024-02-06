@@ -119,7 +119,7 @@ describe("proofScript", () => {
         let response: PvsResponse | undefined = await pvsProxy?.proveFormula(formula);
         expect(response).not.to.be.undefined;
         if(response != undefined){
-            let prfid: string = response?.id;
+            let prfid: string = response?.result.id;
             response = await pvsProxy?.proofCommand({ proofId: prfid, cmd: "(grind)" });
             expect(response).not.to.be.undefined;
             response = await pvsProxy?.proofCommand({ proofId: prfid, cmd: "(quit)" });
@@ -127,24 +127,14 @@ describe("proofScript", () => {
             // console.dir(response);
             response = await pvsProxy?.storeLastAttemptedProof(formula);
             expect(response).not.to.be.undefined;
-            const fullTheoryName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName);
-            response = await pvsProxy?.pvsRequest("store-last-attempted-proof", [formula.formulaName, fullTheoryName, 't']);
-            if (response && response.result) {
-                response = await pvsProxy?.pvsRequest("change-context", [formula.contextFolder]);
-                expect(response).not.to.be.undefined;
-                response = await pvsProxy?.pvsRequest("save-all-proofs", [fullTheoryName]);
-                expect(response).not.to.be.undefined;
-            }
-            // console.log('response = ', response);
-            expect(response).not.to.be.undefined;
             expect(response?.result).not.to.be.undefined;
-            // console.dir(response);
-            }
+            // #TODO @M3 add check to see the prf file has been saved with a new proof with the id above
+        }
     });
 
     // this test fails: save proof saves an empty proof in the prf file for vtbi_over_rate_lemma.
     // additionally, pvs-server takes 100% of the cpu at the end of this test
-    xit(`saves only the current proof, and leaves all other proofs untouched`, async () => {
+    it(`saves only the current proof, and leaves all other proofs untouched`, async () => {
         await quitProverIfActive();
         const formula1: PvsFormula = {
             contextFolder: sandboxExamples,
@@ -181,15 +171,6 @@ describe("proofScript", () => {
             // console.dir(response);
             response = await pvsProxy?.storeLastAttemptedProof(formula);
             expect(response).not.to.be.undefined;
-            const fullTheoryName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName);
-            response = await pvsProxy?.pvsRequest("store-last-attempted-proof", [formula.formulaName, fullTheoryName, 't']);
-            expect(response).not.to.be.undefined;
-            if (response && response.result) {
-                response = await pvsProxy?.pvsRequest("change-context", [formula.contextFolder]);
-                expect(response).not.to.be.undefined;
-                response = await pvsProxy?.pvsRequest("save-all-proofs", [fullTheoryName]);
-                expect(response).not.to.be.undefined;
-            }
     
             response1 = await pvsProxy?.getDefaultProofScript(formula1);
             expect(response1).not.to.be.undefined;
@@ -240,7 +221,7 @@ describe("proofScript", () => {
         const msg: string = await fsUtils.readFile(`${fname}.err.msg`);
         expect(msg).not.to.be.undefined;
         expect(msg).to.deep.equal("Expected ',' or ']' after array element in JSON at position 36");
-        console.log(msg);
+        // console.log(msg);
 
         fsUtils.deleteFile(fname);
         fsUtils.deleteFile(`${fname}.err`);

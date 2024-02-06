@@ -9,7 +9,7 @@ import { execSync } from "child_process";
 import { expect } from 'chai';
 
 //----------------------------
-//   Test cases for prover --- 	THESE TESTS REQUIRE PVS RUNNING IN SERVER MODE ON PORT 22334 + NASALIB
+//   Test cases for prover --- 	THESE TESTS REQUIRE NASALIB
 //----------------------------
 describe("pvs-prover", () => {
     let pvsProxy: PvsProxy | undefined = undefined;
@@ -589,7 +589,6 @@ describe("pvs-prover", () => {
         // console.dir(response?.result);
     }).timeout(5000);
 
-    // this test fails no MacOS -- a fix is not available at the moment, to be resolved in the next release of pvs
     it(`can prove omega_2D_continuous without triggering stack overflow`, async () => {
         //await quitProverIfActive();
 
@@ -637,4 +636,142 @@ describe("pvs-prover", () => {
         expect(response?.error).to.be.undefined;
         expect(response?.result).not.to.be.undefined;
     }).timeout(80000);
+
+    // PVS-8.0 tests
+    it(`The quit command stores the proof`, async () => {
+        const formula: PvsFormula = {
+            contextFolder: sandboxExamples,
+            fileExtension: ".pvs",
+            fileName: "test_prover_quit_proof",
+            formulaName: "dummy",
+            theoryName: "test_prover_quit_proof"
+        };
+
+        let pfResp: PvsResponse | undefined = await pvsProxy?.proveFormula(formula);
+        expect(pfResp).not.to.be.undefined;
+
+        let prfid: string = pfResp?.result.id;
+        let now = Date.now();
+        let proofCommand: string = "(comment \"" + now + "\")" ;
+        let response: PvsResponse | undefined = await pvsProxy?.proofCommand({ proofId: prfid, cmd: proofCommand });
+        expect(response).not.to.be.undefined;
+        expect(response?.error).to.be.undefined;
+
+        response = await pvsProxy?.proofCommand({ proofId: prfid, cmd: "(quit)" });
+        expect(response).not.to.be.undefined;
+        expect(response?.error).to.be.undefined;
+
+        // check that the proof just quitted is stored as one of the proofs of the formula
+        response = await pvsProxy?.getAllProofScripts(formula);
+        expect(response).not.to.be.undefined;
+        let proofsAfterQuit: Array<any> = response?.result;
+        let found : boolean = false;
+        for(let i=0; i<proofsAfterQuit.length; i++){
+            if (proofsAfterQuit[i].id === prfid) {
+                expect(proofsAfterQuit[i].script[1][1]==now).to.be.equal(true);
+            }
+        }
+    });
+
+    it(`The quit command does not modifies the default proof for the declaration (if it had a default proof)`, async () => {
+        const formula: PvsFormula = {
+            contextFolder: sandboxExamples,
+            fileExtension: ".pvs",
+            fileName: "test_prover_quit_proof",
+            formulaName: "dummy",
+            theoryName: "test_prover_quit_proof"
+        };
+        let defaultProofBeforeQuit: PvsResponse | undefined = await pvsProxy?.getDefaultProofScript(formula);
+        expect(defaultProofBeforeQuit).not.to.be.undefined;
+        expect(defaultProofBeforeQuit?.error).to.be.undefined;
+
+        let pfResp: PvsResponse | undefined = await pvsProxy?.proveFormula(formula);
+        expect(pfResp).not.to.be.undefined;
+
+        let prfid: string = pfResp?.result.id;
+        let now = Date.now();
+        let proofCommand: string = "(comment \"" + now + "\")" ;
+        let response: PvsResponse | undefined = await pvsProxy?.proofCommand({ proofId: prfid, cmd: proofCommand });
+        expect(response).not.to.be.undefined;
+        expect(response?.error).to.be.undefined;
+
+        response = await pvsProxy?.proofCommand({ proofId: prfid, cmd: "(quit)" });
+        expect(response).not.to.be.undefined;
+        expect(response?.error).to.be.undefined;
+
+        // check that default proof is not changed
+        let defaultProofAfterQuit: PvsResponse | undefined = await pvsProxy?.getDefaultProofScript(formula);
+        expect(defaultProofAfterQuit).not.to.be.undefined;
+        expect(defaultProofAfterQuit?.error).to.be.undefined;
+        expect(defaultProofBeforeQuit?.result).to.be.equal(defaultProofAfterQuit?.result);
+    });
+
+    it(`The quit command does not modifies the default proof for a declaration with no proofs`, async () => {
+        const formula: PvsFormula = {
+            contextFolder: sandboxExamples,
+            fileExtension: ".pvs",
+            fileName: "test_prover_quit_proof",
+            formulaName: "dummy_no_proof",
+            theoryName: "test_prover_quit_proof"
+        };
+        let defaultProofBeforeQuit: PvsResponse | undefined = await pvsProxy?.getDefaultProofScript(formula);
+        expect(defaultProofBeforeQuit).not.to.be.undefined;
+        expect(defaultProofBeforeQuit?.error).not.to.be.undefined;
+        expect(defaultProofBeforeQuit?.error?.data.error_string.endsWith(`${formula.formulaName} does not have a proof`)).to.equal(true);
+
+        let pfResp: PvsResponse | undefined = await pvsProxy?.proveFormula(formula);
+        expect(pfResp).not.to.be.undefined;
+
+        let prfid: string = pfResp?.result.id;
+        let now = Date.now();
+        let proofCommand: string = "(comment \"" + now + "\")" ;
+        let response: PvsResponse | undefined = await pvsProxy?.proofCommand({ proofId: prfid, cmd: proofCommand });
+        expect(response).not.to.be.undefined;
+        expect(response?.error).to.be.undefined;
+
+        response = await pvsProxy?.proofCommand({ proofId: prfid, cmd: "(quit)" });
+        expect(response).not.to.be.undefined;
+        expect(response?.error).to.be.undefined;
+
+        // check that default proof is not changed
+        let defaultProofAfterQuit: PvsResponse | undefined = await pvsProxy?.getDefaultProofScript(formula);
+        expect(defaultProofAfterQuit).not.to.be.undefined;
+        expect(defaultProofAfterQuit?.error).to.be.undefined;
+        expect(defaultProofAfterQuit?.result.endsWith("(\"\" (POSTPONE))")).to.equal(true);
+    });
+
+    it(`The quit command stores the proof, but it does not modify the prf file.`, async () => {
+
+        const formula: PvsFormula = {
+            contextFolder: sandboxExamples,
+            fileExtension: ".pvs",
+            fileName: "test_prover_quit_proof",
+            formulaName: "dummy",
+            theoryName: "test_prover_quit_proof"
+        };
+        let proofsInPrfFileBeforeQuit: PvsResponse | undefined = await pvsProxy?.getProofScriptsInPrfFile(formula.contextFolder + "/" + formula.fileName);
+        expect(proofsInPrfFileBeforeQuit).not.to.be.undefined;
+        expect(proofsInPrfFileBeforeQuit?.error).to.be.undefined;
+
+        let pfResp: PvsResponse | undefined = await pvsProxy?.proveFormula(formula);
+        expect(pfResp).not.to.be.undefined;
+
+        let prfid: string = pfResp?.result.id;
+        let now = Date.now();
+        let proofCommand: string = "(comment \"" + now + "\")" ;
+        let response: PvsResponse | undefined = await pvsProxy?.proofCommand({ proofId: prfid, cmd: proofCommand });
+        expect(response).not.to.be.undefined;
+        expect(response?.error).to.be.undefined;
+
+        response = await pvsProxy?.proofCommand({ proofId: prfid, cmd: "(quit)" });
+        expect(response).not.to.be.undefined;
+        expect(response?.error).to.be.undefined;
+
+        // check that the prf file is not modified
+        let proofsInPrfFileAfterQuit: PvsResponse | undefined = await pvsProxy?.getProofScriptsInPrfFile(formula.contextFolder + "/" + formula.fileName);
+        expect(proofsInPrfFileAfterQuit).not.to.be.undefined;
+        expect(proofsInPrfFileAfterQuit?.error).to.be.undefined;
+        expect(proofsInPrfFileBeforeQuit?.result).to.be.deep.equal(proofsInPrfFileAfterQuit?.result);
+    });
+
 });
