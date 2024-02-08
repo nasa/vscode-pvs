@@ -2250,7 +2250,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 						case "run-subtree": { this.proofExplorer?.runSubtreeX(desc); break; }
 						case "run": { await this.proofExplorer?.run({ feedbackToTerminal: true }); break; }
 						
-						case "quit-proof": { await this.proofExplorer?.quitProof({ notifyClient: true }); break; }
+						case "quit-proof": { await this.proofExplorer?.quitProofAndDiscardScript({ notifyClient: true }); break; }
 						case "quit-proof-and-save": { await this.proofExplorer?.quitProofAndSave({ notifyClient: true }); break; }
 						
 						case "append-node": { this.proofExplorer?.appendNodeX(desc); break; }

@@ -1595,6 +1595,45 @@ export class PvsProxy {
 		return null;
 	}
 	/**
+	 * Instructs the server to save to a prf file all the modified proofs in the theory theoryRef.
+	 * @param theoryRef a URI of the form [pvsfile '#'] thname
+	 * @returns true on success
+	 */
+	async saveAllModifiedProofsIntoPrfFile(theoryRef: string): Promise<PvsResponse> {
+		const response: PvsResponse = await this.pvsRequest("save-all-proofs", [theoryRef]);
+		return response;
+	}
+	/**
+	 * Marks the proof identified by proofId as the default proof for the given formula.
+	 * proofId is assumed to be the identifier of one of the proofs for the formula.
+	 * @param formula to be modified
+	 * @param proofId identifier of the proof to be marked as default
+	 * @returns 
+	 */
+	async markProofAsDefault(formula: PvsFormula, proofId: string): Promise<PvsResponse> {
+		if(formula){
+			const formRef: string = formula.contextFolder + '/' + formula.fileName + '#' + formula.theoryName + '#' + formula.formulaName;
+			let ans: PvsResponse = await this.pvsRequest("mark-proof-as-default", [formRef, proofId]);
+			return ans;
+		} else
+			return null;
+	}
+	/**
+	 * Discards the proof identified by proofId from the collection of proofs for the given formula.
+	 * proofId is assumed to be the identifier of one of the proofs for the formula.
+	 * @param formula to be modified
+	 * @param proofId identifier of the proof to be discarded
+	 * @returns 
+	 */
+	async discardProofFromFormula(formula: PvsFormula, proofId: string): Promise<PvsResponse> {
+		if(formula){
+			const formRef: string = formula.contextFolder + '/' + formula.fileName + '#' + formula.theoryName + '#' + formula.formulaName;
+			let ans: PvsResponse = await this.pvsRequest("delete-proof-of-formula", [formRef, proofId]);
+			return ans;
+		} else
+			return null;
+	}
+	/**
 	 * Saves the given proof script in prooflite (.prl) format
 	 * @param desc Proof descriptor
 	 */
