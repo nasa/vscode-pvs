@@ -304,7 +304,8 @@ export class PvsProxy {
 	 */
 	async activate(opt?: { debugMode?: boolean, showBanner?: boolean, verbose?: boolean, pvsErrorManager?: PvsErrorManager }): Promise<boolean> {
 		opt = opt || {};
-		console.log(`[pvs-proxy] Starting pvs-proxy...`)
+		console.log(`[pvs-proxy.activate] Starting pvs-proxy...`);
+		console.log(`[pvs-proxy.activate] this.webSocket ${this.webSocket}`);
 
 		if (this.webSocket == undefined) {
 			try {
@@ -369,22 +370,23 @@ export class PvsProxy {
 			} catch (jsonError) {
 				// Start up PVS 
 				console.log("[activate] Error", jsonError);
-
-				this.showBanner = (opt.showBanner === undefined) ? true : opt.showBanner;
-				this.debugMode = !!opt.debugMode;
-				this.verbose = !!opt.verbose;
-				this.pvsErrorManager = opt.pvsErrorManager;
-				if (this.pvsServer) {
-					return Promise.resolve(true);
-				}
-				const success: boolean = await this.restartPvsServer();
-				if (success) {
-					console.log(`[pvs-proxy] Ready!`);
-				} else {
-					console.error(`[pvs-proxy] Failed to start proxy :/`);
-				}
-				return success;
 			}
+
+			this.showBanner = (opt.showBanner === undefined) ? true : opt.showBanner;
+			this.debugMode = !!opt.debugMode;
+			this.verbose = !!opt.verbose;
+			this.pvsErrorManager = opt.pvsErrorManager;
+			if (this.pvsServer) {
+				return Promise.resolve(true);
+			}
+			const success: boolean = await this.restartPvsServer();
+			if (success) {
+				console.log(`[pvs-proxy] Ready!`);
+			} else {
+				console.error(`[pvs-proxy] Failed to start proxy :/`);
+			}
+			return success;
+
 		}
 	}
 	async listMethodsRequest(): Promise<PvsResponse> {
@@ -1953,10 +1955,10 @@ export class PvsProxy {
 		opt = opt || {};
 		const externalServer: boolean = opt.externalServer === undefined ? this.externalServer : !!opt.externalServer;
 		if (externalServer) {
-			console.log(`[pvs-proxy] +-- EXTERNAL SERVER CONFIGURATION --`);
-			console.log(`[pvs-proxy] |  Address: ${this.webSocketAddress}`);
-			console.log(`[pvs-proxy] |  Port: ${this.webSocketPort}`);
-			console.log(`[pvs-proxy] +-----------------------------------`)
+			console.log(`[pvs-proxy.createPvsServer] +-- EXTERNAL SERVER CONFIGURATION --`);
+			console.log(`[pvs-proxy.createPvsServer] |  Address: ${this.webSocketAddress}`);
+			console.log(`[pvs-proxy.createPvsServer] |  Port: ${this.webSocketPort}`);
+			console.log(`[pvs-proxy.createPvsServer] +-----------------------------------`)
 			return ProcessCode.SUCCESS;
 		}
 
@@ -2118,6 +2120,8 @@ export class PvsProxy {
 		const webSocketPort: number = this.webSocketPort;
 		const webSocketAddress: string = this.webSocketAddress;
 
+		console.info(`[pvs-proxy] External Server: ${this.externalServer}`);
+
 		// create PVS websocket server
 		// if externalServer === true then method createPvsServer will create only 
 		// the pvs process necessary to parse/typecheck files.
@@ -2129,6 +2133,7 @@ export class PvsProxy {
 		});
 		if (pvsProcessActive !== ProcessCode.SUCCESS) {
 			this.pvsErrorManager.handleStartPvsServerError(pvsProcessActive);
+			return false;
 		}
 
 		// create GUI server necessary for interacting with the xml-rpc server
@@ -2146,7 +2151,7 @@ export class PvsProxy {
 		// const success: boolean = await this.createGuiServer();
 		// if (success) { console.info("[pvs-proxy] Reboot complete!"); }
 		// return success;
-		return (false);
+		return true;
 	}
 
 	// async xmlrpcMethodHelp (methodName: string): Promise<XmlRpcResponse> {
@@ -2182,14 +2187,12 @@ export class PvsProxy {
 		return ans;
 	}
 	async getPvsLibraryPath(opt?: { externalServer?: boolean }): Promise<string[]> {
-		const response: PvsResponse = await this.lisp(`*pvs-library-path*`);
+		const response: PvsResponse = await this.lisp(`(format nil "~{~s~}" *pvs-library-path*)`);
 		if (response && response.result) {
-			const match: RegExpMatchArray = /\(([\w\W\s]+)\)/g.exec(response.result);
+			const match: RegExpMatchArray = /"([\w\W]+)"/g.exec(response.result);
 			if (match && match.length > 1 && match[1]) {
-				const pvsLibraries: string[] = match[1].replace(/\s+/g, " ").split(`"`).filter((elem: string) => {
-					return elem.trim();
-				});
-				// console.log(pvsLibraries);
+				const pvsLibraries: string[] = match[1].split(`""`);
+				console.log(`[pvs-proxy.pvsLibraryPath] reported *pvs-library-path* : ${pvsLibraries}`);
 				return pvsLibraries;
 			}
 		}
