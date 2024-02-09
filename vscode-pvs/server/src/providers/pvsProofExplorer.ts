@@ -418,7 +418,7 @@ export class PvsProofExplorer {
 	 */
 	async undo(): Promise<PvsResponse | null> {
 		// this.root.pending();
-		return await this.step({ cmd: "undo", feedbackToTerminal: true });
+		return await this.step({ cmd: "(undo)", feedbackToTerminal: true });
 	}
 	/**
 	 * Executes a proof command. This handler is for proof commands from the proof tree stored in proof-explorer.
@@ -2412,6 +2412,21 @@ export class PvsProofExplorer {
 		}
 	}
 	/**
+	 * Quit proof and discard the script associated with the proof attempt.
+	 * @param opt 
+	 */
+	async quitProofAndDiscardScript(opt?: { proofId?: string, notifyClient?: boolean }): Promise<void> {
+		opt = opt || {};
+		this.quitProof(opt);
+		const discardResponse : PvsResponse = await this.pvsProxy?.discardProofFromFormula(this.formula, this.proofId);
+		let msg: string = null;
+		const success: boolean = !!(discardResponse?.result);
+		if (!success) {
+			msg = discardResponse?.error?.data?.error_string;
+			console.error(msg);
+		}
+	}
+	/**
 	 * Quit proof and save the current proof in a .prf format
 	 */
 	async quitProofAndSave(opt?: { jprfOnly?: boolean, notifyClient?: boolean }): Promise<{ success: boolean, msg?: string }> {
@@ -2425,7 +2440,7 @@ export class PvsProofExplorer {
 		this.proofDescriptor = this.makeProofDescriptor(this.origin);
 		await saveProofDescriptor(this.formula, this.proofDescriptor, { saveProofTree: true });
 		// save proof backup file -- just to be save in the case pvs hangs up and is unable to save
-		const script: string = this.copyTree({ selected: this.root }, { updateClipboard: false });
+		const script: string = this.copyTree({ selected: this.root }, { updateClipboard: false }); // @M3 #TODO check: this is accumulating commands from previous proofs
 		let success: boolean = true;
 		let msg: string = null;
 		// quit proof
@@ -2433,12 +2448,21 @@ export class PvsProofExplorer {
 		// clear dirty flag -- the proof is over
 		this.updateDirtyFlag(false);
 		if (!opt.jprfOnly) {
-			// save proof descriptor to file
-			const response: PvsResponse = await this.pvsProxy?.storeLastAttemptedProof(this.formula);
-			success = !!(response?.result);
+			// mark the current proof as the default proof (vscode-pvs does not support multiple proof versions at this time)
+			const defaultProofResponse : PvsResponse = await this.pvsProxy?.markProofAsDefault(this.formula, this.proofId);
+			success = !!(defaultProofResponse?.result);
 			if (!success) {
-				msg = response?.error?.data?.error_string;
+				msg = defaultProofResponse?.error?.data?.error_string;
 				console.error(msg);
+			} else {
+				// save proof to prf file
+				const theoryRef : string = this.formula.fileName + this.formula.fileExtension + "#" + this.formula.theoryName;
+				const response: PvsResponse = await this.pvsProxy?.saveAllModifiedProofsIntoPrfFile(theoryRef);
+				success = !!(response?.result);
+				if (!success) {
+					msg = response?.error?.data?.error_string;
+					console.error(msg);
+				}
 			}
 		}
 		// send feedback to the client
@@ -2471,8 +2495,12 @@ export class PvsProofExplorer {
 		opt = opt || {};
 		this.runningFlag = false;
 
-		// interrupt proof commands if necessary
-		let res: PvsResponse = await this.pvsProxy.pvsInterrupt(this.proofId);
+		// @M3 I'm avoiding interruption for now. Quit is an action that should be performed
+		//     on a responsive proof session. If the session is busy, it should be interrupted
+		//     before it's quitted.
+		// // interrupt proof commands if necessary
+		// let res: PvsResponse = await this.pvsProxy.pvsInterrupt(this.proofId);
+		let res: PvsResponse = null;
 
 		// const inchecker: boolean = await this.inChecker();
 		// if (this.formula && inchecker) {
