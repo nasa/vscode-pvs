@@ -475,7 +475,7 @@ export class PvsProofExplorer {
 			};
 			// console.dir(command, { depth: null });
 			const response: PvsResponse =
-				await this.pvsProxy.proofCommand({ proofId: proofId, cmd: cmd });
+				await this.pvsProxy.proofCommand({ proofId: proofId, cmd: command.cmd });
 			if (this.interruptFlag) {
 				this.interruptFlag = false;
 				if (this.autorunFlag) {

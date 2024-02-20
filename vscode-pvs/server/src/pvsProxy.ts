@@ -105,6 +105,10 @@ export class PvsProxy {
 
 	readonly MAXTIME: number = 2000; // millis
 	readonly MAX_PORT_ATTEMPTS: number = 200;
+	readonly SOCKET_CLIENT_ATTEMPTS: number = 6; // used to allow a small delay in the socket opening on the PVS side 
+
+	/** Number of retries for unsuccessful pvs-process starts */
+	readonly MAX_PVS_START_ATTEMPTS: number = 3;
 	readonly client_methods: string[] = ['info', 'warning', 'debug', 'buffer', 'yes-no', 'dialog'];
 	protected banner: string;
 	protected handlers: { [mth: string]: (params: string[]) => string[] } = {};
@@ -152,7 +156,7 @@ export class PvsProxy {
 		// this.pvsLibPath = path.join(pvsPath, "lib");
 		// this.nasalibPath = path.join(pvsPath, "nasalib");
 		this.pvsLibraryPath = opt.pvsLibraryPath || "";
-		this.webSocketPort = (!!opt.webSocketPort) ? opt.webSocketPort : 23456;
+		this.webSocketPort = (!!opt.webSocketPort) ? opt.webSocketPort : 23456; // 22334; // 23456;
 		this.client_methods.forEach(mth => {
 			this.handlers[mth] = (params: string[]): string[] => {
 				// console.info("info", params);
@@ -217,12 +221,14 @@ export class PvsProxy {
 		return null;
 	}
 
+
+
 	//--------------------------------------------------
 	//         json-rpc methods
 	//--------------------------------------------------
 	async pvsRequest(method: string, params?: string[]): Promise<PvsResponse> {
 		params = params || [];
-		if (this.webSocket) {
+		if (this.pvsServerProcessStatus === ProcessCode.SUCCESS && this.webSocket) {
 			// console.log("[pvsRequest] method = ", method); // debug @M3
 			return new Promise(async (resolve, reject) => {
 				const id = this.get_fresh_id();
@@ -246,14 +252,27 @@ export class PvsProxy {
 				};
 			});
 		} else {
-			console.log(`[pvs-proxy] Warning: could not invoke method ${method} (pvs is not installed)`);
+			let errorMsg: string = `[pvs-proxy] Warning: could not invoke method ${method} ` +
+			(this.pvsServerProcessStatus === ProcessCode.PVS_NOT_FOUND ? 
+				"`(PVS not installed)"
+				: (this.pvsServerProcessStatus === ProcessCode.PVS_START_FAIL ? 
+					"(PVS not responding)" : 
+					"(Unknown error)"));
+			console.log(errorMsg);
 			return new Promise(async (resolve, reject) => {
 				resolve({
 					jsonrpc: "2.0",
 					id: "00",
 					error: {
-						code: 'PVS_NOT_INSTALLED',
-						message: "pvs-proxy failed to initialize gui server"
+						code: 
+							(this.pvsServerProcessStatus===ProcessCode.PVS_NOT_FOUND? 'PVS_NOT_INSTALLED' : 
+							(this.pvsServerProcessStatus===ProcessCode.PVS_START_FAIL? 'PVS_NOT_RESPONDING' : 
+							(this.pvsServerProcessStatus===ProcessCode.ADDR_IN_USE? 'ADDR_IN_USE' : 
+							(this.pvsServerProcessStatus===ProcessCode.COMM_FAILURE? 'COMM_FAILURE' : 
+							(this.pvsServerProcessStatus===ProcessCode.PVSERROR? 'PVS_ERROR' : 
+							(this.pvsServerProcessStatus===ProcessCode.UNSUPPORTED_PLATFORM? 'UNSUPPORTED_PLATFORM' :
+							 'UNKNOWN_ERROR')))))),
+						message: "pvs-proxy failed to initialize PVS server"
 					}
 				});
 			})
@@ -298,100 +317,202 @@ export class PvsProxy {
 		}
 	}
 
+	async startWebSocket(): Promise<void> {
+		console.log("[pvsProxy.startWebSocket] Creating web socket client connection...");
+		this.webSocket = new WebSocket(`ws://${this.webSocketAddress}:${this.webSocketPort}`);
+		this.webSocket.on('redirect', () => {
+			console.log("[pvsProxy.startWebSocket] redirect");
+		});
+		this.webSocket.on('upgrade', (response) => {
+			console.log("[pvsProxy.startWebSocket] upgrade");
+		});
+		this.webSocket.on('pong', () => {
+			console.log("[pvsProxy.startWebSocket] PONG");
+		});
+		this.webSocket.on('unexpected-response', () => {
+			console.log("[pvsProxy.startWebSocket] unexpected-response");
+		});
+		this.webSocket.on('ping', () => {
+			console.log("[pvsProxy.startWebSocket] PING");
+		});
+		this.webSocket.on('error', (error) => {
+			console.log(`[pvsProxy.startWebSocket] Error on starting: ${error}`);
+			// If the connection was refused, we retry, in case PVS is still starting
+			
+		});
+		this.webSocket.on('open', () => {
+			console.log("[pvsProxy.startWebSocket] OPEN");
+		});
+		this.webSocket.on('close', () => {
+			console.log("[pvsProxy.startWebSocket] CLOSE");
+			setTimeout(() => {this.startWebSocket()}, 5000);
+		});
+		this.webSocket.on('message', (msg: string) => {
+			const obj = JSON.parse(msg);
+			// Should check for valid JSON-RPC,
+			//console.log('webSocket.on: ', this.pendingRequests);
+			//console.log('  obj = ', obj);
+			if (obj.id) {
+				if ("result" in obj || "error" in obj) {
+					if (this.pendingRequests[obj.id]) {
+						// console.log(`[pvsRequest] msg = ${msg}`)
+						this.pendingRequests[obj.id](obj) // resolve(obj);
+						delete this.pendingRequests[obj.id]
+					} else {
+						console.log('[pvsProxy.startWebSocket.on message] id not found');
+					}
+				} else {
+					switch (obj.method) {
+						case 'pvsMessage':
+							// A notification
+							// console.log(`[pvsRequest]  ${method} = ${msg}`);
+							console.log(`[pvsProxy.startWebSocket.on message] ${obj.params}`);
+							break;
+						default:
+							console.log('[pvsProxy.startWebSocket.on message] unknown');
+							console.dir(obj, { depth: null });
+					}
+				}
+			}
+		});		
+	}
+
+	async startInterruptionWebSocket(): Promise<void> {
+		console.log("[pvsProxy.startInterruptionWebSocket] Creating web socket client connection...");
+		this.interruptConn = new WebSocket(`ws://${this.webSocketAddress}:${this.webSocketPort}`);
+		this.interruptConn.on('redirect', () => {
+			console.log("[pvsProxy.startInterruptionWebSocket]  redirect");
+		});
+		this.interruptConn.on('upgrade', (response) => {
+			console.log("[pvsProxy.startInterruptionWebSocket]  upgrade");
+		});
+		this.interruptConn.on('pong', () => {
+			console.log("[pvsProxy.startInterruptionWebSocket]  PONG");
+		});
+		this.interruptConn.on('unexpected-response', () => {
+			console.log("[pvsProxy.startInterruptionWebSocket]  unexpected-response");
+		});
+		this.interruptConn.on('ping', () => {
+			console.log("[pvsProxy.startInterruptionWebSocket]  PING");
+		});
+		this.interruptConn.on('error', (error) => {
+			console.log(`ERROR: ${error}`);
+			// If the connection was refused, we retry, in case PVS is still starting
+			
+		});
+		this.interruptConn.on('open', () => {
+			console.log("[pvsProxy.startInterruptionWebSocket]  OPEN");
+		});
+		this.interruptConn.on('close', () => {
+			console.log("[pvsProxy.startInterruptionWebSocket]  CLOSE");
+			setTimeout(() => {this.startInterruptionWebSocket()}, 5000);
+		});
+		this.interruptConn.on('message', (msg: string) => {
+			const obj = JSON.parse(msg);
+			if (obj.id) {
+				if ("result" in obj || "error" in obj) {
+					if (this.pendingRequests[obj.id]) {
+						// console.log(`[pvsRequest] msg = ${msg}`)
+						this.pendingRequests[obj.id](obj) // resolve(obj);
+						delete this.pendingRequests[obj.id]
+					} else {
+						console.log('[on message] id not found');
+					}
+				} else {
+					switch (obj.method) {
+						case 'pvsMessage':
+							// A notification
+							// console.log(`[pvsRequest]  ${method} = ${msg}`);
+							console.log(`[pvsMessage] ${obj.params}`);
+							break;
+						default:
+							console.log('[on message] unknown');
+							console.dir(obj, { depth: null });
+					}
+				}
+			}
+		});		
+	}
+
+	/**
+	 * Indicates whether the given web socket is considered to be in an operational state.
+	 * @param ws 
+	 * @returns 
+	 */
+	protected isOperational(ws: WebSocket): boolean {
+		return ws && !(ws.readyState === WebSocket.CLOSED);
+	}
+
+	protected pvsServerProcessStatus: ProcessCode;
 	/**
 	 * pvs-proxy activation function
 	 * @param opt 
 	 */
-	async activate(opt?: { debugMode?: boolean, showBanner?: boolean, verbose?: boolean, pvsErrorManager?: PvsErrorManager }): Promise<boolean> {
+	async activate(opt?: { debugMode?: boolean, showBanner?: boolean, verbose?: boolean, pvsErrorManager?: PvsErrorManager }): Promise<ProcessCode> {
 		opt = opt || {};
 		console.log(`[pvs-proxy.activate] Starting pvs-proxy...`);
 		console.log(`[pvs-proxy.activate] this.webSocket ${this.webSocket}`);
 
-		if (this.webSocket == undefined) {
-			try {
-				this.webSocket = new WebSocket(`ws://${this.webSocketAddress}:${this.webSocketPort}`);
-				this.interruptConn = new WebSocket(`ws://${this.webSocketAddress}:${this.webSocketPort}`);
-				await this.waitForOpenConnection();
-				// This is the main message handler; more than 11 will trigger an error
-				// Best to use either once or create a pending array indexed by id, as below.
-				this.webSocket.on('message', (msg: string) => {
-					const obj = JSON.parse(msg);
-					// Should check for valid JSON-RPC,
-					//console.log('webSocket.on: ', this.pendingRequests);
-					//console.log('  obj = ', obj);
-					if (obj.id) {
-						if ("result" in obj || "error" in obj) {
-							if (this.pendingRequests[obj.id]) {
-								// console.log(`[pvsRequest] msg = ${msg}`)
-								this.pendingRequests[obj.id](obj) // resolve(obj);
-								delete this.pendingRequests[obj.id]
-							} else {
-								console.log('[on message] id not found');
-							}
-						} else {
-							switch (obj.method) {
-								case 'pvsMessage':
-									// A notification
-									// console.log(`[pvsRequest]  ${method} = ${msg}`);
-									console.log(`[pvsMessage] ${obj.params}`);
-									break;
-								default:
-									console.log('[on message] unknown');
-									console.dir(obj, { depth: null });
-							}
-						}
+		this.pvsErrorManager = opt.pvsErrorManager;
+		this.showBanner = (opt.showBanner === undefined) ? true : opt.showBanner;
+		this.debugMode = !!opt.debugMode;
+		this.verbose = !!opt.verbose;
+
+		this.pvsServerProcessStatus = await this.restartPvsServer();
+		if (this.pvsServerProcessStatus === ProcessCode.SUCCESS) {
+			let currentConnectionAttempt: number = 0;
+
+			if (this.webSocket == undefined) {
+				do {
+					currentConnectionAttempt++;
+					try {
+						await this.startWebSocket();
+						console.log("[pvsProxy.activate] Waiting for webSocket to be operational");
+						await this.waitForOpenConnection(this.webSocket);
+					} catch (jsonError) {
+						// Start up PVS 
+						console.log("[pvsProxy.activate] Error", jsonError);
 					}
-				});
-				this.interruptConn.on('message', (msg: string) => {
-					const obj = JSON.parse(msg);
-					if (obj.id) {
-						if ("result" in obj || "error" in obj) {
-							if (this.pendingRequests[obj.id]) {
-								// console.log(`[pvsRequest] msg = ${msg}`)
-								this.pendingRequests[obj.id](obj) // resolve(obj);
-								delete this.pendingRequests[obj.id]
-							} else {
-								console.log('[on message] id not found');
-							}
-						} else {
-							switch (obj.method) {
-								case 'pvsMessage':
-									// A notification
-									// console.log(`[pvsRequest]  ${method} = ${msg}`);
-									console.log(`[pvsMessage] ${obj.params}`);
-									break;
-								default:
-									console.log('[on message] unknown');
-									console.dir(obj, { depth: null });
-							}
-						}
+				} while (currentConnectionAttempt < this.SOCKET_CLIENT_ATTEMPTS && !this.isOperational(this.webSocket)); 
+			}
+	
+			if (currentConnectionAttempt < this.SOCKET_CLIENT_ATTEMPTS && this.interruptConn == undefined) {
+				do {
+					currentConnectionAttempt++;
+					try {
+						await this.startInterruptionWebSocket();
+						console.log("[pvsProxy.activate] Waiting for interruptConn to be operational");
+						await this.waitForOpenConnection(this.interruptConn);
+					} catch (jsonError) {
+						// Start up PVS 
+						console.log("[pvsProxy.activate] Error creating interruptConn", jsonError);
 					}
-				});
-			} catch (jsonError) {
-				// Start up PVS 
-				console.log("[activate] Error", jsonError);
+				} while (currentConnectionAttempt < this.SOCKET_CLIENT_ATTEMPTS && !this.isOperational(this.interruptConn));
+			}
+	
+			if(this.isOperational(this.webSocket) && this.isOperational(this.interruptConn))
+				console.log(`[pvs-proxy.activate] Restart PVS Server done. PvsProxy is Ready ✅`);
+			else {
+				console.error(`[pvs-proxy.activate] Failed to open socket client ❌`);					
+				this.pvsServerProcessStatus = ProcessCode.COMM_FAILURE; 
 			}
 
-			this.showBanner = (opt.showBanner === undefined) ? true : opt.showBanner;
-			this.debugMode = !!opt.debugMode;
-			this.verbose = !!opt.verbose;
-			this.pvsErrorManager = opt.pvsErrorManager;
-			if (this.pvsServer) {
-				return Promise.resolve(true);
-			}
-			const success: boolean = await this.restartPvsServer();
-			if (success) {
-				console.log(`[pvs-proxy] Ready!`);
-			} else {
-				console.error(`[pvs-proxy] Failed to start proxy :/`);
-			}
-			return success;
-
+		} else {
+			console.error(`[pvs-proxy.activate] Failed to start proxy ❌`);
 		}
+		return this.pvsServerProcessStatus;
 	}
+	/**
+	 * 
+	 * @returns 
+	 */
 	async listMethodsRequest(): Promise<PvsResponse> {
 		return await this.pvsRequest('list-methods');
 	}
+	/**
+	 * 
+	 * @returns 
+	 */
 	async listClientMethods(): Promise<PvsResponse> {
 		return await this.pvsRequest('list-client-methods');
 	}
@@ -1582,12 +1703,7 @@ export class PvsProxy {
 			// const success: boolean = await fsUtils.writeFile(fname, JSON.stringify(proofFile, null, " "));
 			// await this.proofCommand({ cmd: "(quit)" });
 			const fullTheoryName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName);
-
-			// const response: PvsResponse = await this.pvsRequest("store-last-attempted-proof", [formula.formulaName, fullTheoryName, 't']);
-			// if (response && response.result) {
-				// await this.pvsRequest("change-context", [formula.contextFolder]);
-				const response: PvsResponse = await this.pvsRequest("save-all-proofs", [fullTheoryName]); // it's pointless to return the result of 'save-all-proofs' because the result is null all the times
-			// }
+			const response: PvsResponse = await this.pvsRequest("save-all-proofs", [fullTheoryName]);
 			return response;
 		}
 		// else
@@ -1627,7 +1743,7 @@ export class PvsProxy {
 	 */
 	async discardProofFromFormula(formula: PvsFormula, proofId: string): Promise<PvsResponse> {
 		if(formula){
-			const formRef: string = formula.contextFolder + '/' + formula.fileName + '#' + formula.theoryName + '#' + formula.formulaName;
+			const formRef: string = this.formulaRef(formula); // formula.contextFolder + '/' + formula.fileName + '#' + formula.theoryName + '#' + formula.formulaName;
 			let ans: PvsResponse = await this.pvsRequest("delete-proof-of-formula", [formRef, proofId]);
 			return ans;
 		} else
@@ -1893,22 +2009,28 @@ export class PvsProxy {
 		});
 	}
 
-	async waitForOpenConnection(): Promise<void> {
+	async waitForOpenConnection(ws: WebSocket): Promise<void> {
 		return new Promise((resolve, reject) => {
-			const maxNumberOfAttempts = 10
+			const maxNumberOfAttempts = 100 // debug
 			const intervalTime = 200 //ms
 
 			let currentAttempt = 0
-			const interval = setInterval(() => {
-				if (currentAttempt > maxNumberOfAttempts - 1) {
-					clearInterval(interval)
-					reject(new Error('Maximum number of attempts exceeded'))
-				} else if (this.webSocket.readyState === this.webSocket.OPEN && this.interruptConn.readyState === this.interruptConn.OPEN) {
-					clearInterval(interval)
+			const intervalId = setInterval(() => {
+				console.log(`[waitForOpenConnection] waiting for ${ws}`);
+				if (ws.readyState === WebSocket.OPEN) {
+					clearInterval(intervalId)
 					resolve()
+				} else if (ws.readyState === WebSocket.CLOSED) {
+					clearInterval(intervalId)
+					reject(new Error('Web socket in CLOSE state'))
+				} else if (currentAttempt > maxNumberOfAttempts - 1) {
+					clearInterval(intervalId)
+					reject(new Error('Maximum number of attempts exceeded'))
+				} else if (ws.readyState === WebSocket.CLOSING) {
+					console.log(`[waitForOpenConnection] closing`);
 				}
-				currentAttempt++
-			}, intervalTime)
+				currentAttempt++;
+			}, intervalTime);
 		})
 	}
 
@@ -2005,40 +2127,54 @@ export class PvsProxy {
 		const proc: PvsProcess = new PvsProcess(this.pvsPath, { connection, pvsErrorManager: this.pvsErrorManager });
 
 		let portIsAvailable: boolean = false;
-		for (let i = 0; !portIsAvailable && i < this.MAX_PORT_ATTEMPTS; i++) {
+		let currentPortAttemptNumber: number = 0;
+		let currentPvsStartAttemptNumber: number = 0;		
+		while ( !portIsAvailable && currentPortAttemptNumber < this.MAX_PORT_ATTEMPTS && currentPvsStartAttemptNumber < this.MAX_PVS_START_ATTEMPTS) {
 			const success: ProcessCode = await proc.activate({
 				enableNotifications: opt.enableNotifications,
 				webSocketPort: this.webSocketPort,
 				externalServer: opt.externalServer,
 				verbose: opt.verbose
 			});
-			if (success === ProcessCode.PVSNOTFOUND) {
-				return ProcessCode.PVSNOTFOUND;
+			if (success === ProcessCode.PVS_NOT_FOUND) {
+				return ProcessCode.PVS_NOT_FOUND;
 			}
-			if (success === ProcessCode.UNSUPPORTEDPLATFORM) {
-				return ProcessCode.UNSUPPORTEDPLATFORM;
+			if (success === ProcessCode.UNSUPPORTED_PLATFORM) {
+				return ProcessCode.UNSUPPORTED_PLATFORM;
 			}
-			portIsAvailable = success === ProcessCode.SUCCESS;
-			if (portIsAvailable === false) {
-				this.webSocketPort++;
-				await proc.kill();
+			if (success === ProcessCode.PVS_START_FAIL) {
+				// try again
+				console.log("[pvsProxy.createPvsServer] Didn't get feedback from PVS process... ");
+				currentPvsStartAttemptNumber++;
+				await proc.kill(); 
+			} else {
+				portIsAvailable = success === ProcessCode.SUCCESS;
+				if (portIsAvailable === false) {
+					this.webSocketPort++;
+					await proc.kill();
+				}
 			}
-		}
+			currentPortAttemptNumber++;
+		};
 		if (portIsAvailable) {
 			if (!opt.externalServer) {
 				if (connection) {
-					connection.console.info(`[pvs-proxy] pvs-server active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
+					connection.console.info(`[pvsProxy.createPvsServer] pvs-server active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
 				} else {
-					console.info(`[pvs-proxy] pvs-server active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
+					console.info(`[pvsProxy.createPvsServer] pvs-server active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
 				}
 			} else {
-				console.info(`[pvs-proxy] using external pvs-server on port ${this.webSocketPort}`);
+				console.info(`[pvsProxy.createPvsServer] using external pvs-server on port ${this.webSocketPort}`);
 			}
 			this.pvsServer = proc;
 			return ProcessCode.SUCCESS;
+		} else if (currentPortAttemptNumber >= this.MAX_PORT_ATTEMPTS) {
+			console.log(`[pvsProxy.createPvsServer] Failed to activate pvs-server at ws://${this.webSocketAddress}:${this.webSocketPort}`);
+			return ProcessCode.ADDR_IN_USE;
+		} else { // currentPvsStartAttemptNumber >= this.MAX_PVS_START_ATTEMPTS
+			console.log(`[pvsProxy.createPvsServer] Failed to start PVS process`);
+			return ProcessCode.PVS_START_FAIL;
 		}
-		console.log(`[pvs-proxy] Failed to activate pvs-server at ws://${this.webSocketAddress}:${this.webSocketPort}`);
-		return ProcessCode.ADDRINUSE;
 	}
 
 	killParser(): void {
@@ -2135,10 +2271,10 @@ export class PvsProxy {
 	 * Utility function, restarts the pvs server
 	 * @param opt 
 	 */
-	async restartPvsServer(opt?: { pvsPath?: string, pvsLibraryPath?: string, externalServer?: boolean }): Promise<boolean> {
+	async restartPvsServer(opt?: { pvsPath?: string, pvsLibraryPath?: string, externalServer?: boolean }): Promise<ProcessCode> {
 		opt = opt || {};
 
-		console.log('[restartPvsServer] called');
+		console.log('[pvs-proxy.restartPvsServer] called');
 
 		// set server mode to "lisp"
 		this.mode = "lisp";
@@ -2147,60 +2283,28 @@ export class PvsProxy {
 		if (opt) {
 			if (opt.pvsPath) {
 				this.pvsPath = opt.pvsPath;
-				console.log(`[pvs-proxy] PVS path: ${this.pvsPath}`);
+				console.log(`[pvs-proxy.restartPvsServer] PVS path: ${this.pvsPath}`);
 			}
 			if (opt.pvsLibraryPath) {
 				this.pvsLibraryPath = opt.pvsLibraryPath;
-				console.log(`[pvs-proxy] PVS library path: ${this.pvsLibraryPath}`);
+				console.log(`[pvs-proxy.restartPvsServer] PVS library path: ${this.pvsLibraryPath}`);
 			}
 		}
 
-		console.info("[pvs-proxy] Rebooting pvs-server...");
-		const webSocketPort: number = this.webSocketPort;
-		const webSocketAddress: string = this.webSocketAddress;
-
-		console.info(`[pvs-proxy] External Server: ${this.externalServer}`);
+		console.info("[pvs-proxy.restartPvsServer] Rebooting pvs-server...");
+		console.info(`[pvs-proxy.restartPvsServer] External Server: ${this.externalServer}`);
 
 		// create PVS websocket server
 		// if externalServer === true then method createPvsServer will create only 
-		// the pvs process necessary to parse/typecheck files.
-		// Otherwise, createPvsServer creates also the xml-rpc server.
+		// the pvs process necessary to parse/typecheck files (via stdin/stdout).
+		// Otherwise, createPvsServer starts pvs in server mode.
 		const pvsProcessActive: ProcessCode = await this.createPvsServer({
 			enableNotifications: true,
 			externalServer: this.externalServer,
 			verbose: this.verbose
 		});
-		if (pvsProcessActive !== ProcessCode.SUCCESS) {
-			this.pvsErrorManager.handleStartPvsServerError(pvsProcessActive);
-			return false;
-		}
-
-		// create GUI server necessary for interacting with the xml-rpc server
-		// if (this.client && (this.serverPort !== serverPort || this.serverAddress !== serverAddress)) {
-		//     // port has changed, we need to update the client
-		//     this.client = xmlrpc.createClient({
-		// 	host: this.serverAddress, port: this.serverPort, path: "/RPC2"
-		//     });
-		//     if (!this.client) {
-		// 	console.error(`[pvs-proxy] Error: could not create client necessary to connect to pvs-server`);
-		// 	this.pvsErrorManager.handleStartPvsServerError(ProcessCode.COMMFAILURE);
-		//     }
-		// }
-
-		// const success: boolean = await this.createGuiServer();
-		// if (success) { console.info("[pvs-proxy] Reboot complete!"); }
-		// return success;
-		return true;
+		return pvsProcessActive;
 	}
-
-	// async xmlrpcMethodHelp (methodName: string): Promise<XmlRpcResponse> {
-	// 	return new Promise((resolve, reject) => {
-	// 	    this.client.methodCall("system.methodHelp", [ methodName ], (error: XmlRpcError, value: string) => {
-	// 		const res: RpcPvsResponse = JSON.parse(value);
-	// 		resolve({ error, res });
-	// 	    });
-	// 	});
-	// }
 
 	/**
 	 * Other internal methods

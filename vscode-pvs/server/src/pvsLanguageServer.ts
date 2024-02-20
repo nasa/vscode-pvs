@@ -179,10 +179,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			this.connection?.listen();
 		} catch (connectionError) {
 			console.warn(`[pvs-server] Warning: Unable to create LSP connection with client front-end`);
-		} finally {
-			// Create error manager
-			this.pvsErrorManager = new PvsErrorManager(this.connection);
-		}
+		} 
 	}
 	
 	/**
@@ -1842,16 +1839,16 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					this.pvsProxy = new PvsProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath, externalServer });
 					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath });
 					this.createServiceProviders();
-					const success: boolean = await this.pvsProxy?.activate({
+					const success: ProcessCode = await this.pvsProxy?.activate({
 						debugMode: opt.debugMode, 
 						verbose: opt.debugMode !== false,
 						pvsErrorManager: this.pvsErrorManager
 					});
-					if (!success) {
+					if (success === ProcessCode.PVS_NOT_FOUND) {
 						console.error("[pvs-language-server] Error: failed to activate pvs-proxy");
 						this.connection?.sendRequest(serverEvent.pvsNotFound);
-						return false;
-					}
+					} 
+					return (success === ProcessCode.SUCCESS);
 				}
 				// activate cli gateway
 				// await this.cliGateway?.activate();
@@ -2067,6 +2064,8 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				contextFolder?: string, 
 				externalServer?: boolean
 			}) => {
+				// setting the error manager here so I can report errors on starting-up
+				this.pvsErrorManager = new PvsErrorManager(this.connection);
 				// this should be called just once at the beginning
 				const success: boolean = await this.startPvsServerRequest(request);
 				if (success) {
@@ -2083,7 +2082,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					}
 				} else {
 					console.error(`[pvs-server] Error: failed to start pvs-server`);
-					this.pvsErrorManager?.handleStartPvsServerError(ProcessCode.PVSSTARTFAIL);
+					this.pvsErrorManager?.handleStartPvsServerError(ProcessCode.PVS_START_FAIL);
 				}
 			});
 			this.connection?.onRequest(serverRequest.rebootPvsServer, async (req?: RebootPvsServerRequest) => {

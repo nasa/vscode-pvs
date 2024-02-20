@@ -370,7 +370,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			// this.client.outputChannel.hide();
 
 			// initialise service providers defined on the client-side
-			this.statusBar.showProgress("Starting vscode-pvs...");
+			this.statusBar.showProgress("Starting VSCode-PVS... 🖖");
 
 			// start vscode-pvs components
 			this.proofExplorer = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');

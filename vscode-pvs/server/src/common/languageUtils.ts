@@ -3698,7 +3698,4 @@ export function getInvalidCommandName (result: { commentary: string | string[] }
 	process.env["ACL_LOCALE"] = "en_US.UTF-8";
 	process.env["LC_ALL"] = "en_US.UTF-8";
 	process.env["LANG"] = "en_US.UTF-8";
-	console.log(`\nACL_LOCALE=${process.env["ACL_LOCALE"]}`);
-	console.log(`LC_ALL=${process.env["LC_ALL"]}`);
-	console.log(`LANG=${process.env["LANG"]}\n`);
 }

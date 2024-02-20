@@ -46,9 +46,9 @@ import { forceLocale } from './common/languageUtils';
 
 const MAX_LOG_CHUNK: number = 600;
 
-export enum ProcessCode { SUCCESS = 0, PVSNOTFOUND = -1, ADDRINUSE = -2, COMMFAILURE = -3, PVSSTARTFAIL = -4, PVSERROR = -5, UNSUPPORTEDPLATFORM = -6 };
+export enum ProcessCode { SUCCESS = 0, PVS_NOT_FOUND = -1, ADDR_IN_USE = -2, COMM_FAILURE = -3, PVS_START_FAIL = -4, PVSERROR = -5, UNSUPPORTED_PLATFORM = -6 };
 /**
- * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asyncronous JSON/RPC server.
+ * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asynchronous JSON/web-socket server.
  */
 export class PvsProcess {
 	protected pvsProcess: ChildProcess = null;
@@ -67,7 +67,7 @@ export class PvsProcess {
 
 	protected pvsErrorManager: PvsErrorManager;
 
-	protected serverPort: number = 22334;
+	protected serverPort: number = 23456;
 	protected externalServer: boolean = false;
 	protected verbose: boolean = false;
 	
@@ -184,18 +184,21 @@ export class PvsProcess {
 		externalServer?: boolean,
 		verbose?: boolean
 	}): Promise<ProcessCode> {
+		console.info("[pvsProcess.activate] start... ");
 		if (this.pvsProcess) {
 			// process already running, nothing to do
+			console.info("[pvsProcess.activate] process already running, nothing to do ");
 			return ProcessCode.SUCCESS;
 		}
 		if (!this.pvsPath) {
-			return ProcessCode.PVSNOTFOUND;
+			return ProcessCode.PVS_NOT_FOUND;
 		}
+		console.info("[pvsProcess.activate] pvs is not already running, path seems right ");
 		opt = opt || {};
 		this.enableNotifications = !!opt.enableNotifications;
 		this.externalServer = !!opt.externalServer;
 		this.verbose = !!opt.verbose;
-		this.serverPort = opt.serverPort || 22334;
+		this.serverPort = opt.serverPort || this.serverPort;
 		// if (!await this.relocate()) {
 		// 	if (this.connection) {
 		// 		this.connection.console.warn("[pvs-process] Warning: could not execute PVS relocation/install script");
@@ -205,19 +208,24 @@ export class PvsProcess {
 		// }
 		// force locale settings
 		forceLocale();
+		console.log(`[PvsProcess.activate] ACL_LOCALE=${process.env["ACL_LOCALE"]}, LC_ALL=${process.env["LC_ALL"]}, LANG=${process.env["LANG"]}`);
 		// pvs args
 		const pvs: string = path.join(this.pvsPath, "pvs");
-		const args: string[] = opt.externalServer ?  [ "-raw" ] : [ "-raw", "-port", `${this.serverPort}` ];
+		const args: string[] = opt.externalServer ?  [ "-raw" ] : [ "-raw" , "-port", `${this.serverPort}`];
 		console.info(`${this.pvsPath}/pvs ${args.join(" ")}`);
 		const fileExists: boolean = fsUtils.fileExists(pvs);
 		if (fileExists) {
 			let addressInUse: boolean = false;
-			return await new Promise((resolve, reject) => {
+			
+			// Start the PVS process
+			await new Promise((resolve, reject) => {
 				if (this.pvsProcess) {
 					// process already running, nothing to do
 					return resolve(ProcessCode.SUCCESS);
 				}
-				this.pvsProcess = spawn(pvs, args);
+				console.info('[PvsProcess.activate] about to spawn PVS');
+				this.pvsProcess = spawn(pvs, args, { detached: true });
+				console.info(`[PvsProcess.activate] PVS spawned (PID: ${this.pvsProcess.pid})`);
 				// console.dir(this.pvsProcess, { depth: null });
 				this.pvsProcess.stdout.setEncoding("utf8");
 				this.pvsProcess.stderr.setEncoding("utf8");
@@ -235,7 +243,6 @@ export class PvsProcess {
 						return; // the promise has already been resolved at this point -- don't resolve the promise again, otherwise the caller will erroneously see another resolve
 					}
 
-					this.ready = false;
 					this.data += data;
 
 					logData += data;
@@ -250,14 +257,14 @@ export class PvsProcess {
 						this.pvsProcess = null;
 						addressInUse = true;
 						resetLocalLog();
-						resolve(ProcessCode.ADDRINUSE);
+						resolve(ProcessCode.ADDR_IN_USE);
 						return;
 					}
 					const matchNoExecutable: RegExpMatchArray = /No executable available in (.+)/gi.exec(data);
 					if (matchNoExecutable) {
 						this.pvsProcess = null;
 						resetLocalLog();
-						resolve(ProcessCode.UNSUPPORTEDPLATFORM);
+						resolve(ProcessCode.UNSUPPORTED_PLATFORM);
 						return;
 					}
 					// else
@@ -282,7 +289,7 @@ export class PvsProcess {
 					// if (matchRestartAction) {
 					// 	console.error(`[pvs-process] Error: ${this.data}`);
 					// }
-					const matchPvsPrompt: RegExpMatchArray = /(?:\[\d+\w*\])?\s+pvs\(\d+\)\s*:/g.exec(data);
+					const matchPvsPrompt: RegExpMatchArray = /(?:\[\d+\w*\])?\s+PVS\(\d+\)\s*:/g.exec(data);
 					const matchProverPrompt: RegExpMatchArray = /\bRule\?/g.exec(data);
 					if (matchPvsPrompt || matchProverPrompt) {
 						if (!this.ready) {
@@ -294,11 +301,12 @@ export class PvsProcess {
 									: "";
 								this.log(logPrompt);
 							}
+							console.log(`[pvsProcess.activate] PVS output: ${data}`);
 							resetLocalLog();
 							resolve(ProcessCode.SUCCESS);
 						}
 						if (this.cb && typeof this.cb === "function") {
-							let res: string = this.data.replace(/(?:\[\d+\w*\])?\s+pvs\(\d+\)\s*:/g, "").replace(/\bRule\?/g, "");
+							let res: string = this.data.replace(/(?:\[\d+\w*\])?\s+PVS\(\d+\)\s*:/g, "").replace(/\bRule\?/g, "");
 							// clean up pvs output by removing unnecessary text
 							res = res.replace("[Current process: Initial Lisp Listener]", "");
 							this.cb(res.trim());
@@ -307,7 +315,8 @@ export class PvsProcess {
 				});
 				this.pvsProcess.stderr.on("data", (data: string) => {
 					this.error(data);
-					console.dir(data, { depth: null });
+					// console.dir(data, { depth: null });
+					console.log(`[pvsProcess.activate] PVS reported error: ${data}`);
 				});
 				this.pvsProcess.on("error", (err: Error) => {
 					this.error("[pvs-process] Process error");
@@ -315,18 +324,40 @@ export class PvsProcess {
 				});
 				this.pvsProcess.on("exit", (code: number, signal: string) => {
 					resetLocalLog();
-					this.log("[pvs-process] Process exited");
-					console.dir({ code, signal });
+					console.log(`[pvs-process] Process exited, code: ${code}, signal: ${signal}, this.ready: ${this.ready}`);
+					// if PVS fails before communicating its 'ready' state, it's a starting-up fail.
+					if(!this.ready)
+						resolve(ProcessCode.PVS_START_FAIL);
 				});
 				this.pvsProcess.on("message", (message: any) => {
 					resetLocalLog();
 					this.log("[pvs-process] Process message");
 					console.dir(message, { depth: null });
-				});
+				});});
+			// Wait for the PVS process to notify it started listening at the given port			
+			return await new Promise((resolveWait,rejectWait) => {
+				const maxNumberOfAttempts = 10; 
+				const intervalTime = 200; //ms
+	
+				let currentAttempt = 0
+				console.log("[pvsProcess.activate] Waiting for PVS confirmation ")
+				const interval = setInterval(() => {
+					console.log("+");
+					if (this.ready) {
+						clearInterval(interval);
+						console.log("[pvsProcess.activate] PVS is active and waiting for requests");
+						resolveWait(ProcessCode.SUCCESS); 
+					} else if (currentAttempt > maxNumberOfAttempts - 1) {
+						clearInterval(interval)
+						resolveWait(ProcessCode.PVS_START_FAIL);
+					} 
+					currentAttempt++
+				}, intervalTime);
 			});
+
 		} else {
 			this.error(`\n>>> PVS executable not found at ${pvs} <<<\n`);
-			return ProcessCode.PVSNOTFOUND;
+			return ProcessCode.PVS_NOT_FOUND;
 		}
 	}
 	/**
@@ -334,50 +365,58 @@ export class PvsProcess {
 	 * @returns The ID of the process that was killed. Null if no process was killed.
 	 */
 	async kill (): Promise<boolean> {
+		this.ready = false;
 		return new Promise(async (resolve, reject) => {
 			if (this.pvsProcess) {
-				let done: boolean = false;
-				const pid: number = this.getProcessID();
-				// before killing the process, we need to close & drain the streams, otherwisae an ERR_STREAM_DESTROYED error will be triggered
-				// because the destruction of the process is immediate but previous calls to write() may not have drained
-				// see also nodejs doc for writable.destroy([error]) https://nodejs.org/api/stream.html
-				this.pvsProcess.on("close", (code: number, signal: string) => {
-					console.log("[pvs-process] Process terminated");
-					this.ready = false;
-					this.pvsProcess = null;
-					done = true;
-					resolve(true);
-					// console.dir({ code, signal }, { depth: null });
-				});
-				this.pvsProcess.on("error", (code: number, signal: string) => {
-					console.log("[pvs-process] Process terminated");
-					this.ready = false;
-					resolve(true);
-					// console.dir({ code, signal }, { depth: null });
-				});
-				try {
-					if (this.pvsProcess) {
-						// try to exit the process gracefully
-						await new Promise((resolveExit, rejectExit) => {
-							if (!this.pvsProcess?.stdin?.destroyed) {
-								this.pvsProcess?.stdin?.write("(quit)Y\n");
-							}
-							// give pvs some time to quit before resolving the promise
-							setTimeout(() => {
-								if (!done) {
-									resolveExit(true);
-								}
-							}, 400);
-						});
-					} else {
-						// execSync(`kill -9 ${pid}`);
-						process?.kill(pid, "SIGKILL");
-					} 
-				} finally {
-					this.pvsProcess = null;
-					if (!done) {
+				// Only try to kill the process if it's not already dead
+				if (this.pvsProcess.exitCode === null) {
+					let done: boolean = false;
+					const pid: number = this.getProcessID();
+					// before killing the process, we need to close & drain the streams, otherwise an ERR_STREAM_DESTROYED error will be triggered
+					// because the destruction of the process is immediate but previous calls to write() may not have drained
+					// see also nodejs doc for writable.destroy([error]) https://nodejs.org/api/stream.html
+					this.pvsProcess.on("close", (code: number, signal: string) => {
+						console.log("[pvs-process] Process terminated");
+						this.ready = false;
+						this.pvsProcess = null;
+						done = true;
 						resolve(true);
+						// console.dir({ code, signal }, { depth: null });
+					});
+					this.pvsProcess.on("error", (code: number, signal: string) => {
+						console.log("[pvs-process] Process terminated");
+						this.ready = false;
+						resolve(true);
+						// console.dir({ code, signal }, { depth: null });
+					});
+					try {
+						if (this.pvsProcess) {
+							// try to exit the process gracefully
+							await new Promise((resolveExit, rejectExit) => {
+								if (!this.pvsProcess?.stdin?.destroyed) {
+									this.pvsProcess?.stdin?.write("(lisp (bye))\n");
+								}
+								process?.kill(pid, "SIGKILL");
+								// give pvs some time to quit before resolving the promise
+								setTimeout(() => {
+									if (!done) {
+										resolveExit(true);
+									}
+								}, 400);
+							});
+						} else {
+							// execSync(`kill -9 ${pid}`);
+							process?.kill(pid, "SIGKILL");
+						} 
+					} finally {
+						this.pvsProcess = null;
+						if (!done) {
+							resolve(true);
+						}
 					}
+				} else {
+					this.pvsProcess = null;
+					resolve(true);
 				}
 			} else {
 				resolve(true);

@@ -123,13 +123,17 @@ export class PvsErrorManager {
                 // nothing to do
                 break;
             }
-            case ProcessCode.PVSNOTFOUND: {
+            case ProcessCode.PVS_NOT_FOUND: {
                 this.connection?.sendRequest(serverEvent.pvsNotFound);
                 break;
             }
-            case ProcessCode.UNSUPPORTEDPLATFORM: {
+            case ProcessCode.UNSUPPORTED_PLATFORM: {
                 const platform: string = process.platform;
                 this.connection?.sendRequest(serverEvent.pvsServerFail, { msg: `Error: Unsupported platform '${platform}'.`});
+                break;
+            }
+            case ProcessCode.PVS_START_FAIL: {
+                this.connection?.sendRequest(serverEvent.pvsServerFail, { msg: `Error: Couldn't start PVS process.\nDouble check PVS installation and try again.`});
                 break;
             }
             default: {

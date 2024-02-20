@@ -56,7 +56,7 @@ export class VSCodePvsStatusBarItem {
     }
     text (text: string): void {
         this.lab.text = text;
-        if (text?.length > this.maxLen) {
+        if (text?.length > this.maxLen) { // #TODO @M3 may we remove the trimming of the message?
             const start: string = text.substring(0, this.maxLen / 2);
             const end: string = text.substring(text.length - this.maxLen / 2);
             this.lab.text = start + " ... " + end;
@@ -317,7 +317,7 @@ export class VSCodePvsStatusBar {
      */
     failure (msg: string): void {
         const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
-        this.pvsStatus.icon("");
+        this.pvsStatus.icon("❌");
         this.pvsStatus.text(`$(exclude)  ${shortmsg}`); // messages in the status bar should be on one line
         this.pvsStatus.show();
     }

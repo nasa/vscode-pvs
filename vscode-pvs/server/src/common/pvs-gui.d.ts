@@ -153,7 +153,7 @@ export interface PvsError {
   [k: string]: any;
 }
 /**
- * An error response
+ * An non-error response
  */
 export interface PvsResult {
   jsonrpc: "2.0";
