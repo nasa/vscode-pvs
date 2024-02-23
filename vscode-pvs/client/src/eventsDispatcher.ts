@@ -48,7 +48,11 @@ import {
     ProofExecEvent, PvsTheory, ProofExecInterruptProver, WorkspaceEvent, 
     ProofExecInterruptAndQuitProver, FileDescriptor, ContextFolder, 
     PvsioEvaluatorCommand, EvalExpressionRequest, ProveFormulaResponse, 
-    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, RebootPvsServerRequest, CopyProofliteRequest, SaveProofResponse, GotoFileDescriptor, FormulaDescriptor, quickFixReplaceCommand, QuickFixReplace, QuickFixAddImporting, quickFixAddImportingCommand, VSCodePvsVersionDescriptor, DumpPvsFilesRequest, DumpPvsFilesResponse, UndumpPvsFilesRequest, UndumpPvsFilesResponse, FollowLink
+    ProofCommandResponse, ProofMateProfile, ProveFormulaRequest, PvsFile, 
+    CopyProofliteRequest, SaveProofResponse, GotoFileDescriptor, 
+    FormulaDescriptor, quickFixReplaceCommand, QuickFixReplace, QuickFixAddImporting, 
+    quickFixAddImportingCommand, VSCodePvsVersionDescriptor, DumpPvsFilesRequest, 
+    DumpPvsFilesResponse, UndumpPvsFilesRequest, UndumpPvsFilesResponse, FollowLink
 } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation, Selection, Uri, workspace } from "vscode";
 import * as vscode from 'vscode';
@@ -771,7 +775,7 @@ export class EventsDispatcher {
 			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
 			if (ans === yesno[0]) {
                 const currentContext: string = vscodeUtils.getRootPath();
-                const req: RebootPvsServerRequest = { cleanFolder: currentContext };
+                const req = { cleanFolder: currentContext };
                 this.client.sendRequest(serverRequest.rebootPvsServer, req);
                 // terminate any prover session
                 this.xterm.dispose();

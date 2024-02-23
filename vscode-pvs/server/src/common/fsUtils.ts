@@ -2469,3 +2469,55 @@ export function formatSequent (desc: SequentDescriptor, opt?: {
 	}
 	return null;
 }
+
+/**
+ * Checks if NASALib is among the paths in pvsLibraryPath
+ * 
+ * Example: 
+ *   isNasalibInPvsLibraryPath(process.env["PVS_LIBRARY_PATH"])
+ * 	 returns true if NASALib is in one of the paths in the environment 
+ *   variable PVS_LIBRARY_PATH 
+ * 
+ * @param pvsLibraryPath a string representation of a list of paths, separated by
+ *                       character path.delimiter.
+ * @returns true if NASALib is located in one of the paths in pvsLibraryPath
+ */
+export function isNasalibInPvsLibraryPath(pvsLibraryPath: string): boolean {
+	let result: boolean = false;
+	if (pvsLibraryPath) {
+		const pvsLibIdRE : RegExp = /id: *([\w]+)/gi;
+		const pvsLibVersionRE : RegExp = /version: *([\w\.]+)/gi;
+		pvsLibraryPath.split(path.delimiter).forEach( (libPath) => {
+				libPath = tildeExpansion(libPath);
+				if(folderExists(libPath)){
+						const pvsLibFileName: string = path.join(libPath, '.pvslib');
+						const pvsLibFile : string = readFile(pvsLibFileName);
+						let match : RegExpMatchArray = pvsLibIdRE.exec(pvsLibFile);
+						if(match && match.length > 0 && match[1] === 'NASALib') {
+								match = pvsLibVersionRE.exec(pvsLibFile);
+								if (match && match.length > 0 && match[1] === '8.0') {
+										result = true;
+										console.log(`[nasalibInstallationWizard] NASALib v8.0 found at ${libPath}`);
+										// await vscodeUtils.addPvsLibraryFolder(libPath);
+								} // else console.log(`[nasalibInstallationWizard] omitting ${libPath} from PVS_LIBRARY_PATH (erroneous version?)`);
+						} // else await vscodeUtils.addPvsLibraryFolder(libPath);
+				} // else console.log(`[nasalibInstallationWizard] omitting ${libPath} from PVS_LIBRARY_PATH (folder not found)`);
+		});
+	}
+	return result;
+}
+
+export function prunePvsLibraryPath(pvsLibraryPath: string): string {
+	let result: string = pvsLibraryPath;
+	if (pvsLibraryPath) {
+		let paths: string[] = pvsLibraryPath.split(path.delimiter);
+		paths.forEach( (libPath: string, idx: number) => {
+				libPath = tildeExpansion(libPath);
+				if(!folderExists(libPath)){
+					paths[idx] = undefined;
+				} 
+		});
+		result = paths.filter(Boolean).join(path.sep);
+	}
+	return result;
+}

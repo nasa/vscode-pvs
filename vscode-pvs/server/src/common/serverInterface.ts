@@ -640,11 +640,6 @@ export const serverEvent = {
 	profilerData: "pvs.event.profiler-data"
 };
 
-export interface RebootPvsServerRequest {
-	pvsPath?: string, 
-	cleanFolder?: string
-};
-
 export interface ShellCommand {
 	cmd: string, 
 	args?: string[], 
@@ -846,11 +841,9 @@ export interface NasalibDownloadDescriptor { pvsPath: string };
 // useful constants
 export const sriUrl: string = "www.csl.sri.com";
 export const pvsUrl: string = "pvs.csl.sri.com";
-// export const pvsSnapshotsUrl: string = `http://${sriUrl}/users/owre/drop/pvs-snapshots/`;
 export const pvsDownloadUrl: string = `https://${pvsUrl}/downloads/`;
-// export const allegroLicenseUrl: string = `http://${pvsUrl}/cgi-bin/downloadlic.cgi?file=pvs-6.0-ix86_64-Linux-allegro.tgz`; //`https://pvs.csl.sri.com/download.shtml`;
 export const NASALibUrl: string = "https://github.com/nasa/pvslib";
-export const NASALibGithubBranch: string = "master";
+export const NASALibGithubBranch: string = "v8.0";
 export const NASALibGithubFile: string = `https://github.com/nasa/pvslib/archive/${NASALibGithubBranch}.zip`;
 
 // ProofEdit

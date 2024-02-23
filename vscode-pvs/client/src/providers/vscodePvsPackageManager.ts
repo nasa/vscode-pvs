@@ -44,7 +44,7 @@ import {
 import {
     serverEvent, sriUrl, serverRequest, PvsDownloadDescriptor, NASALibUrl, 
     pvsUrl, DownloadWithProgressRequest, DownloadWithProgressResponse, 
-    InstallWithProgressRequest, InstallWithProgressResponse, RebootPvsServerRequest, 
+    InstallWithProgressRequest, InstallWithProgressResponse, 
     NASALibDownloader, NASALibDownloaderRequest, NASALibDownloaderResponse,
     NASALibGithubFile, ShellCommand, NASALibGithubBranch, ListVersionsWithProgressResponse, ListVersionsWithProgressRequest, PvsVersionDescriptor
 } from "../common/serverInterface";
@@ -83,6 +83,7 @@ export class VSCodePvsPackageManager {
         chooseInstallationFolder: "Choose installation folder",
         selectInstallationFolder: "Use as installation folder",
         downloadNASALib: "Download NASALib",
+        setNASALibPath: "Select location of NASALib",
         updateNASALib: "Update NASALib"
     };
 
@@ -105,12 +106,9 @@ export class VSCodePvsPackageManager {
             if (this.firstRun) {
                 // show the wizard only the first time vscode is opened, to avoid annoying the user with messages if they don't want to install pvs right away during the current session
                 this.firstRun = false;
-                const success: boolean = await this.pvsInstallationWizard({
+                await this.pvsInstallationWizard({
                     msg: `VSCode-PVS is almost ready!\n\nTo complete the installation, please choose one of the following actions.\n `
                 });
-                if (success) {
-                    await this.nasalibInstallationWizard();
-                }
             }
         });
         this.client.onRequest(serverEvent.pvsIncorrectVersion, async (msg: string) => {
@@ -118,10 +116,7 @@ export class VSCodePvsPackageManager {
             if (this.firstRun) {
                 this.firstRun = false;
                 // show the wizard only the first time vscode is opened, to avoid annoying the user with messages if they don't want to install pvs right away during the current session
-                const success: boolean = await this.pvsInstallationWizard({ msg });
-                if (success) {
-                    await this.nasalibInstallationWizard();
-                }
+                await this.pvsInstallationWizard({ msg });
             }
         });
     }
@@ -134,7 +129,7 @@ export class VSCodePvsPackageManager {
         const pvsPath: string = await this.choosePvsInstallationFolder();
         if (pvsPath) {
             await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
-            const req: RebootPvsServerRequest = { pvsPath };
+            const req = { pvsPath: pvsPath };
             this.client.sendRequest(serverRequest.rebootPvsServer, req);
             window.showInformationMessage(`PVS path is ${pvsPath}`);
         }
@@ -197,7 +192,10 @@ export class VSCodePvsPackageManager {
         const label: string = opt.msg || "PVS Installation Wizard";
 		const item = await window.showInformationMessage(label, {
             modal: true
-        }, opt.update ? this.messages.updatePvs : this.messages.downloadPvs, this.messages.setPvsPath);
+        }, 
+        // Installation of PVS is disabled until binaries are publicly available #TODO reinstate @M3
+        // opt.update ? this.messages.updatePvs : this.messages.downloadPvs, 
+        this.messages.setPvsPath);
 
         if (!item) { return false; }
         if (item === this.messages.setPvsPath) { return await this.selectPvsPath(); }
@@ -253,7 +251,7 @@ export class VSCodePvsPackageManager {
                         });
                         if (success) {            
                             // reboot pvs-server
-                            const req: RebootPvsServerRequest = { pvsPath };
+                            const req = { pvsPath: pvsPath };
                             this.client.sendRequest(serverRequest.rebootPvsServer, req);
 
                             // show release info
@@ -530,54 +528,62 @@ export class VSCodePvsPackageManager {
      * Installation wizard for NASALib
      */
     async nasalibInstallationWizard (opt?: { msg?: string, update?: boolean }): Promise<boolean> {
-        opt = opt || {};
-        const label: string = opt.msg || `NASALib is an extensive PVS library developed and maintained by the NASA Langley Formal Methods Team.\n\nWould you like to download NASALib?`;
-		const item = await window.showInformationMessage(label, {
-            modal: true
-        }, opt.update ? this.messages.updateNASALib : this.messages.downloadNASALib);//, this.messages.setNasalibPath);
+        let nasalibReady: boolean = false;
+        if(!nasalibReady) {
+            opt = opt || {};
+            const label: string = opt.msg || `NASALib v8.0 could not be found.\n\nNASALib is an extensive PVS library developed and maintained by the NASA Langley Formal Methods Team.\n\nWould you like to download NASALib?`;
+            const item = await window.showInformationMessage(label, {
+                modal: true
+            }, opt.update ? this.messages.updateNASALib : this.messages.downloadNASALib, this.messages.setNASALibPath);
+    
+            if (!item) { return false; }
 
-        if (!item) { return false; }
-        // if (item === this.messages.setNasalibPath) { return await this.selectNasalibPath(); }
-        if (item === this.messages.downloadNASALib || item === this.messages.updateNASALib) {
-            const downloader: NASALibDownloader = await this.getNasalibDownloader({ preferred: "git" });
             let pvsPath: string = vscodeUtils.getConfiguration("pvs.path");
-            const targetFolder: string = path.join(pvsPath, "nasalib");    
-            // create terminal to show feedback during download/update operations
-            await this.createTerminal("Installing NASALib...", { clearScreen: true });
-            const message: string = downloader === "git" && item === this.messages.downloadNASALib ?
-                `Cloning NASALib to ${targetFolder}` 
-                    : "git" && item === this.messages.updateNASALib ? `Updating NASALib installation`
-                        : `Downloading NASALib to ${targetFolder}`;
-            const shellCommand: ShellCommand = this.getNASALibDownloadCommand({
-                basePath: pvsPath,
-                targetFolder,
-                downloader,
-                update: opt?.update
-            });
-            if (shellCommand && message) {
-                this.terminal.log(colorText(message, PvsColor.blue), { addNewLine: true });
-                const tmpdir: string = os.tmpdir();
-                const fname: string = `${tmpdir}/nasalib7.zip`;
-                const success: boolean = await this.installWithProgress("NASALib", {
-                    shellCommand,
-                    targetFolder: path.join(pvsPath, "nasalib"),
-                    installScript: //{
-                        // cwd: targetFolder,
-                        shellCommand.cmd === "git" ? `cd ${targetFolder} && ./install-scripts --pvs-dir ${pvsPath}` 
-                                : `cd ${tmpdir} && unzip -o -qq ${fname} -d ${tmpdir} && mv ${path.join(tmpdir, "pvslib-master")} ${targetFolder} && cd ${targetFolder} && ./install-scripts --pvs-dir ${pvsPath}`,
-                        // quiet: true
-                    // },
-                    cleanTarget: !opt?.update
+            let nasalibPath: string = '';
+            if (item === this.messages.downloadNASALib || item === this.messages.updateNASALib) {
+                const downloader: NASALibDownloader = await this.getNasalibDownloader({ preferred: "git" });
+                nasalibPath = path.join(pvsPath, "nasalib");    
+                // create terminal to show feedback during download/update operations
+                await this.createTerminal("Installing NASALib...", { clearScreen: true });
+                const message: string = downloader === "git" && item === this.messages.downloadNASALib ?
+                    `Cloning NASALib to ${nasalibPath}` 
+                        : "git" && item === this.messages.updateNASALib ? `Updating NASALib installation`
+                            : `Downloading NASALib to ${nasalibPath}`;
+                const shellCommand: ShellCommand = this.getNASALibDownloadCommand({
+                    basePath: pvsPath,
+                    targetFolder: nasalibPath,
+                    downloader,
+                    update: opt?.update
                 });
-                if (success) {
-                    // reboot pvs-server
-                    const req: RebootPvsServerRequest = { pvsPath };
-                    this.client.sendRequest(serverRequest.rebootPvsServer, req);
-                    return true;
+                if (shellCommand && message) {
+                    this.terminal.log(colorText(message, PvsColor.blue), { addNewLine: true });
+                    const tmpdir: string = os.tmpdir();
+                    const fname: string = `${tmpdir}/nasalib7.zip`;
+                    nasalibReady = await this.installWithProgress("NASALib", {
+                        shellCommand,
+                        targetFolder: path.join(pvsPath, "nasalib"),
+                        installScript: 
+                            shellCommand.cmd === "git" ? `cd ${nasalibPath} && ./install-scripts --pvs-dir ${pvsPath}` 
+                                    : `cd ${tmpdir} && unzip -o -qq ${fname} -d ${tmpdir} && mv ${path.join(tmpdir, "pvslib-master")} ${nasalibPath} && cd ${nasalibPath} && ./install-scripts --pvs-dir ${pvsPath}`,
+                        cleanTarget: !opt?.update
+                    });
+                }
+            } else if (item === this.messages.setNASALibPath) { 
+                const uris: Uri[] = await window.showOpenDialog({
+                    canSelectFiles: false,
+                    canSelectFolders: true,
+                    canSelectMany: false,
+                    openLabel: this.messages.setNASALibPath
+                });
+                if (uris?.length === 1) {
+                    nasalibPath = uris[0].fsPath;
+                    if (nasalibPath !== null && nasalibPath !== undefined && nasalibPath?.trim() !== ""){
+                        nasalibReady = await vscodeUtils.addPvsLibraryFolder(nasalibPath);
+                    }
                 }
             }
+            return nasalibReady;
         }
-        return false;
     }
 
     /**

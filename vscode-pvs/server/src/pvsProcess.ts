@@ -46,7 +46,11 @@ import { forceLocale } from './common/languageUtils';
 
 const MAX_LOG_CHUNK: number = 600;
 
-export enum ProcessCode { SUCCESS = 0, PVS_NOT_FOUND = -1, ADDR_IN_USE = -2, COMM_FAILURE = -3, PVS_START_FAIL = -4, PVSERROR = -5, UNSUPPORTED_PLATFORM = -6 };
+
+export enum ProcessCode {
+	SUCCESS = 0, PVS_NOT_FOUND = -1, ADDR_IN_USE = -2, COMM_FAILURE = -3, PVS_START_FAIL = -4, PVSERROR = -5, UNSUPPORTED_PLATFORM = -6,
+	TERMINATED
+};
 /**
  * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asynchronous JSON/web-socket server.
  */
@@ -109,7 +113,7 @@ export class PvsProcess {
 					this.connection.console.log(msg);
 					if (this.progressInfoEnabled) {
 						const ln: string[] = msg.trim().split("\n").filter(line => {
-							return line.trim() && !line.includes("pvs(") && !(line.trim() === "nil");
+							return line.trim() && !line.includes("PVS(") && !(line.trim() === "NIL");
 						});
 						this.sendProgressInfo(ln[ln.length - 1]);
 					}
@@ -130,10 +134,10 @@ export class PvsProcess {
 	 * @param desc Information on the PVS execution environment.
 	 * @param connection Connection with the language client
 	 */
-	constructor (pvsPath: string, opt?: { connection?: SimpleConnection, pvsErrorManager?: PvsErrorManager }) {
+	constructor (pvsPath: string, opt?: { connection?: SimpleConnection, pvsErrorManager?: PvsErrorManager, pvsLibraryPath?: string }) {
 		opt = opt || {};
 		this.pvsPath = pvsPath ? fsUtils.tildeExpansion(pvsPath) : __dirname
-		this.pvsLibraryPath = path.join(this.pvsPath, "lib");
+		this.pvsLibraryPath = opt.pvsLibraryPath || '';
 		this.connection = opt.connection;
 		this.pvsErrorManager = opt.pvsErrorManager;
 	}
@@ -212,7 +216,8 @@ export class PvsProcess {
 		// pvs args
 		const pvs: string = path.join(this.pvsPath, "pvs");
 		const args: string[] = opt.externalServer ?  [ "-raw" ] : [ "-raw" , "-port", `${this.serverPort}`];
-		console.info(`${this.pvsPath}/pvs ${args.join(" ")}`);
+		console.info(`[PvsProcess.activate] shell command ${this.pvsPath}/pvs ${args.join(" ")}`);
+		console.info(`[PvsProcess.activate] pvsLibraryPath ${this.pvsLibraryPath}`);
 		const fileExists: boolean = fsUtils.fileExists(pvs);
 		if (fileExists) {
 			let addressInUse: boolean = false;
@@ -224,7 +229,7 @@ export class PvsProcess {
 					return resolve(ProcessCode.SUCCESS);
 				}
 				console.info('[PvsProcess.activate] about to spawn PVS');
-				this.pvsProcess = spawn(pvs, args, { detached: true });
+				this.pvsProcess = spawn(pvs, args, { detached: true, env: { ...process.env, PVS_LIBRARY_PATH: this.pvsLibraryPath} });
 				console.info(`[PvsProcess.activate] PVS spawned (PID: ${this.pvsProcess.pid})`);
 				// console.dir(this.pvsProcess, { depth: null });
 				this.pvsProcess.stdout.setEncoding("utf8");
@@ -314,8 +319,7 @@ export class PvsProcess {
 					}
 				});
 				this.pvsProcess.stderr.on("data", (data: string) => {
-					this.error(data);
-					// console.dir(data, { depth: null });
+					// this.error(data);
 					console.log(`[pvsProcess.activate] PVS reported error: ${data}`);
 				});
 				this.pvsProcess.on("error", (err: Error) => {

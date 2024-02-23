@@ -126,6 +126,11 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	protected pvsioweb: VSCodePvsioWeb;
 
 	/**
+	 * Indicates if it was already been suggested to the user to get NASALib
+	 */
+	protected alreadySuggestedNASALib: boolean = false;
+
+	/**
 	 * Internal function, returns the current pvs path, as indicated in the configuration file
 	 */
 	protected getPvsPath (): string {
@@ -245,7 +250,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		}, null, this.context.subscriptions);
 
 		// onDidChangeConfiguration is emitted when the configuration file changes
-		workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) => {
+		workspace.onDidChangeConfiguration( async (event: ConfigurationChangeEvent) => {			
 			// get color theme
 			const colorTheme: XTermColorTheme = vscodeUtils.detectColorTheme();
 			this.xterm.updateColorTheme(colorTheme);
@@ -254,32 +259,54 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			const flag: boolean = vscodeUtils.getConfigurationFlag("pvs.settings.proverConsole.colorizeBracketPairs");
 			this.xterm.enableBracketColors(flag);
 
-			// re-initialise pvs if the executable is different
-			const pvsPath: string = vscodeUtils.getConfiguration("pvs.path").trim();
-			const pvsLibraryPath: string = vscodeUtils.getPvsLibraryPath();
-			if (pvsPath !== this.pvsPath || this.pvsLibraryPath !== pvsLibraryPath) {
-				this.pvsPath = pvsPath || this.pvsPath;
-				this.pvsLibraryPath = pvsLibraryPath;
-				if (this.pvsPath) {
-					const msg: string = `Restarting PVS from ${this.pvsPath}`;
-					this.statusBar.showProgress(msg);
-					// window.showInformationMessage(msg);
-					this.client.sendRequest(serverRequest.startPvsServer, {
-						pvsPath: this.pvsPath, 
-						pvsLibraryPath: this.pvsLibraryPath
-					}); // the server will use the last context folder it was using	
-				}
+			// re-initialize pvs if the executable is different
+			let pvsPathChanged: boolean = false;
+			let pvsPath: string;
+			if(event.affectsConfiguration("pvs.path")){
+				pvsPath = vscodeUtils.getConfiguration("pvs.path").trim();
+				pvsPathChanged = (this.pvsPath === '' || fsUtils.folderExists(pvsPath)) && (pvsPath !== this.pvsPath);
+			}
+			let pvsLibraryPathChanged: boolean = false;
+			let pvsLibraryPath: string;
+			if(event.affectsConfiguration("pvs.pvsLibraryPath")){
+				pvsLibraryPath = fsUtils.prunePvsLibraryPath(vscodeUtils.getPvsLibraryPath());
+				pvsLibraryPathChanged = (this.pvsLibraryPath !== pvsLibraryPath);
+			}
+			if(pvsPathChanged || pvsLibraryPathChanged){
+				if (this.pvsPath === '' && pvsPath !== ''){
+					// If pvsPath was set, and pvsLibraryPath was empty and NASALib is not in the pvsLibraryPath, we suggest the user to get it
+					if(!this.alreadySuggestedNASALib && !fsUtils.isNasalibInPvsLibraryPath(pvsLibraryPath)){
+						this.alreadySuggestedNASALib = true;
+						const pvsHasRestarted: boolean = await this.packageManager.nasalibInstallationWizard();
+						if (pvsHasRestarted) return;
+					}
+				} else {
+					// if the pvs path was cleared, we'll suggest NASALib again when a new PVS is selected
+					this.alreadySuggestedNASALib = this.alreadySuggestedNASALib && !(pvsPath === undefined || pvsPath === '');
+					this.pvsPath = pvsPath || this.pvsPath; // #TODO this prevents removing the PVS folder... is this what we want?
+					this.pvsLibraryPath = pvsLibraryPath;
+					if (this.pvsPath) {
+						const msg: string = `Restarting PVS from ${this.pvsPath}`;
+						this.statusBar.showProgress(msg);
+						// window.showInformationMessage(msg);
+						this.client.sendRequest(serverRequest.startPvsServer, {
+							pvsPath: this.pvsPath, 
+							pvsLibraryPath: this.pvsLibraryPath
+						}); // the server will use the last context folder it was using	
+					}
+				}	
 			}
 
 			// update xterm-pvs settings, if xterm is active
-			if (this.xterm.isActive()) {
+			if (event.affectsConfiguration("pvs.settings.proverConsole.autocompleteWithEnter") && this.xterm.isActive()) {
 				const flag: boolean = vscodeUtils.getConfigurationFlag("pvs.settings.proverConsole.autocompleteWithEnter");
 				this.xterm.autocompleteWithEnter(flag);
 			}
 
 			// update workspace explorer if needed
 			const theoriesFromActiveFile: boolean = vscodeUtils.getConfigurationFlag("pvs.pvsWorkspaceTheoriesFromActiveFile");
-			if (theoriesFromActiveFile !== this.workspaceExplorer.theoriesFromActiveFile()) {
+			if (event.affectsConfiguration("pvs.pvsWorkspaceTheoriesFromActiveFile") 
+			    && theoriesFromActiveFile !== this.workspaceExplorer.theoriesFromActiveFile()) {
 				const activeEditor: TextEditor = getActivePvsEditor();//window.activeTextEditor; //event || window.activeTextEditor;
 				const fname: string =  activeEditor?.document?.fileName || this.workspaceExplorer.getActivePvsFile();
 				const contextFolder: string = fsUtils.getContextFolder(fname);
@@ -435,19 +462,18 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			const contextFolder = vscodeUtils.getEditorContextFolder();
 			// console.log(`Context folder: ${contextFolder}`);
 			this.pvsPath = vscodeUtils.getConfiguration("pvs.path");
+			this.alreadySuggestedNASALib = this.alreadySuggestedNASALib && !(this.pvsPath === undefined || this.pvsPath === '');
 			this.pvsLibraryPath = vscodeUtils.getPvsLibraryPath();
-			// setTimeout(() => {
 			this.client.sendRequest(serverRequest.startPvsServer, {
 				pvsPath: this.pvsPath,
 				pvsLibraryPath: this.pvsLibraryPath,
 				contextFolder,
 				externalServer: false
 			});
-			// }, 1000);
 			// set vscode context variable pvs-server-active to true -- this will create the PVS icon on the activity bar
 			commands.executeCommand('setContext', 'pvs-server-active', true);
 			// create handler for pvsServerReady event
-			this.client.onRequest(serverEvent.pvsServerReady, (info: PvsVersionDescriptor) => {
+			this.client.onRequest(serverEvent.pvsServerReady, async (info: PvsVersionDescriptor) => {
 				// reset other globals
 				vscodeUtils.resetGlobals();
 
@@ -462,6 +488,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 				// update status bar
 				this.statusBar.ready();
+
+				this.statusBar.showDownloadNasalibButton(!info["nasalib-version"]);
 
 				const activeEditor: TextEditor = getActivePvsEditor();
 				if (activeEditor?.document) {

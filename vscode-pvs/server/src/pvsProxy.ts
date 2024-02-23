@@ -229,7 +229,6 @@ export class PvsProxy {
 	async pvsRequest(method: string, params?: string[]): Promise<PvsResponse> {
 		params = params || [];
 		if (this.pvsServerProcessStatus === ProcessCode.SUCCESS && this.webSocket) {
-			// console.log("[pvsRequest] method = ", method); // debug @M3
 			return new Promise(async (resolve, reject) => {
 				const id = this.get_fresh_id();
 				const req = { method: method, params: params, jsonrpc: "2.0", id: id };
@@ -345,7 +344,9 @@ export class PvsProxy {
 		});
 		this.webSocket.on('close', () => {
 			console.log("[pvsProxy.startWebSocket] CLOSE");
-			setTimeout(() => {this.startWebSocket()}, 5000);
+			setTimeout(() => {
+				if (this.pvsServerProcessStatus === ProcessCode.SUCCESS) this.startWebSocket(); 
+			}, 5000);
 		});
 		this.webSocket.on('message', (msg: string) => {
 			const obj = JSON.parse(msg);
@@ -405,7 +406,9 @@ export class PvsProxy {
 		});
 		this.interruptConn.on('close', () => {
 			console.log("[pvsProxy.startInterruptionWebSocket]  CLOSE");
-			setTimeout(() => {this.startInterruptionWebSocket()}, 5000);
+			setTimeout(() => {
+				if (this.pvsServerProcessStatus === ProcessCode.SUCCESS) this.startInterruptionWebSocket();
+			}, 5000);
 		});
 		this.interruptConn.on('message', (msg: string) => {
 			const obj = JSON.parse(msg);
@@ -1941,7 +1944,7 @@ export class PvsProxy {
 		let res: PvsResponse = await this.lisp(`(get-pvs-version-information)`);
 		const nasalib: string = await this.getNasalibVersionInfo();
 		if (res && res.result) {
-			const regexp: RegExp = /\(\"?(\d+(?:.?\d+)*)\"?[\s|nil]*\"?([\w\s\d\.]*)\"?/g; // group 1 is pvs version, group 2 is lisp version
+			const regexp: RegExp = /\(\"?(\d+(?:.?\d+)*)\"?[\s|NIL]*\"?([\w\s\d\.]*)\"?/g; // group 1 is pvs version, group 2 is lisp version
 			const info: RegExpMatchArray = regexp.exec(res.result);
 			if (info && info.length > 2) {
 				this.pvsVersionInfo = {
@@ -1962,13 +1965,9 @@ export class PvsProxy {
 	async getNasalibVersionInfo(): Promise<string | null> {
 		const nasalibPresent: boolean = await this.NasalibPresent();
 		if (nasalibPresent) {
-			const nasalibVersion: PvsResponse = await this.lisp(`*nasalib-version*`);
-			const regexp: RegExp = /(\d+(?:.?\d+)*)/g; // group 1 is nasalib
-			const info: RegExpMatchArray = regexp.exec(nasalibVersion.result);
-			if (info && info.length > 1) {
-				this.useNasalib = true;
-				return info[1];
-			}
+			const nasalibVersion: PvsResponse = await this.lisp(`(when (fboundp 'extra-pvslib-keyval) (extra-pvslib-keyval "NASALib" "version"))`);
+			this.useNasalib = (nasalibVersion?.result !== 'NIL' && nasalibVersion?.result !== 'nil');
+			return this.useNasalib? nasalibVersion.result : null;
 		}
 		return null;
 	}
@@ -2112,7 +2111,7 @@ export class PvsProxy {
 		enableNotifications?: boolean,
 		externalServer?: boolean,
 		verbose?: boolean
-	}): Promise<ProcessCode> {
+	}): Promise<void> {
 		opt = opt || {};
 		const externalServer: boolean = opt.externalServer === undefined ? this.externalServer : !!opt.externalServer;
 		if (externalServer) {
@@ -2120,60 +2119,58 @@ export class PvsProxy {
 			console.log(`[pvs-proxy.createPvsServer] |  Address: ${this.webSocketAddress}`);
 			console.log(`[pvs-proxy.createPvsServer] |  Port: ${this.webSocketPort}`);
 			console.log(`[pvs-proxy.createPvsServer] +-----------------------------------`)
-			return ProcessCode.SUCCESS;
-		}
-
-		const connection: SimpleConnection = (opt.enableNotifications) ? this.connection : null;
-		const proc: PvsProcess = new PvsProcess(this.pvsPath, { connection, pvsErrorManager: this.pvsErrorManager });
-
-		let portIsAvailable: boolean = false;
-		let currentPortAttemptNumber: number = 0;
-		let currentPvsStartAttemptNumber: number = 0;		
-		while ( !portIsAvailable && currentPortAttemptNumber < this.MAX_PORT_ATTEMPTS && currentPvsStartAttemptNumber < this.MAX_PVS_START_ATTEMPTS) {
-			const success: ProcessCode = await proc.activate({
-				enableNotifications: opt.enableNotifications,
-				webSocketPort: this.webSocketPort,
-				externalServer: opt.externalServer,
-				verbose: opt.verbose
-			});
-			if (success === ProcessCode.PVS_NOT_FOUND) {
-				return ProcessCode.PVS_NOT_FOUND;
-			}
-			if (success === ProcessCode.UNSUPPORTED_PLATFORM) {
-				return ProcessCode.UNSUPPORTED_PLATFORM;
-			}
-			if (success === ProcessCode.PVS_START_FAIL) {
-				// try again
-				console.log("[pvsProxy.createPvsServer] Didn't get feedback from PVS process... ");
-				currentPvsStartAttemptNumber++;
-				await proc.kill(); 
-			} else {
-				portIsAvailable = success === ProcessCode.SUCCESS;
-				if (portIsAvailable === false) {
-					this.webSocketPort++;
-					await proc.kill();
-				}
-			}
-			currentPortAttemptNumber++;
-		};
-		if (portIsAvailable) {
-			if (!opt.externalServer) {
-				if (connection) {
-					connection.console.info(`[pvsProxy.createPvsServer] pvs-server active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
+			this.pvsServerProcessStatus = ProcessCode.SUCCESS;
+		} else {
+			const connection: SimpleConnection = (opt.enableNotifications) ? this.connection : null;
+			const proc: PvsProcess = new PvsProcess(this.pvsPath, { connection, pvsErrorManager: this.pvsErrorManager, pvsLibraryPath: this.pvsLibraryPath });
+	
+			let portIsAvailable: boolean = false;
+			let currentPortAttemptNumber: number = 0;
+			let currentPvsStartAttemptNumber: number = 0;		
+			while ( !portIsAvailable && currentPortAttemptNumber < this.MAX_PORT_ATTEMPTS && currentPvsStartAttemptNumber < this.MAX_PVS_START_ATTEMPTS) {
+				const success: ProcessCode = await proc.activate({
+					enableNotifications: opt.enableNotifications,
+					webSocketPort: this.webSocketPort,
+					externalServer: opt.externalServer,
+					verbose: opt.verbose
+				});
+				if (success === ProcessCode.PVS_NOT_FOUND) {
+					this.pvsServerProcessStatus =  ProcessCode.PVS_NOT_FOUND;
+				} else if (success === ProcessCode.UNSUPPORTED_PLATFORM) {
+					this.pvsServerProcessStatus = ProcessCode.UNSUPPORTED_PLATFORM;
+				} else if (success === ProcessCode.PVS_START_FAIL) {
+					// try again
+					console.log("[pvsProxy.createPvsServer] Didn't get feedback from PVS process... ");
+					currentPvsStartAttemptNumber++;
+					await proc.kill(); 
 				} else {
-					console.info(`[pvsProxy.createPvsServer] pvs-server active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
+					portIsAvailable = success === ProcessCode.SUCCESS;
+					if (portIsAvailable === false) {
+						this.webSocketPort++;
+						await proc.kill();
+					}
 				}
-			} else {
-				console.info(`[pvsProxy.createPvsServer] using external pvs-server on port ${this.webSocketPort}`);
-			}
-			this.pvsServer = proc;
-			return ProcessCode.SUCCESS;
-		} else if (currentPortAttemptNumber >= this.MAX_PORT_ATTEMPTS) {
-			console.log(`[pvsProxy.createPvsServer] Failed to activate pvs-server at ws://${this.webSocketAddress}:${this.webSocketPort}`);
-			return ProcessCode.ADDR_IN_USE;
-		} else { // currentPvsStartAttemptNumber >= this.MAX_PVS_START_ATTEMPTS
-			console.log(`[pvsProxy.createPvsServer] Failed to start PVS process`);
-			return ProcessCode.PVS_START_FAIL;
+				currentPortAttemptNumber++;
+			};
+			if (portIsAvailable) {
+				if (!opt.externalServer) {
+					if (connection) {
+						connection.console.info(`[pvsProxy.createPvsServer] pvs-server active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
+					} else {
+						console.info(`[pvsProxy.createPvsServer] pvs-server active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
+					}
+				} else {
+					console.info(`[pvsProxy.createPvsServer] using external pvs-server on port ${this.webSocketPort}`);
+				}
+				this.pvsServer = proc;
+				this.pvsServerProcessStatus = ProcessCode.SUCCESS;
+			} else if (currentPortAttemptNumber >= this.MAX_PORT_ATTEMPTS) {
+				console.log(`[pvsProxy.createPvsServer] Failed to activate pvs-server at ws://${this.webSocketAddress}:${this.webSocketPort}`);
+				this.pvsServerProcessStatus = ProcessCode.ADDR_IN_USE;
+			} else { // currentPvsStartAttemptNumber >= this.MAX_PVS_START_ATTEMPTS
+				console.log(`[pvsProxy.createPvsServer] Failed to start PVS process`);
+				this.pvsServerProcessStatus = ProcessCode.PVS_START_FAIL;
+			}	
 		}
 	}
 
@@ -2186,14 +2183,22 @@ export class PvsProxy {
 	 * Kill pvs process
 	 */
 	async killPvsServer(): Promise<void> {
-		await this.quitAllProofs();
-		// await this.webSocket.close();
-		// await this.interruptConn.close();
-		// await this.webSocket.terminate();
+		if(this.pvsServerProcessStatus === ProcessCode.SUCCESS)
+			await this.quitAllProofs();
+		await this.webSocket.close();
+		await this.interruptConn.close();
+		await this.webSocket.terminate();
 		await this.interruptConn.terminate();
-		if (this.debugMode) {
-			console.info("[pvs-proxy] Killed pvs-server");
+		this.webSocket = null;
+		this.interruptConn = null;
+		const serverKilled: boolean = await this.pvsServer.kill();
+		
+		if (serverKilled){
+			this.pvsServerProcessStatus = ProcessCode.TERMINATED;
+			console.log("[pvs-proxy] Killed pvs-server");
 		}
+		else
+			console.log("[pvs-proxy] Couldn't kill pvs-server");
 	}
 	/**
 	 * Kill pvs-gui server
@@ -2298,12 +2303,12 @@ export class PvsProxy {
 		// if externalServer === true then method createPvsServer will create only 
 		// the pvs process necessary to parse/typecheck files (via stdin/stdout).
 		// Otherwise, createPvsServer starts pvs in server mode.
-		const pvsProcessActive: ProcessCode = await this.createPvsServer({
+		await this.createPvsServer({
 			enableNotifications: true,
 			externalServer: this.externalServer,
 			verbose: this.verbose
 		});
-		return pvsProcessActive;
+		return this.pvsServerProcessStatus;
 	}
 
 	/**
@@ -2360,8 +2365,8 @@ export class PvsProxy {
 	}
 
 	async NasalibPresent(): Promise<boolean> {
-		const response: PvsResponse = await this.pvsRequest('lisp', [`(boundp '*nasalib-version*)`]);
-		return response && response.result === "t";
+		const response: PvsResponse = await this.pvsRequest('lisp', [`(fboundp 'nasalib-path)`]);
+		return response && response.result !== "nil" && response.result !== "NIL";
 	}
 
 	async installProofliteScript(desc: PvsFormula, proofLiteScript: string): Promise<PvsResponse> {

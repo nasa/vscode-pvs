@@ -438,8 +438,12 @@ export async function clearPvsLibraryPath (): Promise<void> {
  */
 export function getPvsLibraryPath (): string {
     const pvsLibraryPath: string = getConfiguration("pvs.pvsLibraryPath").trim();
-    const currentWorkspace: string = getRootFolder();
-    return pvsLibraryPath ? currentWorkspace + ":" + pvsLibraryPath : currentWorkspace;
+    // #TODO @M3 why is currentWorkspace added to the libPaths? It's implicit in PVS...
+    // const currentWorkspace: string = getRootFolder();
+    // return pvsLibraryPath && ((pvsLibraryPath.endsWith('/')?pvsLibraryPath:pvsLibraryPath+'/') !== (currentWorkspace.endsWith('/')?currentWorkspace:currentWorkspace+'/')) ? 
+    // currentWorkspace + path.delimiter + pvsLibraryPath : 
+    // currentWorkspace;
+    return pvsLibraryPath;
 }
 /**
  * Utility function, adds a folder to the list of folders in pvs.pvsLibraryPath

@@ -124,7 +124,7 @@ class PvsIoProcess {
 	constructor (desc: { pvsPath: string }, opt?: { pvsLibraryPath?: string }, connection?: SimpleConnection) {
 		this.pvsPath = (desc && desc.pvsPath) ? fsUtils.tildeExpansion(desc.pvsPath) : __dirname
 		this.pvsLibPath = path.join(this.pvsPath, "lib");
-		this.nasalibPath = path.join(this.pvsPath, "nasalib");
+		this.nasalibPath = path.join(this.pvsPath, "nasalib"); // #TODO fix me! See client/fsUtils.isNASALibInPvsLibraryPath @M3
 		opt = opt || {};
 		this.pvsLibraryPath = opt.pvsLibraryPath || "";
 		this.connection = connection;

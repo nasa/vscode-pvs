@@ -50,7 +50,7 @@ import {
 	SearchRequest, SearchResponse, SearchResult, FindSymbolDeclarationRequest, FindSymbolDeclarationResponse, 
 	ProveFormulaResponse, ProveFormulaRequest, EvaluatorCommandResponse, SequentDescriptor, 
 	DownloadWithProgressRequest, DownloadWithProgressResponse, InstallWithProgressRequest, 
-	InstallWithProgressResponse, RebootPvsServerRequest, NASALibDownloader, NASALibDownloaderRequest, 
+	InstallWithProgressResponse, NASALibDownloader, NASALibDownloaderRequest, 
 	NASALibDownloaderResponse, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse, 
 	StatusProofChain, DumpPvsFilesRequest, DumpPvsFilesResponse, UndumpPvsFilesRequest, 
 	UndumpPvsFilesResponse, DumpFileDescriptor, PvsDocRequest, PvsDocKind, PvsDocDescriptor, PvsDocResponse
@@ -102,7 +102,7 @@ interface Settings {
 
 export class PvsLanguageServer extends fsUtils.PostTask {
 	protected MAX_PARALLEL_PROCESSES: number = 1; // pvs 7.1 currently does not support parallel processes
-	readonly MIN_PVS_VERSION: number = 7.1;
+	readonly MIN_PVS_VERSION: number = 8.0;
 
 	protected diags: ContextDiagnostics = {}; 
 
@@ -1819,37 +1819,41 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	/**
 	 * Utility function, starts pvs-server
 	 */
-	async startPvsServer (desc: { pvsPath: string, pvsLibraryPath?: string, contextFolder?: string, externalServer?: boolean }, opt?: { verbose?: boolean, debugMode?: boolean }): Promise<boolean> {
+	async startPvsServer (
+		desc: { pvsPath: string, pvsLibraryPath?: string, contextFolder?: string, externalServer?: boolean }, 
+		opt?: { verbose?: boolean, debugMode?: boolean, forceKill?: boolean }): Promise<boolean> {
 		if (desc) {
 			opt = opt || {};
 			desc = fsUtils.decodeURIComponents(desc);
-			if (desc.pvsPath !== this.pvsPath && this.pvsProxy) {
-				// the server was already running, the user must have selected a different pvs path. Kill the existing server.
-				await this.pvsProxy?.killPvsServer();
+			if (this.pvsProxy) {
+				if (opt.forceKill || (desc.pvsPath !== undefined && (desc.pvsPath !== this.pvsPath)) || (desc.pvsLibraryPath !== undefined && (desc.pvsLibraryPath !== this.pvsLibraryPath))) {
+					// the server was already running, the user must have selected a different pvs path. Kill the existing server.
+					await this.pvsProxy?.killPvsServer();
+				}	
 			}
-			this.pvsPath = desc.pvsPath || this.pvsPath;
-			this.pvsLibraryPath = desc.pvsLibraryPath || this.pvsLibraryPath;
-			const externalServer: boolean = !!desc.externalServer;
-			if (this.pvsPath) {
+			if (desc.pvsPath || this.pvsPath) {
 				console.log(`[pvs-language-server] Rebooting PVS (installation folder is ${this.pvsPath})`);
-				if (this.pvsProxy) {
+				const externalServer: boolean = !!desc.externalServer;
+				if (this.pvsProxy && desc.pvsPath === this.pvsPath && (desc.pvsLibraryPath === undefined || this.pvsLibraryPath === desc.pvsLibraryPath)) {
 					await this.pvsProxy?.enableExternalServer({ enabled: externalServer });
-					await this.pvsProxy?.restartPvsServer({ pvsPath: this.pvsPath, pvsLibraryPath: this.pvsLibraryPath, externalServer });
 				} else {
+					this.pvsPath = desc.pvsPath || this.pvsPath;
+					this.pvsLibraryPath = desc.pvsLibraryPath === undefined ? this.pvsLibraryPath : desc.pvsLibraryPath;
 					this.pvsProxy = new PvsProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath, externalServer });
 					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath });
 					this.createServiceProviders();
-					const success: ProcessCode = await this.pvsProxy?.activate({
-						debugMode: opt.debugMode, 
-						verbose: opt.debugMode !== false,
-						pvsErrorManager: this.pvsErrorManager
-					});
-					if (success === ProcessCode.PVS_NOT_FOUND) {
-						console.error("[pvs-language-server] Error: failed to activate pvs-proxy");
-						this.connection?.sendRequest(serverEvent.pvsNotFound);
-					} 
-					return (success === ProcessCode.SUCCESS);
-				}
+				}	
+				// #TODO @M3 shouldn't we activate pvsioProxy as well?
+				const success: ProcessCode = await this.pvsProxy?.activate({
+					debugMode: opt.debugMode, 
+					verbose: opt.debugMode !== false,
+					pvsErrorManager: this.pvsErrorManager
+				});
+				if (success === ProcessCode.PVS_NOT_FOUND) {
+					console.error("[pvs-language-server] Error: failed to activate pvs-proxy");
+					this.connection?.sendRequest(serverEvent.pvsNotFound);
+				} 
+				return (success === ProcessCode.SUCCESS);
 				// activate cli gateway
 				// await this.cliGateway?.activate();
 				this.notifyServerMode("lisp");
@@ -1869,40 +1873,17 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 */
 	protected async startPvsServerRequest (desc: { pvsPath: string, pvsLibraryPath: string, contextFolder?: string, externalServer?: boolean }): Promise<boolean> {
 		// make sure that all dependencies are installed; an error will be shown to the user if some dependencies are missing
-		this.checkDependencies(); // async call
-		// install pvs patches
-		await PvsPackageManager.installPvsPatches(desc);
-		// start pvs
-		const success: boolean = await this.startPvsServer(desc);
-		if (success) {
-			// send version info to the front-end
-			await this.sendPvsServerReadyEvent();
-			return true;
-		}
-		return false;
-	}
-
-	/**
-	 * Internal function, reboots pvs-server
-	 */
-	protected async rebootPvsServer (desc?: RebootPvsServerRequest): Promise<boolean> {
-		desc = desc || {};
-		desc.pvsPath = desc.pvsPath || this.pvsPath;
-		// make sure that all dependencies are installed; an error will be shown to the user if some dependencies are missing
-		this.checkDependencies(); // async call
-		// await fsUtils.cleanBin(this.lastParsedContext, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin
-		// if (desc.cleanFolder && desc.cleanFolder !== this.lastParsedContext) {
-		// 	await fsUtils.cleanBin(desc.cleanFolder, { keepTccs: true, recursive: fsUtils.MAX_RECURSION }); // this will remove .pvscontext and pvsbin
-		// }
-		if (this.pvsProxy) {
-			await this.pvsProxy.rebootPvsServer(desc);
-			this.notifyServerMode("lisp");
-			// send version info
-			await this.sendPvsServerReadyEvent();
-			return true;
-		} else {
-			console.error("[pvs-language-server] Error: pvs-proxy is null");
-			this.connection?.sendRequest(serverEvent.pvsNotFound);
+		const dependencies: boolean = await this.checkDependencies();
+		if(dependencies){
+			// install pvs patches
+			await PvsPackageManager.installPvsPatches(desc);
+			// start pvs
+			const success: boolean = await this.startPvsServer(desc);
+			if (success) {
+				// send version info to the front-end
+				await this.sendPvsServerReadyEvent();
+				return true;
+			}
 		}
 		return false;
 	}
@@ -2065,7 +2046,8 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				externalServer?: boolean
 			}) => {
 				// setting the error manager here so I can report errors on starting-up
-				this.pvsErrorManager = new PvsErrorManager(this.connection);
+				if (!this.pvsErrorManager)
+					this.pvsErrorManager = new PvsErrorManager(this.connection);
 				// this should be called just once at the beginning
 				const success: boolean = await this.startPvsServerRequest(request);
 				if (success) {
@@ -2085,8 +2067,13 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					this.pvsErrorManager?.handleStartPvsServerError(ProcessCode.PVS_START_FAIL);
 				}
 			});
-			this.connection?.onRequest(serverRequest.rebootPvsServer, async (req?: RebootPvsServerRequest) => {
-				this.rebootPvsServer(req); // async call
+			this.connection?.onRequest(serverRequest.rebootPvsServer, async (req?: { 
+				pvsPath: string, 
+				pvsLibraryPath: string, 
+				contextFolder?: string, 
+				externalServer?: boolean
+			}) => {
+				await this.startPvsServer(req, { forceKill: true});
 			});
 			this.connection?.onRequest(serverRequest.clearWorkspace, async () => {
 				this.clearWorkspace(); // async call

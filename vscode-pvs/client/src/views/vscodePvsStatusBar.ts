@@ -300,7 +300,7 @@ export class VSCodePvsStatusBar {
         showButton = showButton === undefined ? true : !!showButton;
         if (showButton === true) {
             this.downloadNasalib.icon("");
-            this.downloadNasalib.text(`$(symbol-function)  Download NASALib`);
+            this.downloadNasalib.text(`$(symbol-function)  Get NASALib`);
             this.downloadNasalib.command("vscode-pvs.download-nasalib");
             this.downloadNasalib.show();
         } else {
