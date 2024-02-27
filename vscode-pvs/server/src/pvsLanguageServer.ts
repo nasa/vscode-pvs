@@ -1660,7 +1660,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 
 					// new pvs parser
 					else if (info.error && info.error.data && info.error.data.length > 0) {
-						const diagnostics: Diagnostic[] = <Diagnostic[]> info.error.data.map(diag => {
+						let data: any[] = (typeof info.error.data == "object" ? [ info.error.data ] : info.error.data);
+
+						const diagnostics: Diagnostic[] = <Diagnostic[]> data.map(diag => {
 							return {
 								range: {
 									start: { line: diag.range.start.line - 1, character: diag.range.start.character }, // lines in the editor start from 0
@@ -1875,13 +1877,13 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		// make sure that all dependencies are installed; an error will be shown to the user if some dependencies are missing
 		const dependencies: boolean = await this.checkDependencies();
 		if(dependencies){
-			// install pvs patches
-			await PvsPackageManager.installPvsPatches(desc);
 			// start pvs
 			const success: boolean = await this.startPvsServer(desc);
 			if (success) {
 				// send version info to the front-end
 				await this.sendPvsServerReadyEvent();
+				// install pvs patches
+				// await PvsPackageManager.installPvsPatches(desc); // @M3 deactivated by now. It shouldn't be necessary #TODO
 				return true;
 			}
 		}

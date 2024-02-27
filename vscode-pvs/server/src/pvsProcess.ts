@@ -78,7 +78,11 @@ export class PvsProcess {
 	protected progressInfoEnabled: boolean = false;
 
 	protected verboseLog: boolean = false;
-
+	protected reportedServerPort: number | undefined;
+	
+	public getReportedServerPort(): number | undefined {
+		return this.reportedServerPort;
+	}
 	/**
 	 * utility function for sending error messages over the connection (if any connection is available)
 	 * @param msg message to be sent
@@ -223,7 +227,7 @@ export class PvsProcess {
 			let addressInUse: boolean = false;
 			
 			// Start the PVS process
-			await new Promise((resolve, reject) => {
+			await new Promise((resolve, reject) => 	{
 				if (this.pvsProcess) {
 					// process already running, nothing to do
 					return resolve(ProcessCode.SUCCESS);
@@ -244,12 +248,12 @@ export class PvsProcess {
 				};
 
 				this.pvsProcess.stdout.on("data", async (data: string) => {
+					console.log(`[pvsProcess.stdout (on data)] \n===> ${data}\n<===`);
 					if (addressInUse) {
-						return; // the promise has already been resolved at this point -- don't resolve the promise again, otherwise the caller will erroneously see another resolve
+						return resolve(ProcessCode.ADDR_IN_USE); // the promise has already been resolved at this point -- don't resolve the promise again, otherwise the caller will erroneously see another resolve
 					}
 
 					this.data += data;
-
 					logData += data;
 					if (!maxLogLimitReached) {
 						// log data in vscode-pvs output
@@ -262,40 +266,32 @@ export class PvsProcess {
 						this.pvsProcess = null;
 						addressInUse = true;
 						resetLocalLog();
-						resolve(ProcessCode.ADDR_IN_USE);
-						return;
+						return resolve(ProcessCode.ADDR_IN_USE);
 					}
 					const matchNoExecutable: RegExpMatchArray = /No executable available in (.+)/gi.exec(data);
 					if (matchNoExecutable) {
 						this.pvsProcess = null;
 						resetLocalLog();
-						resolve(ProcessCode.UNSUPPORTED_PLATFORM);
-						return;
+						return resolve(ProcessCode.UNSUPPORTED_PLATFORM);
 					}
-					// else
-					// console.dir({ 
-					// 	type: "memory usage",
-					// 	data: process.memoryUsage()
-					// }, { depth: null });
-					// console.log(data);
 					
-					// wait for the pvs prompt, to make sure pvs-server is operational
-					const yesNoQuery: boolean = data.trim().endsWith("(Yes or No)");
-					if (yesNoQuery) {
-						console.log(data);
-						if (!this.pvsProcess?.stdin?.destroyed) {
-							this.pvsProcess?.stdin?.write("Yes\n");
-							this.log("Yes\n", { force: true });
-						}
-						return;
-					}
-
-					// const matchRestartAction: RegExpMatchArray = /\bRestart actions \(select using :continue\):/g.exec(data);
-					// if (matchRestartAction) {
-					// 	console.error(`[pvs-process] Error: ${this.data}`);
+					// // wait for the pvs prompt, to make sure pvs-server is operational
+					// const yesNoQuery: boolean = data.trim().endsWith("(Yes or No)");
+					// if (yesNoQuery) {
+					// 	console.log(data);
+					// 	if (!this.pvsProcess?.stdin?.destroyed) {
+					// 		this.pvsProcess?.stdin?.write("Yes\n");
+					// 		this.log("Yes\n", { force: true });
+					// 	}
+					// 	return resolve(ProcessCode.SUCCESS);
 					// }
+
 					const matchPvsPrompt: RegExpMatchArray = /(?:\[\d+\w*\])?\s+PVS\(\d+\)\s*:/g.exec(data);
 					const matchProverPrompt: RegExpMatchArray = /\bRule\?/g.exec(data);
+					const matchUsedPort: RegExpMatchArray = /\bListening on 127\.0\.0\.1:(\d+)/g.exec(data);
+					if(matchUsedPort){
+						this.reportedServerPort = +matchUsedPort[1];
+					}
 					if (matchPvsPrompt || matchProverPrompt) {
 						if (!this.ready) {
 							this.ready = true;
@@ -306,25 +302,26 @@ export class PvsProcess {
 									: "";
 								this.log(logPrompt);
 							}
-							console.log(`[pvsProcess.activate] PVS output: ${data}`);
 							resetLocalLog();
-							resolve(ProcessCode.SUCCESS);
+							return (this.reportedServerPort? resolve(ProcessCode.SUCCESS) : resolve(ProcessCode.PVS_START_FAIL));
 						}
-						if (this.cb && typeof this.cb === "function") {
+						if (this.cb && typeof this.cb === "function") { // #TODO old. check @M3
 							let res: string = this.data.replace(/(?:\[\d+\w*\])?\s+PVS\(\d+\)\s*:/g, "").replace(/\bRule\?/g, "");
 							// clean up pvs output by removing unnecessary text
 							res = res.replace("[Current process: Initial Lisp Listener]", "");
 							this.cb(res.trim());
+							return resolve(ProcessCode.PVSERROR);
 						}
-					}
+						return resolve(ProcessCode.PVSERROR);
+					} else return resolve(ProcessCode.SUCCESS);
 				});
 				this.pvsProcess.stderr.on("data", (data: string) => {
 					// this.error(data);
-					console.log(`[pvsProcess.activate] PVS reported error: ${data}`);
+					console.log(`[pvsProcess.activate] PVS reported error: \n>>> ${data} <<< `);
 				});
 				this.pvsProcess.on("error", (err: Error) => {
-					this.error("[pvs-process] Process error");
-					console.dir(err, { depth: null });
+					this.error(`[pvs-process(on error)] Process error \n>>> ${err} <<< `);
+					// console.dir(err, { depth: null });
 				});
 				this.pvsProcess.on("exit", (code: number, signal: string) => {
 					resetLocalLog();
@@ -335,8 +332,8 @@ export class PvsProcess {
 				});
 				this.pvsProcess.on("message", (message: any) => {
 					resetLocalLog();
-					this.log("[pvs-process] Process message");
-					console.dir(message, { depth: null });
+					this.log(`[pvs-process(on message)] Process message \n>>> ${message} <<< `);
+					/// console.dir(message, { depth: null });
 				});});
 			// Wait for the PVS process to notify it started listening at the given port			
 			return await new Promise((resolveWait,rejectWait) => {

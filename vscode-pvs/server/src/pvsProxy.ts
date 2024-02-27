@@ -105,7 +105,7 @@ export class PvsProxy {
 
 	readonly MAXTIME: number = 2000; // millis
 	readonly MAX_PORT_ATTEMPTS: number = 200;
-	readonly SOCKET_CLIENT_ATTEMPTS: number = 6; // used to allow a small delay in the socket opening on the PVS side 
+	readonly SOCKET_CLIENT_ATTEMPTS: number = 100; // used to allow a small delay in the socket opening on the PVS side 
 
 	/** Number of retries for unsuccessful pvs-process starts */
 	readonly MAX_PVS_START_ATTEMPTS: number = 3;
@@ -2124,10 +2124,10 @@ export class PvsProxy {
 			const connection: SimpleConnection = (opt.enableNotifications) ? this.connection : null;
 			const proc: PvsProcess = new PvsProcess(this.pvsPath, { connection, pvsErrorManager: this.pvsErrorManager, pvsLibraryPath: this.pvsLibraryPath });
 	
-			let portIsAvailable: boolean = false;
+			let serverIsReady: boolean = false;
 			let currentPortAttemptNumber: number = 0;
 			let currentPvsStartAttemptNumber: number = 0;		
-			while ( !portIsAvailable && currentPortAttemptNumber < this.MAX_PORT_ATTEMPTS && currentPvsStartAttemptNumber < this.MAX_PVS_START_ATTEMPTS) {
+			while ( !serverIsReady && currentPortAttemptNumber < this.MAX_PORT_ATTEMPTS && currentPvsStartAttemptNumber < this.MAX_PVS_START_ATTEMPTS) {
 				const success: ProcessCode = await proc.activate({
 					enableNotifications: opt.enableNotifications,
 					webSocketPort: this.webSocketPort,
@@ -2144,15 +2144,16 @@ export class PvsProxy {
 					currentPvsStartAttemptNumber++;
 					await proc.kill(); 
 				} else {
-					portIsAvailable = success === ProcessCode.SUCCESS;
-					if (portIsAvailable === false) {
-						this.webSocketPort++;
+					serverIsReady = (success === ProcessCode.SUCCESS && proc.getReportedServerPort() !== undefined);
+					if (success !== ProcessCode.SUCCESS) {
+						// this.webSocketPort++;
 						await proc.kill();
-					}
+					} 
 				}
 				currentPortAttemptNumber++;
 			};
-			if (portIsAvailable) {
+			if (serverIsReady) {
+				this.webSocketPort = proc.getReportedServerPort();
 				if (!opt.externalServer) {
 					if (connection) {
 						connection.console.info(`[pvsProxy.createPvsServer] pvs-server active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
