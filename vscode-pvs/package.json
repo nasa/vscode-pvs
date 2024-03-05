@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.65-theta",
+	"version": "1.0.66-beta",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -1976,7 +1976,7 @@
 	},
 	"devDependencies": {
 		"@types/chai": "^4.3.0",
-		"@types/mocha": "^9.0.0",
+		"@types/mocha": "^9.1.1",
 		"@types/node": "^14.14.22",
 		"@types/vscode": "^1.48.0",
 		"@typescript-eslint/eslint-plugin": "^5.10.0",
