@@ -54,13 +54,20 @@ export class VSCodePvsStatusBarItem {
         this.ico = window.createStatusBarItem(alignment, priority);
         this.lab = window.createStatusBarItem(alignment, priority);
     }
+    setTooltip (text: string): void {
+        this.lab.tooltip = text;
+        this.ico.tooltip = text;
+    }
+    getText(): string {
+        return this.lab.text;
+    }
     text (text: string): void {
         this.lab.text = text;
-        if (text?.length > this.maxLen) { // #TODO @M3 may we remove the trimming of the message?
-            const start: string = text.substring(0, this.maxLen / 2);
-            const end: string = text.substring(text.length - this.maxLen / 2);
-            this.lab.text = start + " ... " + end;
-        }
+        // if (text?.length > this.maxLen) { // #TODO @M3 may we remove the trimming of the message?
+        //     const start: string = text.substring(0, this.maxLen / 2);
+        //     const end: string = text.substring(text.length - this.maxLen / 2);
+        //     this.lab.text = start + " ... " + end;
+        // }
     }
     icon (text: string): void {
         if (text !== this.ico.text) {
@@ -81,7 +88,7 @@ export class VSCodePvsStatusBarItem {
     }
     clear (): void {
         this.lab.text = "";
-        this.ico.text = "";
+        this.ico.text = ``;
     }
 }
 
@@ -151,23 +158,34 @@ export class VSCodePvsStatusBar {
     /**
      * Clears the status bar and makes it visible
      */
-    ready (): void {
+    clear (): void {
         this.pvsStatus.clear();
         this.pvsStatus.show();
     };
+
+    ready(): void {
+        this.pvsStatus.setTooltip("PVS is ready to receive commands");
+        const currentStatusMsg: string = this.pvsStatus.getText();
+        if (currentStatusMsg && currentStatusMsg !== "" && currentStatusMsg !== `$(pass) PVS ready`)
+            this.pvsStatus.text(`$(pass) PVS ready - ${currentStatusMsg}`);
+        else
+        this.pvsStatus.text(`$(pass) PVS ready`);
+    }
 
     /**
      * Shows a spinning icon and a message in the status bar
      * @param msg message
      */
-    showProgress (msg: string): void {
+    showProgress (msg: string, tooltip?: string): void {
         if (!this.runningFlag) {
             if (msg) {
-                this.pvsStatus.icon(`$(loading~spin)`);
-                this.pvsStatus.text(msg);
+                if (tooltip)
+                    this.pvsStatus.setTooltip(tooltip);
+                this.pvsStatus.icon("");
+                this.pvsStatus.text(`$(gear~spin) ${msg}`);
                 this.pvsStatus.show();
             } else {
-                this.ready();
+                this.clear();
             }
         }
     }
@@ -189,7 +207,7 @@ export class VSCodePvsStatusBar {
             this.pvsStatus.text(`$(info)  ${msg}`);
             this.pvsStatus.show();
         } else {
-            this.ready();
+            this.clear();
         }
     }
 
@@ -203,7 +221,7 @@ export class VSCodePvsStatusBar {
             this.pvsStatus.text(msg);
             this.pvsStatus.show();
         } else {
-            this.ready();
+            this.clear();
         }
     }
     
@@ -215,11 +233,11 @@ export class VSCodePvsStatusBar {
         if (msg) {
             const shortmsg: string = msg.split("\n")[0];
             this.pvsStatus.icon("");
-            this.pvsStatus.text(`$(pinned-dirty)  ${shortmsg}`); // messages in the status bar should always be on one line
+            this.pvsStatus.text(`$(error)  ${shortmsg}`); // messages in the status bar should always be on one line
             this.pvsStatus.show();
             vscodeUtils.showProblemsPanel();
         } else {
-            this.ready();
+            this.clear();
         }
     }
 
@@ -230,8 +248,10 @@ export class VSCodePvsStatusBar {
         opt = opt || {};
         opt.trailingNote = opt.trailingNote || "";
         if (this.pvsVersionInfo) {
+            let currentPVSVersion: string = this.pvsVersionInfo["pvs-version"];
             this.versionInfo.icon("");
-            this.versionInfo.text(this.pvsVersionInfo["pvs-version"]);
+            this.versionInfo.text(`v${currentPVSVersion}`);
+            this.versionInfo.setTooltip(`PVS version: ${currentPVSVersion}`);
             let msg: string = `PVS ${this.pvsVersionInfo["pvs-version"]}`;
             let extras: string[] = [];
             if (this.pvsVersionInfo["lisp-version"]) {

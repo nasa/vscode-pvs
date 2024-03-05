@@ -102,7 +102,7 @@ export class VSCodePvsPackageManager {
     activate (context: ExtensionContext): void {
         // pvs installation handlers
         this.client.onRequest(serverEvent.pvsNotFound, async () => {
-            this.statusBar.ready();
+            this.statusBar.clear();
             if (this.firstRun) {
                 // show the wizard only the first time vscode is opened, to avoid annoying the user with messages if they don't want to install pvs right away during the current session
                 this.firstRun = false;
@@ -112,7 +112,7 @@ export class VSCodePvsPackageManager {
             }
         });
         this.client.onRequest(serverEvent.pvsIncorrectVersion, async (msg: string) => {
-            this.statusBar.ready();
+            this.statusBar.clear();
             if (this.firstRun) {
                 this.firstRun = false;
                 // show the wizard only the first time vscode is opened, to avoid annoying the user with messages if they don't want to install pvs right away during the current session
@@ -213,7 +213,7 @@ export class VSCodePvsPackageManager {
                     const licenseAccepted: boolean = await this.showPvsLicense();
                     // abort installation if target folder license not accepted
                     if (!licenseAccepted) {
-                        this.statusBar.ready();
+                        this.statusBar.clear();
                         return false;
                     }
                 }

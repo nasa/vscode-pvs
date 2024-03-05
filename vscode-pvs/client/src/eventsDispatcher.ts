@@ -422,7 +422,7 @@ export class EventsDispatcher {
                     this.xterm.running(false);
                     this.xterm.showWelcomeMessage();
                     this.statusBar.running(false);
-                    this.statusBar.ready();
+                    this.statusBar.clear();
                     break;
                 }
                 case "did-open-proof": {
@@ -728,7 +728,7 @@ export class EventsDispatcher {
                 this.xterm.running(false);
                 this.xterm.showWelcomeMessage();
                 this.statusBar.running(false);
-                this.statusBar.ready();
+                this.statusBar.clear();
             } else {
                 this.xterm.running(true);
                 this.statusBar.running(true);
@@ -814,7 +814,7 @@ export class EventsDispatcher {
             // ask the user confirmation before restarting pvs
             const action: ProofExecInterruptAndQuitProver = { action: "interrupt-and-quit-prover" };
             this.client.sendRequest(serverRequest.proverCommand, action);
-            this.statusBar.ready();
+            this.statusBar.clear();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.download-nasalib", async () => {
             const success: boolean = await this.packageManager.nasalibInstallationWizard();
@@ -1705,22 +1705,25 @@ export class EventsDispatcher {
             }
         });
         this.client.onNotification("server.status.warning", (desc?: { msg?: string }) => {
-            this.statusBar.ready();
+            this.statusBar.clear();
             if (desc && desc.msg) {
                 vscodeUtils.showWarningMessage(desc.msg);
             }
         });
         this.client.onNotification("server.status.info", (desc?: { msg?: string }) => {
-            this.statusBar.ready();
+            this.statusBar.clear();
             if (desc && desc.msg) {
                 vscodeUtils.showInformationMessage(desc.msg);
             }
         });
-        this.client.onNotification("server.status.start-important-task", (desc: { id: string, msg: string, increment?: number }) => {
+        this.client.onNotification(
+            "server.status.start-important-task", 
+            (desc: { id: string, msg: string, increment?: number
+                     taskName?: string, affectedObject?: string }) => {
             if (desc && desc.msg) {
                 if (this.quietMode) {
                     this.client.onNotification(`server.status.end-important-task-${desc.id}-with-errors`, (desc: { msg: string }) => {
-                        this.statusBar.ready();
+                        this.statusBar.clear();
                         if (desc && desc.msg) {
                             this.statusBar.showError(desc.msg); // use the status bar rather than dialogs, because we don't have APIs to close old dialogs with potentially stale information
                             vscodeUtils.showErrorMessage(desc.msg);
@@ -1737,14 +1740,15 @@ export class EventsDispatcher {
                     let complete: boolean = false;
                     // show initial dialog with spinning progress
                     progress.report({ increment: -1, message: desc.msg });
-                    setTimeout(() => {
-                        if (!complete) {
-                            progress.report({
-                                increment: isNaN(desc.increment) ? -1 : desc.increment,
-                                message: "Almost ready, please wait... \n(" + desc.msg + ")"
-                            });
-                        }
-                    }, 8000);
+                    // @M3 #TODO I don't think this is needed anymore, now that we have more feedback form the type checker
+                    // setTimeout(() => {
+                    //     if (!complete) {
+                    //         progress.report({
+                    //             increment: isNaN(desc.increment) ? -1 : desc.increment,
+                    //             message: "Working, please wait... \n(" + desc.msg + ")"
+                    //         });
+                    //     }
+                    // }, 8000);
                     // update the dialog
                     return new Promise<void>((resolve, reject) => {
                         token.onCancellationRequested(() => {
@@ -1753,23 +1757,30 @@ export class EventsDispatcher {
                                 // send cancellation request to the server
                                 this.client.sendRequest(serverRequest.cancelOperation);
                                 // clear status bar
-                                this.statusBar.ready();
+                                this.statusBar.clear();
                                 // dispose of the dialog
                                 resolve(null);
                             }
                         });
                         this.client.onNotification(`server.status.progress-important-task-${desc.id}`, (desc: { msg: string, increment?: number }) => {
+                            let msg: string = desc.msg;
                             if (desc) {
+                                // shorten message
+                                msg = msg.replace(/ in [\d\.]+ ?s.*$/, ""); 
+                                this.statusBar.showProgress(msg.replace(vscodeUtils.getRootPath(), "\$(workspace-trusted)"), desc.msg);
                                 progress.report({
                                     increment: isNaN(desc.increment) ? -1 : desc.increment,
-                                    message: desc.msg
+                                    message: msg.replace(vscodeUtils.getRootPath(), "...")
                                 });
+                                // @M3 #TODO Add an specific log panel to show verbose PVS feedback?
                              }
                         });
                         this.client.onNotification(`server.status.end-important-task-${desc.id}`, (desc: { msg?: string }) => {
-                            this.statusBar.ready();
+                            this.statusBar.clear();
                             complete = true;
                             if (desc && desc.msg) {
+                                this.statusBar.showMsg(desc.msg);
+                                this.statusBar.ready();
                                 vscodeUtils.showInformationMessage(desc.msg);
                                 resolve();
                                 // progress.report({
@@ -1811,7 +1822,8 @@ export class EventsDispatcher {
                 });
 
                 // show progress on the status bar
-                this.statusBar.showProgress(desc.msg);
+                let usrMsg: string = desc.msg;
+                this.statusBar.showProgress(usrMsg.replace(vscodeUtils.getRootPath(), "\$(workspace-trusted)"));
             }
         });
 

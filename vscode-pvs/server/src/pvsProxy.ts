@@ -116,7 +116,10 @@ export class PvsProxy {
 	protected interruptConn: WebSocket;
 	protected webSocketAddress: string = "localhost";
 	protected webSocketPort: number;
+
 	protected pendingRequests: object = []
+	protected activeProgressReporters: object = [];
+
 	protected pvsPath: string;
 	protected pvsLibPath: string; // these are internal libraries
 	protected nasalibPath: string;
@@ -149,7 +152,8 @@ export class PvsProxy {
 			webSocketPort?: number,
 			connection?: SimpleConnection,
 			externalServer?: boolean,
-			pvsLibraryPath?: string
+			pvsLibraryPath?: string,
+			messageReporter?: (data:string) => void
 		}) {
 		opt = opt || {};
 		this.pvsPath = pvsPath;
@@ -166,7 +170,7 @@ export class PvsProxy {
 		this.banner = `Websocket GUI Server active at ws://${this.webSocketAddress}:${this.webSocketPort}`;
 		this.connection = opt.connection;
 		this.externalServer = !!opt.externalServer;
-		this.cliListener = null;
+		this.cliListener = opt.messageReporter;
 
 		// create antlr parser for pvs
 		this.parser = new Parser();
@@ -226,7 +230,7 @@ export class PvsProxy {
 	//--------------------------------------------------
 	//         json-rpc methods
 	//--------------------------------------------------
-	async pvsRequest(method: string, params?: string[]): Promise<PvsResponse> {
+	async pvsRequest(method: string, params?: string[], progressReporter?: (msg: string) => void): Promise<PvsResponse> {
 		params = params || [];
 		if (this.pvsServerProcessStatus === ProcessCode.SUCCESS && this.webSocket) {
 			return new Promise(async (resolve, reject) => {
@@ -237,6 +241,8 @@ export class PvsProxy {
 				this.webSocket.send(jsonReq)
 				// This is the function called when a response comes through the
 				// message handler of activate.
+				const me = this;
+				this.activeProgressReporters[id] = progressReporter;				
 				this.pendingRequests[id] = function (obj: PvsResponse) {
 					// console.log("pvsRequest response: ", obj);
 					if ("result" in obj) {
@@ -244,6 +250,18 @@ export class PvsProxy {
 					} else if ("error" in obj) {
 						//reject(obj);
 						resolve(obj);
+					} else if ("method" in obj) {
+						switch (obj.method) {
+							case 'pvsMessage': 
+								if (me.activeProgressReporters[id])
+									me.activeProgressReporters[id](obj.message);
+								else
+									console.log(`[pvsProxy.pvsRequest pendingRequest] message received from PVS but cliListener not set. msg: ${obj.message}`);
+								break;
+							default:
+								console.log('[pvsProxy.pvsRequest pendingRequest] unknown');
+								console.dir(obj, { depth: null });
+						}
 					} else {
 						console.log('Bad obj:');
 						console.dir(obj);
@@ -354,25 +372,21 @@ export class PvsProxy {
 			//console.log('webSocket.on: ', this.pendingRequests);
 			//console.log('  obj = ', obj);
 			if (obj.id) {
-				if ("result" in obj || "error" in obj) {
+				if ("result" in obj || "error" in obj || "method" in obj) {
 					if (this.pendingRequests[obj.id]) {
 						// console.log(`[pvsRequest] msg = ${msg}`)
 						this.pendingRequests[obj.id](obj) // resolve(obj);
-						delete this.pendingRequests[obj.id]
+						if ("result" in obj || "error" in obj) {
+							delete this.pendingRequests[obj.id];
+							delete this.activeProgressReporters[obj.id];
+						}
 					} else {
 						console.log('[pvsProxy.startWebSocket.on message] id not found');
 					}
 				} else {
-					switch (obj.method) {
-						case 'pvsMessage':
-							// A notification
-							// console.log(`[pvsRequest]  ${method} = ${msg}`);
-							console.log(`[pvsProxy.startWebSocket.on message] ${obj.params}`);
-							break;
-						default:
-							console.log('[pvsProxy.startWebSocket.on message] unknown');
-							console.dir(obj, { depth: null });
-					}
+					console.log('[pvsProxy.startWebSocket.on message] Unknown kind of object BEGIN');
+					console.dir(obj, { depth: null });
+					console.log('[pvsProxy.startWebSocket.on message] Unknown kind of object END');
 				}
 			}
 		});		
@@ -955,7 +969,7 @@ export class PvsProxy {
 									theorems: tccs
 								});
 							} else {
-								console.info(`[pvs-language-server.showTccs] No TCCs generated`, response);
+								console.log(`[pvsProxy.generateTccs] No TCCs generated`);
 							}
 						} else {
 							this.pvsErrorManager.handleShowTccsError({ response: <PvsError>response });
@@ -964,7 +978,7 @@ export class PvsProxy {
 				}
 				return res;
 			} catch (ex) {
-				console.error('[pvs-language-server.showTccs] Error: pvsProxy has thrown an exception', ex);
+				console.error('[pvsProxy.generateTccs] Error: pvsProxy has thrown an exception', ex);
 				return null;
 			}
 		}
@@ -975,7 +989,7 @@ export class PvsProxy {
 	 * @param desc pvs file descriptor:
 	 *   contextFolder, fileName, fileExtension, optional fileContent
 	 */
-	async typecheckFile(desc: PvsFile, opt?: { externalServer?: boolean }): Promise<PvsResponse> {
+	async typecheckFile(desc: PvsFile, opt?: { externalServer?: boolean, progressReporter?: (msg: string) => void }): Promise<PvsResponse> {
 		opt = opt || {};
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
 			let fname: string = this.fileRef(desc);
@@ -1000,7 +1014,7 @@ export class PvsProxy {
 			// typecheck file
 			await this.changeContext(desc);
 			// console.log('Typechecking ', fname);
-			const res: PvsResponse = await this.pvsRequest('typecheck', [fname, desc.fileContent])
+			const res: PvsResponse = await this.pvsRequest('typecheck', [fname, desc.fileContent], opt.progressReporter );
 			if (res && (res.error && res.error.data) || res.result) {
 				if (res.error) {
 					// the typecheck error might be generated from an imported file --- we need to check res.error.file_name

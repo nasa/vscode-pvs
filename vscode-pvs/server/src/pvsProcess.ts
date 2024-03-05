@@ -286,7 +286,7 @@ export class PvsProcess {
 					// 	return resolve(ProcessCode.SUCCESS);
 					// }
 
-					const matchPvsPrompt: RegExpMatchArray = /(?:\[\d+\w*\])?\s+PVS\(\d+\)\s*:/g.exec(data);
+					const matchPvsPrompt: RegExpMatchArray = /(?:\[\d+\w*\])?\s+pvs\(\d+\)\s*:/ig.exec(data);
 					const matchProverPrompt: RegExpMatchArray = /\bRule\?/g.exec(data);
 					const matchUsedPort: RegExpMatchArray = /\bListening on 127\.0\.0\.1:(\d+)/g.exec(data);
 					if(matchUsedPort){

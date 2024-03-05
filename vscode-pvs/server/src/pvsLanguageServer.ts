@@ -191,7 +191,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	protected notifyEndExecution (desc?: { msg?: string }): void {
 		this.connection?.sendNotification("server.status.info", desc);
 	}
-	protected notifyStartImportantTask (desc: { id: string, msg: string }): void {
+	protected notifyStartImportantTask (desc: { id: string, msg: string, taskName?: string, affectedObject?: string }): void {
 		this.connection?.sendNotification(`server.status.start-important-task`, desc);
 	}
 	protected notifyProgressImportantTask (desc: { id: string, msg: string, increment: number }): void {
@@ -714,7 +714,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	/**
 	 * Typecheck file
 	 */
-	async typecheckFile (file: PvsFile, opt?: { externalServer?: boolean, quiet?: boolean }): Promise<PvsResponse | null> {
+	async typecheckFile (file: PvsFile, opt?: { externalServer?: boolean, quiet?: boolean, progressReporter?: (msg: string) => void }): Promise<PvsResponse | null> {
 		opt = opt || {};
 		if (file && file.fileName && file.fileExtension && file.contextFolder) {
 			try {
@@ -760,13 +760,14 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * Typecheck file request handler
 	 */
 	async typecheckFileRequest (request: PvsFile): Promise<void> {
+
 		const mode: string = await this.getMode();
 		if (mode !== "lisp") {
 			return;
 		}
 		if (isPvsFile(request)) { // can be .pvs .tccs .summary .ppe ... files
 			request = fsUtils.decodeURIComponents(request);
-			// only .pvs files should be typechecked
+			// only .pvs files should be type checked
 			request.fileExtension = ".pvs";
 			const fname: string = fsUtils.desc2fname(request);
 			// make sure file exists
@@ -776,11 +777,11 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			}
 			const taskId: string = `typecheck-${fname}`;
 			// send feedback to the front-end
-			this.notifyStartImportantTask({ id: taskId, msg: `Typechecking ${fname}` });
+			this.notifyStartImportantTask({ id: taskId, msg: `Typechecking ${fname}`, taskName: serverRequest.typecheckFile, affectedObject: fname });
 			// parse workspace first, so the front-end is updated with statistics
 			// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking -- pvs-server is not able for now tho.
 			// proceed with typechecking
-			const response: PvsResponse = await this.typecheckFile(request);
+			const response: PvsResponse = await this.typecheckFile(request, { progressReporter: (msg: string) => {this.notifyProgressImportantTask({ id: taskId, msg: msg, increment: -1})}});
 			this.connection?.sendRequest(serverEvent.typecheckFileResponse, { response, args: request });
 			// // send diagnostics
 			if (response) {
@@ -1841,7 +1842,10 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				} else {
 					this.pvsPath = desc.pvsPath || this.pvsPath;
 					this.pvsLibraryPath = desc.pvsLibraryPath === undefined ? this.pvsLibraryPath : desc.pvsLibraryPath;
-					this.pvsProxy = new PvsProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath, externalServer });
+					this.pvsProxy = new PvsProxy(this.pvsPath, 
+						{ connection: this.connection, 
+							pvsLibraryPath: this.pvsLibraryPath, 
+							externalServer: externalServer } );
 					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath });
 					this.createServiceProviders();
 				}	

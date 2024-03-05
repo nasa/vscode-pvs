@@ -92,7 +92,7 @@ export class PvsErrorManager {
             const msg: string = (desc?.response?.error) ? JSON.stringify(desc.response.error)
                 : `Error: tccs could not be generated (please check pvs-server output for details)`;
             this.notifyError({ msg });
-            console.error(`[pvs-language-server.showTccs] Error: tccs could not be generated`, desc.response);
+            console.error(`[pvsErrorManager.handleShowTccsError] Error: tccs could not be generated`, desc.response);
         }
     }
     // handleParseFileError (desc: {

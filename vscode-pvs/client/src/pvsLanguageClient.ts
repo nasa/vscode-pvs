@@ -487,6 +487,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				vscodeUtils.setReadonlyFiles([ ".tccs", ".summary" ]);
 
 				// update status bar
+				this.statusBar.clear();
 				this.statusBar.ready();
 
 				this.statusBar.showDownloadNasalibButton(!info["nasalib-version"]);

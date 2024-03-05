@@ -370,7 +370,7 @@ export class VSCodePvsEmacsBindingsProvider {
 		this.inputBox.onDidAccept(() => {
 			this.onDidAccept(this.userInput);
 			this.inputBox.dispose();
-			this.statusBar.ready();
+			this.statusBar.clear();
 		});
 		this.inputBox.onDidChangeValue((input: string) => {
 			// FIXME: VSCode does not seem to capture tabs in the input box??
