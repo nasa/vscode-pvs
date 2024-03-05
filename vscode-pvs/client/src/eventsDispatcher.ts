@@ -770,10 +770,10 @@ export class EventsDispatcher {
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.reboot-pvs", async () => {
             // ask the user confirmation before restarting pvs
-			const yesno: string[] = [ "Yes", "No" ];
+			const yesNo: string[] = [ "Yes", "No" ];
 			const msg: string = `Reboot pvs?\n\nThis action can resolve situations where the server crashed or is not responding.`;
-			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
-			if (ans === yesno[0]) {
+			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesNo[0])
+			if (ans === yesNo[0]) {
                 const currentContext: string = vscodeUtils.getRootPath();
                 const req = { cleanFolder: currentContext };
                 this.client.sendRequest(serverRequest.rebootPvsServer, req);
@@ -786,10 +786,10 @@ export class EventsDispatcher {
             if (this.proofExplorer) {
                 this.proofExplorer.queryPauseProof();
             } else {
-                const yesno: string[] = [ "Yes", "No" ];
+                const yesNo: string[] = [ "Yes", "No" ];
                 const msg: string = `Interrupt the execution of the current proof command?`;
-                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0])
-                if (ans === yesno[0]) {
+                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesNo[0])
+                if (ans === yesNo[0]) {
                     const action: ProofExecInterruptProver = { action: "interrupt-prover" };
                     this.client.sendRequest(serverRequest.proverCommand, action);
                 }
@@ -1732,10 +1732,11 @@ export class EventsDispatcher {
                     });
                     return;
                 }
+                
                 // show dialog with progress
                 window.withProgress({
                     location: ProgressLocation.Notification,
-                    cancellable: true
+                    cancellable: false // @M3 #TODO disabled cancellable until a way to cancel operations via web-socket communication is established 
                 }, (progress, token) => { 
                     let complete: boolean = false;
                     // show initial dialog with spinning progress
@@ -1817,6 +1818,9 @@ export class EventsDispatcher {
                             } else {
                                 resolve();
                             }
+                        });
+                        this.client.onNotification(`server.status.restart-server`, (desc: { msg?: string }) => {
+                            resolve();
                         });
                     });
                 });

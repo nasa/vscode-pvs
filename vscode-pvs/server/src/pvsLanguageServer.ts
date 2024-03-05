@@ -1859,11 +1859,15 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					console.error("[pvs-language-server] Error: failed to activate pvs-proxy");
 					this.connection?.sendRequest(serverEvent.pvsNotFound);
 				} 
-				return (success === ProcessCode.SUCCESS);
-				// activate cli gateway
-				// await this.cliGateway?.activate();
-				this.notifyServerMode("lisp");
-				return true;
+				const result: boolean = (success === ProcessCode.SUCCESS);
+				if (result) {
+					this.notifyServerMode("lisp");
+					// install pvs patches
+					// await PvsPackageManager.installPvsPatches(desc); // @M3 deactivated by now. It shouldn't be necessary #TODO
+					// send version info to the front-end
+					await this.sendPvsServerReadyEvent();
+				}
+				return result;
 			} else {
 				console.error("[pvs-language-server] Error: failed to identify PVS path");
 				this.connection?.sendRequest(serverEvent.pvsNotFound);
@@ -1883,13 +1887,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		if(dependencies){
 			// start pvs
 			const success: boolean = await this.startPvsServer(desc);
-			if (success) {
-				// send version info to the front-end
-				await this.sendPvsServerReadyEvent();
-				// install pvs patches
-				// await PvsPackageManager.installPvsPatches(desc); // @M3 deactivated by now. It shouldn't be necessary #TODO
-				return true;
-			}
+			return success;
 		}
 		return false;
 	}
@@ -2079,6 +2077,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				contextFolder?: string, 
 				externalServer?: boolean
 			}) => {
+				this.connection?.sendNotification("server.status.restart-server");
 				await this.startPvsServer(req, { forceKill: true});
 			});
 			this.connection?.onRequest(serverRequest.clearWorkspace, async () => {

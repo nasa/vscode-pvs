@@ -397,7 +397,9 @@ export class PvsProcess {
 								if (!this.pvsProcess?.stdin?.destroyed) {
 									this.pvsProcess?.stdin?.write("(lisp (bye))\n");
 								}
-								process?.kill(pid, "SIGKILL");
+								if(!this.pvsProcess.killed)
+									this.pvsProcess.kill('SIGKILL');
+								// process?.kill(pid, "SIGKILL");
 								// give pvs some time to quit before resolving the promise
 								setTimeout(() => {
 									if (!done) {

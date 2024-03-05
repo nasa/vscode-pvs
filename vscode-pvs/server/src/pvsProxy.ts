@@ -297,15 +297,24 @@ export class PvsProxy {
 	}
 
 	async pvsInterrupt(proofId: string): Promise<PvsResponse> {
+		return this.sendRequestOnSecondaryConn("interrupt-proof", [proofId]);
+	}
+
+	public secondaryConnReady(): boolean {
+		return this.interruptConn && this.interruptConn.readyState === WebSocket.OPEN;
+	}
+
+	public primaryConnReady(): boolean {
+		return this.webSocket && this.webSocket.readyState === WebSocket.OPEN;
+	}
+
+	async sendRequestOnSecondaryConn(method: string, params?: string[]): Promise<PvsResponse> {
 		if (this.interruptConn) {
 			return new Promise(async (resolve, reject) => {
 				const id = this.get_fresh_id();
-				const req = { method: "interrupt-proof", params: [proofId], jsonrpc: "2.0", id: id };
+				const req = { method: method, params: params, jsonrpc: "2.0", id: id };			
 				const jsonReq: string = JSON.stringify(req, null, " ");
-				//console.log('pvsInterrupt send: ', jsonReq);
 				this.interruptConn.send(jsonReq);
-				// This is the function called when a response comes through the
-				// message handler of activate.
 				this.pendingRequests[id] = function (obj: PvsResponse) {
 					//console.log("pvsInterrupt response: ", obj);
 					if ("result" in obj) {
@@ -1326,10 +1335,6 @@ export class PvsProxy {
 		this.mode = "lisp";
 	}
 
-	async quitAllProofs(): Promise<PvsResponse> {
-		return await this.pvsRequest('quit-all-proof-sessions');
-	}
-
 	/**
 	 * Finds a symbol declaration
 	 * The result is an object in the form
@@ -2198,16 +2203,23 @@ export class PvsProxy {
 	 * Kill pvs process
 	 */
 	async killPvsServer(): Promise<void> {
-		if(this.pvsServerProcessStatus === ProcessCode.SUCCESS)
-			await this.quitAllProofs();
-		await this.webSocket.close();
-		await this.interruptConn.close();
-		await this.webSocket.terminate();
-		await this.interruptConn.terminate();
-		this.webSocket = null;
-		this.interruptConn = null;
-		const serverKilled: boolean = await this.pvsServer.kill();
-		
+		if(this.secondaryConnReady())
+			await this.sendRequestOnSecondaryConn('quit-all-proof-sessions');
+		if(this.webSocket){
+			if(this.webSocket.readyState === WebSocket.OPEN) {
+				await this.webSocket.close();
+			}
+			await this.webSocket.terminate();	
+			this.webSocket = null;
+		}
+		if(this.interruptConn){
+			if(this.interruptConn.readyState === WebSocket.OPEN) {
+				await this.interruptConn.close();
+			}
+			await this.interruptConn.terminate();
+			this.interruptConn = null;
+		}
+		const serverKilled: boolean = await this.pvsServer.kill();		
 		if (serverKilled){
 			this.pvsServerProcessStatus = ProcessCode.TERMINATED;
 			console.log("[pvs-proxy] Killed pvs-server");
