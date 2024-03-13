@@ -1013,7 +1013,7 @@ export function listTheories(desc: { fileName: string, fileExtension: string, co
 					lineOffset += fullClip.split("\n").length - 1;
 
 					ans.push({
-						theoryName: desc.fileExtension === ".tccs" && theoryName.endsWith("_TCCS") ? theoryName.substr(0, theoryName.length - 5) : theoryName,
+						theoryName: desc.fileExtension === ".tccs" && theoryName.endsWith("_TCCS") ? theoryName.substring(0, theoryName.length - 5) : theoryName,
 						position: {
 							line: line,
 							character: character
@@ -1717,7 +1717,7 @@ export function findProofObligation(formulaName: string, txt: string): number {
 	const regexp: RegExp = new RegExp(`\\b${formula}:\\s*OBLIGATION\\b`, "g");
 	let match: RegExpMatchArray = regexp.exec(txt);
 	if (match) {
-		const trim: string = txt.substr(0, match.index);
+		const trim: string = txt.substring(0, match.index);
 		if (trim && trim.length > 0) {
 			return trim.split("\n").length;
 		}

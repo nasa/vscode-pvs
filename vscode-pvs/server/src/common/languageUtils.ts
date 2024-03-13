@@ -885,7 +885,7 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
 				default: {}
 			}
 			if (par === 0) {
-				return prf.substr(0, match.index + 1);
+				return prf.substring(0, match.index + 1);
 			}
 		}
 		return "";
@@ -929,7 +929,7 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
 						});
 					}
 					// update prf
-					desc.prf = desc.prf.substr(expr.length).trim();
+					desc.prf = desc.prf.substring(expr.length).trim();
 				} else {
 					// ) parentheses comes before (, from parsing a series labelled branches, just ignore them and iterate
 					const match: RegExpMatchArray = /\)+([\w\W\s]*)/.exec(desc.prf);

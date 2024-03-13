@@ -139,7 +139,7 @@ export class PvsCompletionProvider {
 				const lines: string[] = document.txt.split("\n");
 				if (lines && lines.length > position.line) {
 					const lineText: string = lines[position.line];
-					const currentInput: string = lineText.substr(0, position.character).trim();
+					const currentInput: string = lineText.substring(0, position.character).trim();
 					const match: RegExpMatchArray = new RegExp(/\\[^\s]*/g).exec(currentInput);
 					const range: Range = {
 						start: { line: position.line, character: position.character - match[0].length }, 

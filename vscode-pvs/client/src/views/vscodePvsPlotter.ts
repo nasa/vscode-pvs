@@ -209,7 +209,7 @@ export class VSCodePvsPlotter {
                             type: opt.yScale || "linear",
                             autorange: true
                         },
-                        title: "${title?.length > 32 ? title?.substr(0,32) + "..." : title}"
+                        title: "${title?.length > 32 ? title?.substring(0,32) + "..." : title}"
                     }, {
                         editable: true,
                         scrollZoom: true,

@@ -1151,7 +1151,7 @@ export class EventsDispatcher {
                     contextFolder: desc.contextFolder,
                     fileName: desc.fileName,
                     fileExtension: desc.fileExtension,
-                    theoryName: (desc.fileExtension === ".tccs" && desc.theoryName.endsWith("_TCCS")) ? desc.theoryName.substr(0, desc.theoryName.length - 5) : desc.theoryName,
+                    theoryName: (desc.fileExtension === ".tccs" && desc.theoryName.endsWith("_TCCS")) ? desc.theoryName.substring(0, desc.theoryName.length - 5) : desc.theoryName,
                     formulaName: desc.formulaName,
                     proofFile: {
                         contextFolder: desc.contextFolder,
