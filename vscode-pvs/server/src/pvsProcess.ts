@@ -49,7 +49,7 @@ const MAX_LOG_CHUNK: number = 600;
 
 export enum ProcessCode {
 	SUCCESS = 0, PVS_NOT_FOUND = -1, ADDR_IN_USE = -2, COMM_FAILURE = -3, PVS_START_FAIL = -4, PVSERROR = -5, UNSUPPORTED_PLATFORM = -6,
-	TERMINATED
+	TERMINATED = -7
 };
 /**
  * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asynchronous JSON/web-socket server.
@@ -220,10 +220,9 @@ export class PvsProcess {
 		console.info(`[PvsProcess.activate] pvsLibraryPath ${this.pvsLibraryPath}`);
 		const fileExists: boolean = fsUtils.fileExists(pvs);
 		if (fileExists) {
-			let addressInUse: boolean = false;
-			
 			// Start the PVS process
 			if (!this.pvsProcess) {
+				this.currentStatus = undefined;
 				console.info('[PvsProcess.activate] about to spawn PVS');
 				this.pvsProcess = spawn(pvs, args, { detached: true, env: { ...process.env, PVS_LIBRARY_PATH: this.pvsLibraryPath} });
 				console.info(`[PvsProcess.activate] PVS spawned (PID: ${this.pvsProcess.pid})`);
@@ -328,6 +327,7 @@ export class PvsProcess {
 						console.log("[pvsProcess.activate] FAIL: reached max number of attempts");
 						resolveWait(ProcessCode.PVS_START_FAIL);
 					} else if (this.currentStatus){
+						clearInterval(interval)
 						console.log(`[pvsProcess.activate] FAIL: status code ${this.currentStatus}`);
 						resolveWait(this.currentStatus);
 					}
