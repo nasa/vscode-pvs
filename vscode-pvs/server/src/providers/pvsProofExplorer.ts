@@ -47,7 +47,7 @@ import {
 	ProofExecDidLoadSequent, ProofExecDidStartProof, ProofExecDidUpdateSequent, ProofEditTrimUnused,
 	ProofEditDidStartNewProof, ProofExecDidOpenProof,
 	PvsFile, ProofExecDidImportProof, ProofExecRewind,
-	ProofExecDidStopRunning, ProofCommandResponse, ProofOrigin, SequentDescriptor,
+	ProofExecDidStopRunning, ProofCommandResponse, ProofOrigin, ProofState,
 	ProveFormulaRequest, ProofExecDidQuitProof, FileDescriptor, ProofEditDidUpdateDirtyFlag,
 	serverRequest, SaveProofResponse, ProofExecRunSubtree, ProofEditJumpHere
 } from '../common/serverInterface';
@@ -114,9 +114,9 @@ export class PvsProofExplorer {
 	/**
 	 * Attributes for run-time management of the proof tree rendered in the view
 	 */
-	protected root: RootNode = null // the root of the tree
+	protected root: RootNode = null // the root of the proof tree
 	protected ghostNode: GhostNode = null; // this is a floating node that follows activeNode. It is used during proof development, to signpost where the next proof command will be appended in the proof tree
-	protected activeNode: ProofCommand | ProofBranch | GhostNode = null;
+	protected activeNode: ProofCommandApplication | ProofBranch | GhostNode = null;
 
 	protected autorunFlag: boolean = false; // whether proof explorer is re-running a proof
 	protected autorunCallback: (status: ProofStatus) => void; // autorun callback function
@@ -138,12 +138,12 @@ export class PvsProofExplorer {
 	/**
 	 * Initial proof state
 	 */
-	protected initialProofState: SequentDescriptor;
+	protected initialProofState: ProofState;
 
 	/**
 	 * Current proof state as returned by the PVS server
 	 */
-	protected proofState: SequentDescriptor;
+	protected proofState: ProofState;
 
 	/**
 	 * Identifier for the proof associated with this ProofExplorer, as returned by PVS.
@@ -250,7 +250,7 @@ export class PvsProofExplorer {
 	/**
 	 * Internal function, moves the active node one position forward in the proof tree.
 	 */
-	protected moveIndicatorForward(opt?: { keepSameBranch?: boolean, proofState?: SequentDescriptor, branchComplete?: boolean }): ProofItem {
+	protected moveIndicatorForward(opt?: { keepSameBranch?: boolean, proofState?: ProofState, branchComplete?: boolean }): ProofItem {
 		if (this.activeNode) {
 			opt = opt || {};
 			if (this.activeNode.contextValue !== "ghost") {
@@ -490,11 +490,11 @@ export class PvsProofExplorer {
 			if (response?.result) {
 				if (response.result.length) {
 					for (let i = 0; i < response.result.length; i++) {
-						const proofState: SequentDescriptor = response.result[i]; // process proof commands
+						const proofState: ProofState = response.result[i]; // process proof commands
 						await this.onStepExecutedNew({ proofState, args: command, lastSequent: i === response.result.length - 1 }, opt);
 					}
 				} else {
-					const proofState: SequentDescriptor = response.result; // process proof commands
+					const proofState: ProofState = response.result; // process proof commands
 					await this.onStepExecutedNew({ proofState, args: command, lastSequent: true }, opt);
 				}
 				// if a proof is running, then iterate
@@ -576,7 +576,7 @@ export class PvsProofExplorer {
 	 * Utility function invoked after step(). Updates the data structures of proof-explorer and sends messages to the front-end.
 	 * @param desc Descriptor specifying the response of the prover, as well as the actual values of the arguments used to invoke the step function.
 	 */
-	async onStepExecutedNew(desc: { proofState: SequentDescriptor, args?: PvsProofCommand, lastSequent: boolean }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
+	async onStepExecutedNew(desc: { proofState: ProofState, args?: PvsProofCommand, lastSequent: boolean }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
 		if (desc && desc.proofState) {
 			// get command and proof state
 			let userCmd: string = desc.args ? desc.args.cmd : null; // command entered by the user
@@ -595,13 +595,13 @@ export class PvsProofExplorer {
 				// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
 				if (this.proofState.sequent && (isSameCommand(activeNode.name, cmd) === false || isSameCommand(activeNode.name, userCmd) === false || this.ghostNode.isActive())) {
 					// concatenate new command
-					const elem: ProofCommand = new ProofCommand(cmd, activeNode.branchId, activeNode.parent, this.connection);
+					const elem: ProofCommandApplication = new ProofCommandApplication(cmd, activeNode.branchId, activeNode.parent, this.connection);
 					// append before selected node (the active not has not been executed yet)
 					if (activeNode.isActive()) {
 						activeNode.notVisited(); // this resets the tooltip in activeNode
-						this.appendNode({ selected: activeNode, elem, sequent: activeNode.sequentDescriptor }, { beforeSelected: true, internalAction: this.autorunFlag });
+						this.appendNode({ selected: activeNode, elem, sequent: activeNode.proofState }, { beforeSelected: true, internalAction: this.autorunFlag });
 					} else {
-						const tooltip: SequentDescriptor = (this.ghostNode.isActive()) ? this.ghostNode.sequentDescriptor : activeNode.sequentDescriptor;
+						const tooltip: ProofState = (this.ghostNode.isActive()) ? this.ghostNode.proofState : activeNode.proofState;
 						this.appendNode({ selected: activeNode, elem, sequent: tooltip }, { internalAction: this.autorunFlag });
 					}
 					this.markAsActive({ selected: elem }); // this is necessary to correctly update the data structures in endNode --- elem will become the parent of endNode
@@ -635,16 +635,16 @@ export class PvsProofExplorer {
 			}
 
 			// identify previous and current (new) branch
-			const previousBranchName: string = activeNode.branchId;
-			const currentBranchName: string = languageUtils.getBranchId(this.proofState.label);
-			const previousBranch: ProofBranch = this.findProofBranch(previousBranchName);
-			const currentBranch: ProofBranch = this.findProofBranch(currentBranchName);
-			const branchCompleted: boolean = (previousBranch && !previousBranch.isComplete() && languageUtils.branchComplete(this.proofState, this.formula.formulaName, previousBranchName))
-				|| (currentBranch && !currentBranch.isComplete() && languageUtils.branchComplete(this.proofState, this.formula.formulaName, currentBranchName));
+			const previousBranchId: string = activeNode.branchId;
+			const currentBranchId: string = languageUtils.getBranchId(this.proofState.label);
+			const previousBranch: ProofBranch = this.findProofBranch(previousBranchId);
+			const currentBranch: ProofBranch = this.findProofBranch(currentBranchId);
+			const branchCompleted: boolean = (previousBranch && !previousBranch.isComplete() && languageUtils.branchComplete(this.proofState, this.formula.formulaName, previousBranchId))
+				|| (currentBranch && !currentBranch.isComplete() && languageUtils.branchComplete(this.proofState, this.formula.formulaName, currentBranchId));
 
 			// const currentPath: string = this.proofState.path;
 			// const pathHasChanged: boolean = utils.pathHasChanged({ newBranch: currentPath, previousBranch: this.previousPath });
-			const pathHasChanged: boolean = languageUtils.pathHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName }) && !branchCompleted;
+			const pathHasChanged: boolean = languageUtils.pathHasChanged({ newBranchId: currentBranchId, previousBranchId: previousBranchId }) && !branchCompleted;
 
 			// show sequent in the terminal, if feedback was requested
 			if (opt.feedbackToTerminal && !this.autorunFlag) {
@@ -665,12 +665,12 @@ export class PvsProofExplorer {
 				this.stopAt = null;
 				this.undoundoTarget = this.activeNode;
 				this.saveTreeAttributes();
-				if (languageUtils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
-					const targetBranch: ProofBranch = this.findProofBranch(currentBranchName);
+				if (languageUtils.branchHasChanged({ newBranch: currentBranchId, previousBranch: previousBranchId })) {
+					const targetBranch: ProofBranch = this.findProofBranch(currentBranchId);
 					if (targetBranch) {
 						this.activeNode.notVisited();
 						// find the last visited child in the new branch
-						const visitedChildren: ProofCommand[] = targetBranch.children.filter((elem: ProofItem) => {
+						const visitedChildren: ProofCommandApplication[] = targetBranch.children.filter((elem: ProofItem) => {
 							return elem.contextValue === "proof-command" && elem.isVisited();
 						});
 						const targetNode: ProofItem = visitedChildren.length ? visitedChildren[visitedChildren.length - 1] : targetBranch;
@@ -680,7 +680,7 @@ export class PvsProofExplorer {
 						this.revealNode({ selected: targetNode });
 						this.markAsActive({ selected: targetNode });
 					} else {
-						console.error(`[proof-explorer] Error: could not find branch ${currentBranchName} in the proof tree`);
+						console.error(`[proof-explorer] Error: could not find branch ${currentBranchId} in the proof tree`);
 					}
 				} else {
 					this.moveIndicatorBack({ keepSameBranch: true });
@@ -712,20 +712,20 @@ export class PvsProofExplorer {
 						return;
 					}
 				}
-				if (languageUtils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
+				if (languageUtils.branchHasChanged({ newBranch: currentBranchId, previousBranch: previousBranchId })) {
 					if (this.ghostNode.isActive()) {
 						this.ghostNode.notActive();
 					} else {
 						this.activeNode.notVisited();
 					}
-					const targetBranch: ProofBranch = this.findProofBranch(currentBranchName) || this.createBranchRecursive({ id: currentBranchName }, { internalAction: this.autorunFlag });
+					const targetBranch: ProofBranch = this.findProofBranch(currentBranchId) || this.createBranchRecursive({ id: currentBranchId }, { internalAction: this.autorunFlag });
 					if (targetBranch) {
 						// before moving to the target branch, mark current branch as open (i.e., not visited)
 						if (this.activeNode.contextValue !== "proof-command") {
 							this.activeNode.notVisited();
 						}
 						// find the last visited child in the new branch
-						const visitedChildren: ProofCommand[] = targetBranch.children.filter((elem: ProofItem) => {
+						const visitedChildren: ProofCommandApplication[] = targetBranch.children.filter((elem: ProofItem) => {
 							return elem.contextValue === "proof-command" && elem.isVisited();
 						});
 						const targetNode: ProofItem = (visitedChildren.length) ? visitedChildren[visitedChildren.length - 1] : targetBranch;
@@ -736,7 +736,7 @@ export class PvsProofExplorer {
 						// window.showInformationMessage(msg);
 						this.moveIndicatorForward({ keepSameBranch: true, proofState: this.proofState });
 					} else {
-						console.error(`[proof-explorer] Error: could not find branch ${currentBranchName} in the proof tree. Proof Explorer is out of sync with PVS. Please restart the proof.`);
+						console.error(`[proof-explorer] Error: could not find branch ${currentBranchId} in the proof tree. Proof Explorer is out of sync with PVS. Please restart the proof.`);
 						this.runningFlag = false;
 						this.stopAt = null;
 						return;
@@ -835,20 +835,20 @@ export class PvsProofExplorer {
 					// if cmd !== activeNode.name then the user has entered a command manually: we need to append a new node to the proof tree
 					if (!(isSameCommand(activeNode.name, cmd) || isSameCommand(activeNode.name, userCmd)) || this.ghostNode.isActive()) {
 						// concatenate new command
-						const elem: ProofCommand = new ProofCommand(userCmd, activeNode.branchId, activeNode.parent, this.connection);
+						const newProofCommand: ProofCommandApplication = new ProofCommandApplication(cmd, activeNode.branchId, activeNode.parent, this.connection);
 						// append before selected node (the active not has not been executed yet)
 						if (activeNode.isActive()) {
-							const sequent: SequentDescriptor = activeNode.sequentDescriptor;
+							const ps: ProofState = activeNode.proofState;
 							activeNode.notVisited(); // this resets the tooltip in activeNode
-							this.appendNode({ selected: activeNode, elem, sequent }, { beforeSelected: true });
+							this.appendNode({ selected: activeNode, elem: newProofCommand, sequent: ps }, { beforeSelected: true });
 						} else {
-							const sequent: SequentDescriptor = (this.ghostNode.isActive()) ? this.ghostNode.sequentDescriptor : activeNode.sequentDescriptor;
-							this.appendNode({ selected: activeNode, elem, sequent });
+							const sequent: ProofState = (this.ghostNode.isActive()) ? this.ghostNode.proofState : activeNode.proofState;
+							this.appendNode({ selected: activeNode, elem: newProofCommand, sequent });
 						}
-						this.markAsActive({ selected: elem }); // this is necessary to correctly update the data structures in endNode --- elem will become the parent of endNode
+						this.markAsActive({ selected: newProofCommand }); // this is necessary to correctly update the data structures in endNode --- elem will become the parent of endNode
 						activeNode = this.activeNode; // update local variable because the following instructions are using it
 						// if the branch has changed, then we will be moving to a sub-goal --- we need to trim the node
-						branchFocusHasChanged = languageUtils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName });
+						branchFocusHasChanged = languageUtils.branchHasChanged({ newBranch: currentBranchId, previousBranch: previousBranchId });
 						if (branchFocusHasChanged) {
 							this.trimNode({ selected: activeNode });
 						}
@@ -859,18 +859,18 @@ export class PvsProofExplorer {
 					}
 
 					// check if current or previous branch have been completed
-					if (languageUtils.branchComplete(this.proofState, this.formula.formulaName, previousBranchName)) {
+					if (languageUtils.branchComplete(this.proofState, this.formula.formulaName, previousBranchId)) {
 						// PVS has automatically discharged the previous proof branch
 						// trim the rest of the tree if necessary
-						const selected: ProofBranch = this.findProofBranch(previousBranchName);
+						const selected: ProofBranch = this.findProofBranch(previousBranchId);
 						this.removeNotVisited({ selected });
 						selected.treeVisited();
 						selected.treeComplete();
 					}
-					if (languageUtils.branchComplete(this.proofState, this.formula.formulaName, currentBranchName)) {
+					if (languageUtils.branchComplete(this.proofState, this.formula.formulaName, currentBranchId)) {
 						// PVS has automatically discharged the previous proof branch
 						// trim the rest of the tree if necessary
-						const selected: ProofBranch = this.findProofBranch(currentBranchName);
+						const selected: ProofBranch = this.findProofBranch(currentBranchId);
 						this.removeNotVisited({ selected });
 						selected.treeVisited();
 						selected.treeComplete();
@@ -878,7 +878,7 @@ export class PvsProofExplorer {
 					}
 
 					// if the branch has changed, move to the new branch
-					if (languageUtils.branchHasChanged({ newBranch: currentBranchName, previousBranch: previousBranchName })) {
+					if (languageUtils.branchHasChanged({ newBranch: currentBranchId, previousBranch: previousBranchId })) {
 						// trim the proof tree if the number of subgoals has changed
 						// children.length === 0 means this branch does not have sub-goals
 						// this.proofState["num-subgoals"] === 1 when branch does not have subgoals
@@ -892,14 +892,14 @@ export class PvsProofExplorer {
 								: this.trimNode({ selected: activeNode });
 						}
 						// find target branch
-						const targetBranch: ProofItem = this.findProofBranch(currentBranchName) || this.createBranchRecursive({ id: currentBranchName }, { internalAction: this.autorunFlag });
+						const targetBranch: ProofItem = this.findProofBranch(currentBranchId) || this.createBranchRecursive({ id: currentBranchId }, { internalAction: this.autorunFlag });
 						if (targetBranch) {
 							// update tooltip in target branch
 							targetBranch.updateSequent(this.proofState, { internalAction: this.autorunFlag });
 							// go to the new branch
 							activeNode.visited();
 							// find the last visited child in the new branch
-							const visitedChildren: ProofCommand[] = targetBranch.children.filter((elem: ProofItem) => {
+							const visitedChildren: ProofCommandApplication[] = targetBranch.children.filter((elem: ProofItem) => {
 								return elem.contextValue === "proof-command" && elem.isVisited();
 							});
 							const targetNode: ProofItem = visitedChildren.length ? visitedChildren[visitedChildren.length - 1] : targetBranch;
@@ -1171,14 +1171,14 @@ export class PvsProofExplorer {
 	 * @param desc Descriptor indicating the selected node and the new element to be appended in the proof tree.
 	 * @param opt Options: beforeSelected (boolean) allows to append the new element before the selected node (rather than after)
 	 */
-	appendNode(desc: { selected: ProofItem, elem: ProofItem | string, sequent: SequentDescriptor }, opt?: { beforeSelected?: boolean, internalAction?: boolean, rebase?: boolean }): ProofItem {
+	appendNode(desc: { selected: ProofItem, elem: ProofItem | string, sequent: ProofState }, opt?: { beforeSelected?: boolean, internalAction?: boolean, rebase?: boolean }): ProofItem {
 		if (desc && desc.selected && desc.elem) {
 			this.updateDirtyFlag(true);
 			opt = opt || {};
 			const selectedNode: ProofItem = (desc.selected.contextValue === "ghost") ? (<GhostNode>desc.selected).realNode : desc.selected;
 			const branchId: string = selectedNode.branchId;
 			let newNode: ProofItem = (typeof desc.elem === "string") ?
-				new ProofCommand(desc.elem, branchId, selectedNode.parent, this.connection)
+				new ProofCommandApplication(desc.elem, branchId, selectedNode.parent, this.connection)
 				: desc.elem;
 			if (newNode) {
 				switch (selectedNode.contextValue) {
@@ -1234,7 +1234,7 @@ export class PvsProofExplorer {
 	 * 			   If the selected node is a branch, then the branch will be appended to the parent of the selected branch.
 	 * @param opt Optionals: beforeSelected (boolean) flag used when the selected node is a branch, indicates whether the branch should be appended before the selected branch. 
 	 */
-	appendBranch(desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: SequentDescriptor, internalAction?: boolean }): boolean {
+	appendBranch(desc: { selected: ProofItem, elem?: ProofItem }, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: ProofState, internalAction?: boolean }): boolean {
 		if (desc && desc.selected) {
 			this.updateDirtyFlag(true);
 			opt = opt || {};
@@ -1322,7 +1322,7 @@ export class PvsProofExplorer {
 		}
 		return false;
 	}
-	appendBranchX(desc: ProofEditAppendBranch, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: SequentDescriptor }): void {
+	appendBranchX(desc: ProofEditAppendBranch, opt?: { beforeSelected?: boolean, firstBranch?: string, proofState?: ProofState }): void {
 		if (desc) {
 			const selected: ProofItem = this.findNode(desc.selected.id);
 			if (selected) { // the branch name is created automatically
@@ -1462,7 +1462,7 @@ export class PvsProofExplorer {
 	convertNodeX2ProofItem(elem: ProofNodeX, parent?: ProofItem): ProofItem[] {
 		const fromNodeX2 = (elem: ProofNodeX, parent?: ProofItem): ProofItem => {
 			const node: ProofItem = (elem.type === "proof-command") ?
-				new ProofCommand(elem.name, elem.branch, parent, this.connection)
+				new ProofCommandApplication(elem.name, elem.branch, parent, this.connection)
 				: new ProofBranch(elem.name, elem.branch, parent, this.connection);
 			if (parent) {
 				parent.appendChild(node);
@@ -1759,7 +1759,7 @@ export class PvsProofExplorer {
 					if (sibling === this.ghostNode) {
 						this.ghostNode.parent = selected.parent;
 						this.ghostNode.realNode = selected.getSiblingOrParent() || this.root;
-						this.ghostNode.updateSequent(this.ghostNode.realNode.sequentDescriptor, { internalAction: this.autorunFlag });
+						this.ghostNode.updateSequent(this.ghostNode.realNode.proofState, { internalAction: this.autorunFlag });
 					}
 					// this.setActiveNode({ selected: sibling });
 					this.markAsActive({ selected: sibling });
@@ -2017,7 +2017,7 @@ export class PvsProofExplorer {
 	 * Utility function, used to set the initial proof state.
 	 * @param proofState 
 	 */
-	loadInitialSequent(proofState: SequentDescriptor): void {
+	loadInitialSequent(proofState: ProofState): void {
 		this.initialProofState = proofState;
 		const evt: ProofExecDidLoadSequent = { action: "did-load-sequent", sequent: proofState };
 		if (this.connection && !this.autorunFlag) {
@@ -2062,7 +2062,7 @@ export class PvsProofExplorer {
 				// this.setActiveNode({ selected: this.root.children[0] });
 				this.markAsActive({ selected: this.root.children[0] });
 				// propagate tooltip
-				this.activeNode.sequentDescriptor = this.root.sequentDescriptor;
+				this.activeNode.proofState = this.root.proofState;
 				// this.activeNode.tooltip = this.root.tooltip;	
 			}
 
@@ -2178,7 +2178,7 @@ export class PvsProofExplorer {
 		// utility function for building the proof tree
 		const createTree = (elem: ProofNode, parent: ProofItem): void => {
 			const node: ProofItem = (elem.type === "proof-command") ?
-				new ProofCommand(elem.name, elem.branch, parent, this.connection)
+				new ProofCommandApplication(elem.name, elem.branch, parent, this.connection)
 				: new ProofBranch(elem.name, elem.branch, parent, this.connection);
 			parent.appendChild(node, { internalAction: true });
 			if (elem.rules && elem.rules.length) {
@@ -2662,7 +2662,7 @@ export class PvsProofExplorer {
 				if (response) {
 					if (response.result) {
 						// const channelID: string = languageUtils.desc2id(req);
-						const sequent: SequentDescriptor = 
+						const sequent: ProofState = 
 							response.result.length ? 
 								response.result[response.result.length - 1] : 
 								response.result;							
@@ -2749,7 +2749,7 @@ export abstract class ProofItem extends TreeItem {
 			visitedFlag: false,
 			pendingFlag: false
 		};
-	sequentDescriptor: SequentDescriptor = null; // sequent *before* the execution of the node
+	proofState: ProofState = null; // sequent *before* the execution of the node
 
 	/**
 	 * Constructor
@@ -2853,15 +2853,15 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Updates the sequent descriptor
 	 */
-	updateSequent(sequent: SequentDescriptor, opt?: { internalAction?: boolean }): void {
+	updateSequent(sequent: ProofState, opt?: { internalAction?: boolean }): void {
 		opt = opt || {};
 		if (sequent) {
-			this.sequentDescriptor = sequent;
+			this.proofState = sequent;
 			// this.tooltip = (this.sequentDescriptor) ? languageUtils.formatSequent(this.sequentDescriptor) : " ";
 			if (!opt.internalAction && this.connection) {
 				const evt: ProofExecDidUpdateSequent = {
 					action: "did-update-sequent",
-					sequent: this.sequentDescriptor,
+					sequent: this.proofState,
 					selected: { id: this.id, name: this.name }
 				};
 				this.connection.sendNotification(serverEvent.proverEvent, evt);
@@ -3190,7 +3190,7 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Utility function, moves the active node indicator forward
 	 */
-	moveIndicatorForward(opt?: { lastVisitedChild?: ProofItem, keepSameBranch?: boolean, proofState?: SequentDescriptor }): ProofItem | null {
+	moveIndicatorForward(opt?: { lastVisitedChild?: ProofItem, keepSameBranch?: boolean, proofState?: ProofState }): ProofItem | null {
 		opt = opt || {};
 		if (this.contextValue === "proof-command") {
 			this.visited();
@@ -3199,7 +3199,7 @@ export abstract class ProofItem extends TreeItem {
 			this.completeFlag ? this.complete() : this.pending();
 		}
 		// check if this node has children, if so, return the first non-visited child
-		const proofState: SequentDescriptor = opt.proofState || this.sequentDescriptor;
+		const proofState: ProofState = opt.proofState || this.proofState;
 		if (this.children && this.children.length) {
 			if (!proofState) {
 				console.error(`[pvs-explorer] Error: Proof State is null. Please restart the proof and report this error to the vscode-pvs developers.`, {
@@ -3232,7 +3232,7 @@ export abstract class ProofItem extends TreeItem {
 		}
 		this.visited();
 		if (this.parent && this.contextValue === "proof-command") {
-			return this.parent.moveIndicatorForward({ lastVisitedChild: this, proofState: this.sequentDescriptor });
+			return this.parent.moveIndicatorForward({ lastVisitedChild: this, proofState: this.proofState });
 		}
 		return null;
 	}
@@ -3537,17 +3537,17 @@ export abstract class ProofItem extends TreeItem {
 /**
  * Proof commands
  */
-class ProofCommand extends ProofItem {
+class ProofCommandApplication extends ProofItem {
 	constructor(cmd: string, branchId: string, parent: ProofItem, connection: Connection) {
 		super("proof-command", cmd, branchId, parent, connection);
 		cmd = cmd.trim();
 		this.name = (cmd && cmd.startsWith("(") && cmd.endsWith(")")) || isUndoCommand(cmd) ? cmd : `(${cmd})`;
 		this.notVisited({ internalAction: true });
 	}
-	clone(opt?: { parent?: ProofItem }): ProofCommand {
+	clone(opt?: { parent?: ProofItem }): ProofCommandApplication {
 		opt = opt || {};
-		const parent: ProofCommand = opt.parent || this.parent;
-		const c: ProofCommand = new ProofCommand(this.name, this.branchId, parent, this.connection);
+		const parent: ProofCommandApplication = opt.parent || this.parent;
+		const c: ProofCommandApplication = new ProofCommandApplication(this.name, this.branchId, parent, this.connection);
 		return c;
 	}
 }
@@ -3560,9 +3560,9 @@ class ProofBranch extends ProofItem {
 		this.name = `(${branchId})`;
 		this.notVisited({ internalAction: true });
 	}
-	clone(opt?: { parent?: ProofCommand }): ProofBranch {
+	clone(opt?: { parent?: ProofCommandApplication }): ProofBranch {
 		opt = opt || {};
-		const parent: ProofCommand = opt.parent || this.parent;
+		const parent: ProofCommandApplication = opt.parent || this.parent;
 		const c: ProofBranch = new ProofBranch(this.name, this.branchId, parent, this.connection);
 		return c;
 	}

@@ -37,7 +37,7 @@
  **/
 // import { PvsProcessLegacy } from './pvsProcessLegacy';
 import { PvsResponse, ShowTCCsResult, PvsResult, FindDeclarationResult } from '../common/pvs-gui';
-import { SimpleConnection, PvsFileDescriptor, TheoryDescriptor, FormulaDescriptor, PvsFormula, SequentDescriptor } from '../common/serverInterface'
+import { SimpleConnection, PvsFileDescriptor, TheoryDescriptor, FormulaDescriptor, PvsFormula, ProofState } from '../common/serverInterface'
 import * as path from 'path';
 import * as fsUtils from '../common/fsUtils';
 import { PvsProcess } from '../pvsProcess';
@@ -159,7 +159,7 @@ export class PvsProxyLegacy {
         data = data.substring(data.indexOf("["), data.lastIndexOf("]") + 1);
         if (data) {
             try {
-                const result: (SequentDescriptor | ProofSessionStatus)[] = JSON.parse(data);
+                const result: (ProofState | ProofSessionStatus)[] = JSON.parse(data);
                 // convert result to ProofState[] (pvsResponse.result must be of type ProofState[])
                 pvsResponse.result = [];
                 for (let i = 0; i < result.length; i++) {
@@ -212,7 +212,7 @@ export class PvsProxyLegacy {
         // fix for commentary erroneously printed by pvs
         const data: string = response.result.substring((<string> response.result).indexOf("["), (<string> response.result).lastIndexOf("]") + 1);
         try {
-            pvsResponse.result = <SequentDescriptor[]> JSON.parse(data);
+            pvsResponse.result = <ProofState[]> JSON.parse(data);
         } catch (jsonerror) {
             console.error(data);
             console.error(jsonerror);

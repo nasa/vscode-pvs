@@ -49,7 +49,7 @@ import { LanguageClient } from 'vscode-languageclient';
 import {
     EvaluatorCommandResponse, HintsObject, MathObjects, ProofCommandResponse, ProveFormulaRequest, ProveFormulaResponse, 
     PvsFile, 
-    PvsFormula, PvsioEvaluatorCommand, PvsProofCommand, PvsTheory, SequentDescriptor, serverEvent, serverRequest 
+    PvsFormula, PvsioEvaluatorCommand, PvsProofCommand, PvsTheory, ProofState, serverEvent, serverRequest 
 } from '../common/serverInterface';
 import { PvsResponse } from '../common/pvs-gui';
 import * as vscodeUtils from '../utils/vscode-utils';
@@ -701,7 +701,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     });
                 } else {
                     // report unbalanced parens to the user
-                    const err: SequentDescriptor = {
+                    const err: ProofState = {
                         label: parens.msg,
                         commentary: parens.msg
                     };

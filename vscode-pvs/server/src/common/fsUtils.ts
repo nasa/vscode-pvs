@@ -40,15 +40,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ChildProcess, exec, execSync } from 'child_process';
 import * as crypto from 'crypto';
-import { 
-	FileDescriptor, FileList, FormulaDescriptor, Position, ProofDescriptor, 
-	ProofFile, ProofNode, ProofStatus, PvsContextDescriptor, PvsDownloadDescriptor, 
-	pvsDownloadUrl, PvsFileDescriptor, 
-	PvsFormula, PvsTheory, TheoryDescriptor, Downloader, ShellCommand, LookUpTable, PvsTypeDecl, PvsFile, SequentDescriptor, SFormula
+import {
+	FileDescriptor, FileList, FormulaDescriptor, Position, ProofDescriptor,
+	ProofFile, ProofNode, ProofStatus, PvsContextDescriptor, PvsDownloadDescriptor,
+	pvsDownloadUrl, PvsFileDescriptor,
+	PvsFormula, PvsTheory, TheoryDescriptor, Downloader, ShellCommand, LookUpTable, PvsTypeDecl, PvsFile, ProofState, SFormula
 } from '../common/serverInterface';
-import { 
-	commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon, 
-	icons, isInvalidCommand, isProved, proofliteDeclRegexp, proofliteRegexp, pvsSyntaxHighlighting, sanitizeForRegEx, theoremParamsRegexp, theoremRegexp, theoryOrDatatypeRegexp, theoryRegexp, typesRegexp, validTermRegExp 
+import {
+	commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon,
+	icons, isInvalidCommand, isProved, proofliteDeclRegexp, proofliteRegexp, pvsSyntaxHighlighting, sanitizeForRegEx, theoremParamsRegexp, theoremRegexp, theoryOrDatatypeRegexp, theoryRegexp, typesRegexp, validTermRegExp
 } from './languageUtils';
 import { execFileSync } from 'child_process';
 import { PrettyPrinter } from './xtermInterface';
@@ -2369,7 +2369,7 @@ export function formatPvsIoState (pvsioState: string, opt?: { useColors?: boolea
 	return pvsioState;
 }
 
-export function formatHiddenFormulas (proofState: SequentDescriptor, opt?: { 
+export function formatHiddenFormulas (proofState: ProofState, opt?: { 
     useColors?: boolean, 
     showAction?: boolean,
     colorizeParens?: boolean
@@ -2403,7 +2403,7 @@ export function formatHiddenFormulas (proofState: SequentDescriptor, opt?: {
 /**
  * Utility function, converts sequent formulas into a string
  */
-export function sformulas2string (desc: SequentDescriptor): string {
+export function sformulas2string (desc: ProofState): string {
 	let res: string = "";
 	if (desc?.sequent) { // print label and comment only if the sequent is non-empty (sequent empty means proof completed)
 		if (desc.sequent.antecedents) {
@@ -2421,7 +2421,7 @@ export function sformulas2string (desc: SequentDescriptor): string {
 /**
  * Prettyprints sequents. Syntax highlighting is introduced as ansi codes when option useColors is true.
  */
-export function formatSequent (desc: SequentDescriptor, opt?: {
+export function formatSequent (desc: ProofState, opt?: {
 	useColors?: boolean,
     colorizeParens?: boolean,
     colorTheme?: XTermColorTheme,
@@ -2521,3 +2521,4 @@ export function prunePvsLibraryPath(pvsLibraryPath: string): string {
 	}
 	return result;
 }
+

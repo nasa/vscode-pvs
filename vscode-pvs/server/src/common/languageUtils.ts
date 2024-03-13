@@ -40,7 +40,7 @@ import * as language from './languageKeywords';
 import { ProofNode, PvsVersionDescriptor, ProofDescriptor, 
 	ProofStatus, Position, Range, ProofTree, PvsFormula, 
     CommandDescriptor, CommandsMap, ProofMateProfile, 
-    HintsObject, ProofNodeType
+    HintsObject, ProofNodeType, ProofState
 } from '../common/serverInterface';
 import * as colorUtils from "./colorUtils";
 import { SessionType } from './xtermInterface';
@@ -679,10 +679,14 @@ export function makeBranchId (desc: { branchId: string, goalId: number }): strin
 	}
 	return "";
 }
-
-export function getBranchId (label: string): string {
-	if (label) {
-		return label.split(".").slice(1).join(".");
+/**
+ * Give a branch label, extracts its branch id.
+ * @param branchLabel a branch label is formed by the formula name followed by the branch id, which is a sequence of numbers separated by dots. For example, 'myLemma.1.2.1.1'.
+ * @returns the branch id of the given label, for example, '1.2.1.1' for the label mentioned above.
+ */
+export function getBranchId (branchLabel: string): string {
+	if (branchLabel) {
+		return branchLabel.split(".").slice(1).join(".");
 	}
 	return "";
 }
@@ -969,7 +973,7 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
 			// }
 			return rootNode;
 		} else {
-			console.error("[pvs-proxy] Warning: unrecognised proof structure", desc.prf);
+			console.error("[pvs-proxy] Warning: unrecognized proof structure", desc.prf);
 		}
 	}
 	return null;
@@ -1165,28 +1169,35 @@ export function interruptedByClient (result: { commentary: string | string[] }):
 	return false;
 }
 
-export function branchComplete (result: { commentary: string | string[] }, formulaName: string, previousBranch: string): boolean {
-	if (result && result.commentary) {
-		if (typeof result.commentary === "string") {
-			if (typeof previousBranch === "string") {
-				return result.commentary.startsWith("This completes") 
-					&& (result.commentary.endsWith(`${formulaName}.${previousBranch}.`)
-						|| result.commentary.endsWith(`${formulaName}.${previousBranch}`.trim()));
-			}
-			return result.commentary.startsWith("This completes");
-
-		} else if (typeof result.commentary === "object") {
-			return result.commentary.length 
-				&& result.commentary.filter((comment: string) => {
-					if (typeof previousBranch === "string") {
-						return comment.startsWith("This completes") 
-							&& (comment.endsWith(`${formulaName}.${previousBranch}.`)
-								|| comment.endsWith(`${formulaName}.${previousBranch}`.trim()));
-					}
-				return comment.startsWith("This completes");
-			}).length > 0;
-		}
-	}
+export function branchComplete (proofStatus: ProofState, formulaName: string, previousBranch: string): boolean {
+	if (proofStatus) {
+        // @M3 I gonna ignore this for now, until we improve the way in which PVS communicates the impact of the
+        //     last user input on the current proof.
+        // if (proofStatus.status) {
+        //     return '!' === proofStatus.status;
+        // }
+        if (proofStatus.commentary) {
+            if (typeof proofStatus.commentary === "string") {
+                if (typeof previousBranch === "string") {
+                    return proofStatus.commentary.startsWith("This completes") 
+                        && (proofStatus.commentary.endsWith(`${formulaName}.${previousBranch}.`)
+                            || proofStatus.commentary.endsWith(`${formulaName}.${previousBranch}`.trim()));
+                }
+                return proofStatus.commentary.startsWith("This completes");
+    
+            } else if (typeof proofStatus.commentary === "object") {
+                return proofStatus.commentary.length 
+                    && proofStatus.commentary.filter((comment: string) => {
+                        if (typeof previousBranch === "string") {
+                            return comment.startsWith("This completes") 
+                                && (comment.endsWith(`${formulaName}.${previousBranch}.`)
+                                    || comment.endsWith(`${formulaName}.${previousBranch}`.trim()));
+                        }
+                    return comment.startsWith("This completes");
+                }).length > 0;
+            }
+        }        
+    } 
 	return false;
 }
 
@@ -1212,11 +1223,15 @@ export function branchHasChanged (desc: { newBranch: string, previousBranch: str
 	}
 	return false;
 }
-
-export function pathHasChanged (desc: { newBranch: string, previousBranch: string }): boolean {
+/**
+ * 
+ * @param desc two branch ids
+ * @returns 
+ */
+export function pathHasChanged (desc: { newBranchId: string, previousBranchId: string }): boolean {
 	if (desc) {
-		const newBranch: string = desc.newBranch.replace(/T/g, "");
-		const previousBranch: string = desc.previousBranch.replace(/T/g, "");
+		const newBranch: string = desc.newBranchId.replace(/T/g, "");
+		const previousBranch: string = desc.previousBranchId.replace(/T/g, "");
 		return !newBranch.startsWith(previousBranch);
 	}
 	return false;
@@ -3515,7 +3530,7 @@ export function isPostponeCommand (cmd: string, result?: { commentary: string | 
 				}).length > 0;
 		}
 	}
-	return cmd && /^\(?\s*\bpostpone\b/g.test(cmd);
+	return cmd && /^\(?\s*\bpostpone\b/gi.test(cmd);
 }
 
 export function isSkipCommand (cmd: string): boolean {

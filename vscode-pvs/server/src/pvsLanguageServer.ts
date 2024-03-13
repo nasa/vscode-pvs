@@ -48,7 +48,7 @@ import {
 	PvsFormula, ProofEditCommand, ProofExecCommand, PvsFile, ContextFolder, PvsTheory,
 	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest, 
 	SearchRequest, SearchResponse, SearchResult, FindSymbolDeclarationRequest, FindSymbolDeclarationResponse, 
-	ProveFormulaResponse, ProveFormulaRequest, EvaluatorCommandResponse, SequentDescriptor, 
+	ProveFormulaResponse, ProveFormulaRequest, EvaluatorCommandResponse, ProofState, 
 	DownloadWithProgressRequest, DownloadWithProgressResponse, InstallWithProgressRequest, 
 	InstallWithProgressResponse, NASALibDownloader, NASALibDownloaderRequest, 
 	NASALibDownloaderResponse, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse, 
@@ -411,10 +411,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 
 			const response: PvsResponse = await this.proveFormula(desc);
 			if (response?.result) {
-				this.proofExplorer?.setProofId(response.result?.id);
-				// const channelID: string = utils.desc2id(desc);
 				// the initial response should include only one sequent descriptor
-				const result: SequentDescriptor = response.result;
+				const result: ProofState = response.result.length? response.result[0] : response.result;
+				this.proofExplorer?.setProofId(result.id);
 				if (result) {
 					// notify the client that the server is in prover mode
 					this.notifyServerMode("in-checker");

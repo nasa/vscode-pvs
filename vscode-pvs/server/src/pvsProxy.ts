@@ -60,7 +60,7 @@ import * as fsUtils from './common/fsUtils';
 import * as path from 'path';
 import * as net from 'net';
 import * as crypto from 'crypto';
-import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, ProofDescriptor, ProofFile, PvsFormula, ServerMode, TheoryDescriptor, PvsTheory, FormulaDescriptor, PvsFile, PvsContextDescriptor, FileDescriptor, SequentDescriptor, MathObjects, ProofOrigin } from './common/serverInterface';
+import { SimpleConnection, serverEvent, PvsVersionDescriptor, ProofStatus, ProofDescriptor, ProofFile, PvsFormula, ServerMode, TheoryDescriptor, PvsTheory, FormulaDescriptor, PvsFile, PvsContextDescriptor, FileDescriptor, ProofState, MathObjects, ProofOrigin } from './common/serverInterface';
 import { Parser } from './core/Parser';
 import * as languageserver from 'vscode-languageserver';
 import { ParserDiagnostics } from './core/pvs-parser/javaTarget/pvsParser';
@@ -198,10 +198,11 @@ export class PvsProxy {
 		// await this.restartPvsServer();
 	}
 
-	protected normalizeSequent(res: SequentDescriptor | { result: string }, cmd: string): SequentDescriptor {
+	protected normalizeSequent(res: ProofState | { result: string }, cmd: string): ProofState {
 		// NOTE: this is a temporary fix while waiting the server APIs to be fixed
 		if (res) {
-			const sequent: SequentDescriptor = {
+			const sequent: ProofState = {
+				id: res["id"],
 				path: res["path"],
 				label: (res["result"]) ? "Q.E.D." : res["label"],
 				commentary: (res["result"]) ? [res["result"]]
@@ -1425,10 +1426,10 @@ export class PvsProxy {
 					? await this.showHelpBang({ cmd: cmd })
 					: await this.pvsRequest('proof-command', [pid, cmd]);
 				if (res && res.result) {
-					const proofStates: SequentDescriptor[] = res.result;
+					const proofStates: ProofState[] = res.result;
 					if (showHidden) {
 						for (let i = 0; i < proofStates.length; i++) {
-							const result: SequentDescriptor = proofStates[i];
+							const result: ProofState = proofStates[i];
 							if (result) {
 								result.label = "hidden formulas in " + result.label;
 								result.action = "Showing list of hidden formulas";
@@ -1441,7 +1442,7 @@ export class PvsProxy {
 						}
 					}
 					for (let i = 0; i < proofStates.length; i++) {
-						const result: SequentDescriptor = proofStates[i];
+						const result: ProofState = proofStates[i];
 						if (languageUtils.QED(result)) {
 							this.mode = "lisp";
 						}
@@ -1648,7 +1649,7 @@ export class PvsProxy {
 			theory: formula.theoryName,
 			formula: formula.formulaName,
 			status,
-			prover: languageUtils.pvsVersionToString(pvsVersionDescriptor) || "PVS 7.x",
+			prover: languageUtils.pvsVersionToString(pvsVersionDescriptor) || "PVS 8.x",
 			shasum
 		}, ".prf");
 		return empty_pdesc;
