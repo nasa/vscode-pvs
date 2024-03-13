@@ -24,10 +24,15 @@ export class PvsErrorManager {
         taskId: string,
         autorun?: boolean
     }): void {
-        console.error(desc?.response);
+        // PVS is returning error messages with different structures. @M3 #TODO fix me
+        const msg: string = desc.response.error.message 
+        + (desc.response.error.data? 
+            " - " + (typeof desc.response.error.data === "string"? desc.response.error.data : desc.response.error.data.error_string) : 
+            "");
+        console.error(`[pvsErrorManager.handleProveFormulaError] PVS reported an error: ${msg}`);
         const evt: ProofExecDidFailToStartProof = {
             action: "did-fail-to-start-proof",
-            msg: desc?.response?.error?.message
+            msg: msg
         };
         this.connection?.sendNotification(serverEvent.proverEvent, evt);
         if (desc?.autorun) {

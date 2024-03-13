@@ -1661,18 +1661,30 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 
 					// new pvs parser
 					else if (info.error && info.error.data && info.error.data.length > 0) {
-						let data: any[] = (typeof info.error.data == "object" ? [ info.error.data ] : info.error.data);
-
-						const diagnostics: Diagnostic[] = <Diagnostic[]> data.map(diag => {
-							return {
+						let diagnostics: Diagnostic[];
+						if (typeof info.error.data == "string") {
+							diagnostics = [ {
 								range: {
-									start: { line: diag.range.start.line - 1, character: diag.range.start.character }, // lines in the editor start from 0
-									end: { line: diag.range.end.line - 1, character: diag.range.end.character }
+									start: { line: 0, character: 0 }, 
+									end: { line: 0, character: 0 }
 								},
-								message: diag.message,
-								severity: diag.severity
-							}
-						});
+								message: info.error.data,
+								severity: DiagnosticSeverity.Error
+							} ];
+						} else {
+							let data: Diagnostic[] = info.error.data;
+
+							diagnostics = <Diagnostic[]> data.map(diag => {
+								return {
+									range: {
+										start: { line: diag.range.start.line - 1, character: diag.range.start.character }, // lines in the editor start from 0
+										end: { line: diag.range.end.line - 1, character: diag.range.end.character }
+									},
+									message: diag.message,
+									severity: diag.severity
+								}
+							});
+						}
 						this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics });
 					}
 				} else {
