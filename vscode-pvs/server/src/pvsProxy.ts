@@ -2153,13 +2153,14 @@ export class PvsProxy {
 					externalServer: opt.externalServer,
 					verbose: opt.verbose
 				});
+				console.log(`[pvsProxy] pvs Process activate returned ${success}`);
 				if (success === ProcessCode.PVS_NOT_FOUND) {
 					this.pvsServerProcessStatus =  ProcessCode.PVS_NOT_FOUND;
 				} else if (success === ProcessCode.UNSUPPORTED_PLATFORM) {
 					this.pvsServerProcessStatus = ProcessCode.UNSUPPORTED_PLATFORM;
 				} else if (success === ProcessCode.PVS_START_FAIL) {
 					// try again
-					console.log("[pvsProxy.createPvsServer] Didn't get feedback from PVS process... ");
+					console.log(`[pvsProxy.createPvsServer] Didn't get feedback from PVS (attempt #${currentPortAttemptNumber+1})`);
 					currentPvsStartAttemptNumber++;
 					await proc.kill(); 
 				} else {

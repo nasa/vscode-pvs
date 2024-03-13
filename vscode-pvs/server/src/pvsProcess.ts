@@ -61,7 +61,10 @@ export class PvsProcess {
 	protected pvsPath: string = null;
 	protected pvsLibraryPath: string = null;
 
-	protected ready: boolean = false;
+	/**
+	 * Current status of the PVS process; `undefined` indicates that the current status cannot be determined (for example, because the process is starting but not yet ready).
+	 */
+	protected currentStatus: ProcessCode | undefined = undefined; 
 	protected data: string = "";
 	protected cb: (data: string) => void;
 	protected buffer: Promise<string> = Promise.resolve("");
@@ -207,13 +210,6 @@ export class PvsProcess {
 		this.externalServer = !!opt.externalServer;
 		this.verbose = !!opt.verbose;
 		this.serverPort = opt.serverPort || this.serverPort;
-		// if (!await this.relocate()) {
-		// 	if (this.connection) {
-		// 		this.connection.console.warn("[pvs-process] Warning: could not execute PVS relocation/install script");
-		// 	} else {
-		// 		console.warn("[pvs-process] Warning: could not execute PVS relocation/install script");
-		// 	}
-		// }
 		// force locale settings
 		forceLocale();
 		console.log(`[PvsProcess.activate] ACL_LOCALE=${process.env["ACL_LOCALE"]}, LC_ALL=${process.env["LC_ALL"]}, LANG=${process.env["LANG"]}`);
@@ -227,11 +223,7 @@ export class PvsProcess {
 			let addressInUse: boolean = false;
 			
 			// Start the PVS process
-			await new Promise((resolve, reject) => 	{
-				if (this.pvsProcess) {
-					// process already running, nothing to do
-					return resolve(ProcessCode.SUCCESS);
-				}
+			if (!this.pvsProcess) {
 				console.info('[PvsProcess.activate] about to spawn PVS');
 				this.pvsProcess = spawn(pvs, args, { detached: true, env: { ...process.env, PVS_LIBRARY_PATH: this.pvsLibraryPath} });
 				console.info(`[PvsProcess.activate] PVS spawned (PID: ${this.pvsProcess.pid})`);
@@ -247,54 +239,40 @@ export class PvsProcess {
 					maxLogLimitReached = false;
 				};
 
-				this.pvsProcess.stdout.on("data", async (data: string) => {
-					console.log(`[pvsProcess.stdout (on data)] \n===> ${data}\n<===`);
-					if (addressInUse) {
-						return resolve(ProcessCode.ADDR_IN_USE); // the promise has already been resolved at this point -- don't resolve the promise again, otherwise the caller will erroneously see another resolve
+				function logOutputToConsole(output: string, tag?: string) {
+					for(let line of output.split('\n')){
+						console.log(`${tag}${line}`);
 					}
+				}
+
+				this.pvsProcess.stdout.on("data", async (data: string) => {
+					logOutputToConsole(data, "[pvsProcess.stdout] ");
 
 					this.data += data;
 					logData += data;
-					if (!maxLogLimitReached) {
-						// log data in vscode-pvs output
-						this.log(data?.length > MAX_LOG_CHUNK && !this.verboseLog ? data.substring(0, MAX_LOG_CHUNK) + "\n\n(...additional output suppressed)\n\n" : data);
-					}
-					maxLogLimitReached = logData?.length > MAX_LOG_CHUNK && !this.verboseLog;
 
-					const matchSocketAddressInUse: RegExpMatchArray = /(errno 48)/g.exec(data);
-					if (matchSocketAddressInUse) {
-						this.pvsProcess = null;
-						addressInUse = true;
-						resetLocalLog();
-						return resolve(ProcessCode.ADDR_IN_USE);
-					}
-					const matchNoExecutable: RegExpMatchArray = /No executable available in (.+)/gi.exec(data);
+					const dataNoLineBreaks = data.replace('\n',' ');
+
+					const matchNoExecutable: RegExpMatchArray = /No executable available in (.+)/gi.exec(dataNoLineBreaks);
 					if (matchNoExecutable) {
 						this.pvsProcess = null;
 						resetLocalLog();
-						return resolve(ProcessCode.UNSUPPORTED_PLATFORM);
+						this.currentStatus = ProcessCode.UNSUPPORTED_PLATFORM;
 					}
-					
-					// // wait for the pvs prompt, to make sure pvs-server is operational
-					// const yesNoQuery: boolean = data.trim().endsWith("(Yes or No)");
-					// if (yesNoQuery) {
-					// 	console.log(data);
-					// 	if (!this.pvsProcess?.stdin?.destroyed) {
-					// 		this.pvsProcess?.stdin?.write("Yes\n");
-					// 		this.log("Yes\n", { force: true });
-					// 	}
-					// 	return resolve(ProcessCode.SUCCESS);
-					// }
-
-					const matchPvsPrompt: RegExpMatchArray = /(?:\[\d+\w*\])?\s+pvs\(\d+\)\s*:/ig.exec(data);
-					const matchProverPrompt: RegExpMatchArray = /\bRule\?/g.exec(data);
-					const matchUsedPort: RegExpMatchArray = /\bListening on 127\.0\.0\.1:(\d+)/g.exec(data);
+					const matchUsedPort: RegExpMatchArray = /\bListening on 127\.0\.0\.1:(\d+)/g.exec(dataNoLineBreaks);
 					if(matchUsedPort){
 						this.reportedServerPort = +matchUsedPort[1];
+						// @M3 Now it's not necessary to wait for the pvs-REPL prompt to 
+						//     decide that the process is ready; it suffices with checking
+						//     that the 'Listening on' message is printed on stdout.
+						this.currentStatus = ProcessCode.SUCCESS;
 					}
+					const matchPvsPrompt: RegExpMatchArray = /(?:\[\d+\w*\])?\s+pvs\(\d+\)\s*:/ig.exec(dataNoLineBreaks);
+					const matchProverPrompt: RegExpMatchArray = /\bRule\?/g.exec(dataNoLineBreaks);
 					if (matchPvsPrompt || matchProverPrompt) {
-						if (!this.ready) {
-							this.ready = true;
+						// @M3 If the pvs-REPL or prover prompt is found, it is assumed that the process is active and ready to answer.
+						this.currentStatus = ProcessCode.SUCCESS;
+						if (!this.currentStatus) {
 							if (maxLogLimitReached) {
 								// log pvs prompt to provide better feedback
 								const logPrompt: string = matchPvsPrompt?.length ? matchPvsPrompt[0]
@@ -303,55 +281,56 @@ export class PvsProcess {
 								this.log(logPrompt);
 							}
 							resetLocalLog();
-							return (this.reportedServerPort? resolve(ProcessCode.SUCCESS) : resolve(ProcessCode.PVS_START_FAIL));
 						}
 						if (this.cb && typeof this.cb === "function") { // #TODO old. check @M3
 							let res: string = this.data.replace(/(?:\[\d+\w*\])?\s+PVS\(\d+\)\s*:/g, "").replace(/\bRule\?/g, "");
 							// clean up pvs output by removing unnecessary text
 							res = res.replace("[Current process: Initial Lisp Listener]", "");
 							this.cb(res.trim());
-							return resolve(ProcessCode.PVSERROR);
 						}
-						return resolve(ProcessCode.PVSERROR);
-					} else return resolve(ProcessCode.SUCCESS);
+					} 
 				});
 				this.pvsProcess.stderr.on("data", (data: string) => {
-					// this.error(data);
-					console.log(`[pvsProcess.activate] PVS reported error: \n>>> ${data} <<< `);
+					logOutputToConsole(data, "[pvsProcess.stderr] ");
 				});
 				this.pvsProcess.on("error", (err: Error) => {
-					this.error(`[pvs-process(on error)] Process error \n>>> ${err} <<< `);
-					// console.dir(err, { depth: null });
+					this.error(`[pvsProcess] Process error \n>>> ${err} <<< `);
 				});
 				this.pvsProcess.on("exit", (code: number, signal: string) => {
 					resetLocalLog();
-					console.log(`[pvs-process] Process exited, code: ${code}, signal: ${signal}, this.ready: ${this.ready}`);
+					console.log(`[pvsProcess] Process exited, code: ${code}, signal: ${signal}, this.ready: ${this.currentStatus}`);
 					// if PVS fails before communicating its 'ready' state, it's a starting-up fail.
-					if(!this.ready)
-						resolve(ProcessCode.PVS_START_FAIL);
+					if(!this.currentStatus)
+						this.currentStatus = ProcessCode.PVS_START_FAIL;
+					else
+						this.currentStatus = undefined;
 				});
 				this.pvsProcess.on("message", (message: any) => {
 					resetLocalLog();
-					this.log(`[pvs-process(on message)] Process message \n>>> ${message} <<< `);
-					/// console.dir(message, { depth: null });
-				});});
+					this.log(`[pvsProcess] Process message \n>>> ${message} <<< `);
+				});
+			}
 			// Wait for the PVS process to notify it started listening at the given port			
 			return await new Promise((resolveWait,rejectWait) => {
-				const maxNumberOfAttempts = 10; 
+				const maxNumberOfAttempts = 20; 
 				const intervalTime = 200; //ms
 	
 				let currentAttempt = 0
 				console.log("[pvsProcess.activate] Waiting for PVS confirmation ")
 				const interval = setInterval(() => {
-					console.log("+");
-					if (this.ready) {
+					console.log(`[pvsProcess.activate] -> polling on currentStatus (check ${currentAttempt+1} of ${maxNumberOfAttempts})...`);
+					if (this.currentStatus === ProcessCode.SUCCESS) {
 						clearInterval(interval);
-						console.log("[pvsProcess.activate] PVS is active and waiting for requests");
+						console.log("[pvsProcess.activate] DONE: PVS is active and waiting for requests");
 						resolveWait(ProcessCode.SUCCESS); 
 					} else if (currentAttempt > maxNumberOfAttempts - 1) {
 						clearInterval(interval)
+						console.log("[pvsProcess.activate] FAIL: reached max number of attempts");
 						resolveWait(ProcessCode.PVS_START_FAIL);
-					} 
+					} else if (this.currentStatus){
+						console.log(`[pvsProcess.activate] FAIL: status code ${this.currentStatus}`);
+						resolveWait(this.currentStatus);
+					}
 					currentAttempt++
 				}, intervalTime);
 			});
@@ -366,7 +345,7 @@ export class PvsProcess {
 	 * @returns The ID of the process that was killed. Null if no process was killed.
 	 */
 	async kill (): Promise<boolean> {
-		this.ready = false;
+		this.currentStatus = undefined;
 		return new Promise(async (resolve, reject) => {
 			if (this.pvsProcess) {
 				// Only try to kill the process if it's not already dead
@@ -377,18 +356,16 @@ export class PvsProcess {
 					// because the destruction of the process is immediate but previous calls to write() may not have drained
 					// see also nodejs doc for writable.destroy([error]) https://nodejs.org/api/stream.html
 					this.pvsProcess.on("close", (code: number, signal: string) => {
-						console.log("[pvs-process] Process terminated");
-						this.ready = false;
+						console.log("[pvsProcess] Process terminated");
+						this.currentStatus = ProcessCode.TERMINATED;
 						this.pvsProcess = null;
 						done = true;
 						resolve(true);
-						// console.dir({ code, signal }, { depth: null });
 					});
 					this.pvsProcess.on("error", (code: number, signal: string) => {
-						console.log("[pvs-process] Process terminated");
-						this.ready = false;
+						console.log("[pvsProcess] Process terminated");
+						this.currentStatus = ProcessCode.TERMINATED;
 						resolve(true);
-						// console.dir({ code, signal }, { depth: null });
 					});
 					try {
 						if (this.pvsProcess) {
