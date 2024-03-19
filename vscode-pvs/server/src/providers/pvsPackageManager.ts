@@ -65,11 +65,7 @@ export class PvsPackageManager {
      * List of approved patches for pvs
      */
     static readonly approvedPatches: { fname: string, description: string }[] = [
-        { fname: "patch-20210511.lisp", description: "Adds support for unicode in server commands" },
-        { fname: "patch-20210706.lisp", description: "Fix for 'the assertion (or (null ex) (place ex)) failed'" },
-        { fname: "patch-20210707.lisp", description: "Fix for prover not starting on judgements that are trivially true" },
-        { fname: "patch-20210715.lisp", description: "Fix for pvs-server breaking into lisp when imported library cannot be found" },
-        { fname: "patch-20210715a.lisp", description: "Fix for pvs-server breaking into lisp when opening a corrupted prf file" }
+        { fname: "patch-20240510.lisp", description: "Improves feedback provided by PVS during proving sessions" }
     ];
 
     /**
@@ -284,19 +280,23 @@ export class PvsPackageManager {
     static async installPvsPatches (desc: { pvsPath: string }): Promise<boolean> {
         if (desc?.pvsPath && fsUtils.folderExists(desc?.pvsPath)) {
             const targetFolder: string = path.join(desc.pvsPath, "pvs-patches");
-            let successSummary: boolean = await fsUtils.createFolder(targetFolder);
+            let successSummary: boolean = fsUtils.createFolder(targetFolder);
             if (successSummary) {
                 for (let i = 0; i < PvsPackageManager.approvedPatches.length; i++) {
                     const fileName: string = PvsPackageManager.approvedPatches[i].fname;
-                    const fname: string = path.join(targetFolder, fileName);
-                    if (!fsUtils.fileExists(fname)) {
-                        const src: string = path.join(__dirname, "..", "..", "..", "pvs-patches", fileName);
-                        const fileContent: string = await fsUtils.readFile(src);
-                        const success: boolean = fileContent && await fsUtils.writeFile(fname, fileContent);
-                        if (!success) {
-                            console.warn(`[pvs-package-manager] Warning: could not install patch ${PvsPackageManager.approvedPatches[i]?.fname} (${PvsPackageManager.approvedPatches[i]?.description})`);
+                    if (!fsUtils.fileExists(fileName)) {
+                        console.warn(`[pvs-package-manager] Warning: expected patch not found ${fileName}`);
+                    } else {
+                        const fname: string = path.join(targetFolder, fileName);
+                        if (!fsUtils.fileExists(fname)) {
+                            const src: string = path.join(__dirname, "..", "..", "..", "pvs-patches", fileName);
+                            const fileContent: string = fsUtils.readFile(src);
+                            const success: boolean = fileContent && fsUtils.writeFile(fname, fileContent);
+                            if (!success) {
+                                console.warn(`[pvs-package-manager] Warning: could not install patch ${PvsPackageManager.approvedPatches[i]?.fname} (${PvsPackageManager.approvedPatches[i]?.description})`);
+                            }
+                            successSummary = successSummary && success;
                         }
-                        successSummary = successSummary && success;
                     }
                 }
             } else {

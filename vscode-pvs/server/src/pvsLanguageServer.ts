@@ -1873,9 +1873,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				const result: boolean = (success === ProcessCode.SUCCESS);
 				if (result) {
 					this.notifyServerMode("lisp");
-					// install pvs patches
-					// await PvsPackageManager.installPvsPatches(desc); // @M3 deactivated by now. It shouldn't be necessary #TODO
-					// send version info to the front-end
+					// Copy pvs patches into $PVS_DIR/pvs-patches folder
+					await PvsPackageManager.installPvsPatches(desc); 
+					// Send version info to the front-end
 					await this.sendPvsServerReadyEvent();
 				}
 				return result;
