@@ -52,8 +52,8 @@ import {
 	ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, 
 	ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, 
 	ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType, ProofExecImportProof, 
-	FileDescriptor, ProofExecRewind, ProofExecInterruptProver, ProofState, ProofEditJumpHere, 
-	ProofEditDidUpdateDirtyFlag, ProofExecRunSubtree
+	FileDescriptor, ProofExecRewind, ProofExecInterruptProver, ProofEditJumpHere, 
+	ProofEditDidUpdateDirtyFlag, ProofExecRunSubtree, PvsProofState
 } from '../common/serverInterface';
 import * as fsUtils from '../common/fsUtils';
 import { formatSequent } from '../common/fsUtils';
@@ -953,7 +953,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 	/**
 	 * Utility function, sets the initial sequent.
 	 */
-	didLoadSequent (sequent: ProofState): void {
+	didLoadSequent (sequent: PvsProofState): void {
 		// this.proofState = sequent;
 		if (this.activeNode) {
 			this.activeNode.updateSequent(sequent);
@@ -1906,7 +1906,7 @@ export abstract class ProofItem extends TreeItem {
 	protected completeFlag: boolean = false;
 
 	// sequent *before* the execution of the node
-	protected sequent: ProofState = null;
+	protected sequent: PvsProofState = null;
 
 	/**
 	 * Constructor
@@ -1939,14 +1939,14 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Utility function, updates sequent information for the tree item
 	 */
-	updateSequent (sequent?: ProofState): void {
+	updateSequent (sequent?: PvsProofState): void {
 		this.sequent = sequent;
 		this.tooltip = sequent ? formatSequent(sequent, { formulasOnly: true }).trim() : "";
 	}
 	/**
 	 * Utility function, returns the sequent associated to this tree item
 	 */
-	getSequent (): ProofState {
+	getSequent (): PvsProofState {
 		return this.sequent;
 	}
 	/**

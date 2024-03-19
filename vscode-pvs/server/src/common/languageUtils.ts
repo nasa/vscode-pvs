@@ -40,7 +40,7 @@ import * as language from './languageKeywords';
 import { ProofNode, PvsVersionDescriptor, ProofDescriptor, 
 	ProofStatus, Position, Range, ProofTree, PvsFormula, 
     CommandDescriptor, CommandsMap, ProofMateProfile, 
-    HintsObject, ProofNodeType, ProofState
+    HintsObject, ProofNodeType, PvsProofState
 } from '../common/serverInterface';
 import * as colorUtils from "./colorUtils";
 import { SessionType } from './xtermInterface';
@@ -1169,7 +1169,7 @@ export function interruptedByClient (result: { commentary: string | string[] }):
 	return false;
 }
 
-export function branchComplete (proofStatus: ProofState, formulaName: string, previousBranch: string): boolean {
+export function branchComplete (proofStatus: PvsProofState, formulaName: string, previousBranch: string): boolean {
 	if (proofStatus) {
         // @M3 I gonna ignore this for now, until we improve the way in which PVS communicates the impact of the
         //     last user input on the current proof.
@@ -3630,14 +3630,32 @@ export function isQEDCommand (cmd: string): boolean {
 		|| /^\(?\s*Q\.E\.D\./g.test(cmd))
 		;
 }
-
+/**
+ * Determines if cmd1 and cmd2 are equivalent commands. 
+ * Assumes both commands are well-formed.
+ * @param cmd1 
+ * @param cmd2 
+ * @returns 
+ */
 export function isSameCommand (cmd1: string, cmd2: string): boolean {
+    let result: boolean = true;
 	if (cmd1 && cmd2) {
-		const c1: string = cmd1.replace(/\s+/g, "").replace(/[\s+\"\(\)]/g, ""); // remove all spaces, round parens, and double quotes
-		const c2: string = cmd2.replace(/\s+/g, "").replace(/[\s+\"\(\)]/g, "");
-		return c1 === c2;
-	}
-	return false;
+        // This comparison is case-insesitive on the unquoted parts of the commands.
+        // It also ignores external parenthesis (if any).
+		const c1: string[] = cmd1.replace(/\s+/g, "").replace(/^\(/,'').replace(/\)$/,'').split(/[^\\]"/);
+		const c2: string[] = cmd2.replace(/\s+/g, "").replace(/^\(/,'').replace(/\)$/,'').split(/[^\\]"/);
+
+        result &&= (c1.length === c2.length);
+        
+        for(let i=0; result && i<c1.length;i++){
+            result &&= (i%2===0?
+                c1[i].toLocaleLowerCase() === c2[i].toLocaleLowerCase() :
+                c1[i] === c2[i]
+            )
+        }
+                
+	} else result = false;
+	return result;
 }
 
 export function isPropax (cmd: string): boolean {

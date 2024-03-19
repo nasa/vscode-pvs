@@ -41,7 +41,7 @@ import * as vscode from 'vscode';
 import * as vscodeUtils from "../utils/vscode-utils";
 import * as path from 'path';
 import { Explorer, ProofBranch, ProofCommand, ProofItem, RootNode } from "./vscodePvsProofExplorer";
-import { ProofEditCopyNode, ProofEditCopyTree, ProofMateProfile, ProofNode, ProofNodeType, ProofNodeX, PvsFormula, PvsProofCommand, ProofState, serverEvent, serverRequest, SFormula } from "../common/serverInterface";
+import { ProofEditCopyNode, ProofEditCopyTree, ProofMateProfile, ProofNode, ProofNodeType, ProofNodeX, PvsFormula, PvsProofCommand, PvsProofState, serverEvent, serverRequest, SFormula } from "../common/serverInterface";
 import { openSketchpad, saveSketchpad } from "../common/fsUtils";
 import { proverCommands } from "../common/languageUtils";
 import { TreeItem, TreeItemCollapsibleState } from "vscode";
@@ -1545,7 +1545,7 @@ export class VSCodePvsProofMate extends Explorer {
 	/**
 	 * Utility function, updates the recommendations shown in proof mate
 	 */
-	updateRecommendations (proofState: ProofState): void {
+	updateRecommendations (proofState: PvsProofState): void {
 		if (proofState) {
 			if (this.enabled) {
 				this.resetView();
@@ -1564,9 +1564,9 @@ export class VSCodePvsProofMate extends Explorer {
 		}
 	}
 	/**
-	 * Utility function, returns the recommendated proof commands based on the given sequent and the set of rules of the recommendation
+	 * Utility function, returns the recommended proof commands based on the given sequent and the set of rules of the recommendation
 	 */
-	getRecommendations (proofState: ProofState): { cmd: string, tooltip?: string }[] {
+	getRecommendations (proofState: PvsProofState): { cmd: string, tooltip?: string }[] {
 		const ans: { cmd: string, tooltip?: string }[] = [];
 		if (proofState && proofState.sequent) {
 			for (let i in this.recommendationRules) {

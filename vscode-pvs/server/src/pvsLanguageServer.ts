@@ -48,7 +48,7 @@ import {
 	PvsFormula, ProofEditCommand, ProofExecCommand, PvsFile, ContextFolder, PvsTheory,
 	PvsProofCommand, FormulaDescriptor, FileDescriptor, PvsioEvaluatorCommand, EvalExpressionRequest, 
 	SearchRequest, SearchResponse, SearchResult, FindSymbolDeclarationRequest, FindSymbolDeclarationResponse, 
-	ProveFormulaResponse, ProveFormulaRequest, EvaluatorCommandResponse, ProofState, 
+	ProveFormulaResponse, ProveFormulaRequest, EvaluatorCommandResponse, PvsProofState, 
 	DownloadWithProgressRequest, DownloadWithProgressResponse, InstallWithProgressRequest, 
 	InstallWithProgressResponse, NASALibDownloader, NASALibDownloaderRequest, 
 	NASALibDownloaderResponse, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse, 
@@ -412,7 +412,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			const response: PvsResponse = await this.proveFormula(desc);
 			if (response?.result) {
 				// the initial response should include only one sequent descriptor
-				const result: ProofState = response.result.length? response.result[0] : response.result;
+				const result: PvsProofState = response.result.length? response.result[0] : response.result;
 				this.proofExplorer?.setProofId(result.id);
 				if (result) {
 					// notify the client that the server is in prover mode

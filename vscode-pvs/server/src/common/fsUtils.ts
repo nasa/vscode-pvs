@@ -44,7 +44,7 @@ import {
 	FileDescriptor, FileList, FormulaDescriptor, Position, ProofDescriptor,
 	ProofFile, ProofNode, ProofStatus, PvsContextDescriptor, PvsDownloadDescriptor,
 	pvsDownloadUrl, PvsFileDescriptor,
-	PvsFormula, PvsTheory, TheoryDescriptor, Downloader, ShellCommand, LookUpTable, PvsTypeDecl, PvsFile, ProofState, SFormula
+	PvsFormula, PvsTheory, TheoryDescriptor, Downloader, ShellCommand, LookUpTable, PvsTypeDecl, PvsFile, PvsProofState, SFormula
 } from '../common/serverInterface';
 import {
 	commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon,
@@ -2369,7 +2369,7 @@ export function formatPvsIoState (pvsioState: string, opt?: { useColors?: boolea
 	return pvsioState;
 }
 
-export function formatHiddenFormulas (proofState: ProofState, opt?: { 
+export function formatHiddenFormulas (proofState: PvsProofState, opt?: { 
     useColors?: boolean, 
     showAction?: boolean,
     colorizeParens?: boolean
@@ -2403,7 +2403,7 @@ export function formatHiddenFormulas (proofState: ProofState, opt?: {
 /**
  * Utility function, converts sequent formulas into a string
  */
-export function sformulas2string (desc: ProofState): string {
+export function sformulas2string (desc: PvsProofState): string {
 	let res: string = "";
 	if (desc?.sequent) { // print label and comment only if the sequent is non-empty (sequent empty means proof completed)
 		if (desc.sequent.antecedents) {
@@ -2421,7 +2421,7 @@ export function sformulas2string (desc: ProofState): string {
 /**
  * Prettyprints sequents. Syntax highlighting is introduced as ansi codes when option useColors is true.
  */
-export function formatSequent (desc: ProofState, opt?: {
+export function formatSequent (desc: PvsProofState, opt?: {
 	useColors?: boolean,
     colorizeParens?: boolean,
     colorTheme?: XTermColorTheme,
