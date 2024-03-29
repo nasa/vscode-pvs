@@ -1,10 +1,12 @@
-import { ITheme, Terminal as XTerm } from 'xterm';
+import { IBufferRange, ITheme, Terminal as XTerm } from '@xterm/xterm';
+import { CanvasAddon } from '@xterm/addon-canvas';
+// import { SearchAddon } from '@xterm/addon-search';
 import { CommandDescriptor, CommandsMap, MathObjects, HintsObject, Position } from './common/serverInterface';
 import * as colorUtils from './common/colorUtils';
 import { pvsColorTheme } from './common/languageKeywords';
 import { xTermDetectColorTheme, interruptCommand, SessionType, UpdateCommandHistoryData, XTermEvent } from './common/xtermInterface';
 import * as Backbone from 'backbone';
-// import * as Handlebars from 'handlebars';
+
 import {
     checkPar, commentRegexp, evaluatorCommands, EVALUATOR_COMMANDS, PROOF_COMMANDS, PROOF_TACTICS, 
     proverCommands, splitCommands, VSCODE_COMMANDS
@@ -1436,6 +1438,18 @@ export class Autocomplete extends Backbone.Model {
         return symbols?.includes(sym);
     }
     /**
+     * Utility function, checks if a given symbol is an implication
+     */
+    isImplication (sym: string): boolean {
+        return sym?.length ? [ "=>", "IMPLIES" ].includes(sym.toLocaleUpperCase()) : false;
+    }
+    /**
+     * Utility function, checks if a given symbol is an implication
+     */
+    isForall (sym: string): boolean {
+        return sym?.length ? [ "FORALL", "∀" ].includes(sym.toLocaleUpperCase()) : false;
+    }
+    /**
      * Internal function, checks if the provided hints are identical
      */
     protected sameHints (t1: string[], t2: string[]): boolean {
@@ -1455,6 +1469,7 @@ export class Autocomplete extends Backbone.Model {
     protected renderTooltip (hints: string[], opt?: { top?: number, left?: number }): void {
         if (hints?.length) {
             opt = opt || {};
+            // @ts-ignore
             const tooltip: string = Handlebars.compile(tooltipTemplate, { noEscape: true })({
                 hints
             });
@@ -1753,6 +1768,7 @@ export class Autocomplete extends Backbone.Model {
             : null;
         // console.log("[xterm-autocomplete] updateHelp", { cmd, desc });
         if (desc) {
+            // @ts-ignore
             const integratedHelp: string = Handlebars.compile(terminalHelpTemplate, { noEscape: true })({
                 cmd,
                 ...desc,
@@ -1944,13 +1960,13 @@ const xtermjsColorThemes: { dark: ITheme, light: ITheme } = {
         background: htmlColorCode.black,
         foreground: htmlColorCode.white,
         cursor: htmlColorCode.white, // cursor color
-        selection: htmlColorCode.blue // selection color
+        selectionForeground: htmlColorCode.blue // selection color
     },
     light: {
         background: htmlColorCode.white,
         foreground: htmlColorCode.black,
         cursor: htmlColorCode.black, // cursor color
-        selection: htmlColorCode.darkblue // selection color
+        selectionForeground: htmlColorCode.darkblue // selection color
     }
 }
 
@@ -2056,7 +2072,6 @@ export class XTermPvs extends Backbone.Model {
         this.colorTheme = this.getColorTheme();
 
         this.xterm = new XTerm({
-            rendererType: "canvas",
             cols,
             rows,
             fontSize: this.fontSize,
@@ -2074,7 +2089,12 @@ export class XTermPvs extends Backbone.Model {
         this.parent = opt?.parent || "terminal";
         this.xterm.open(document.getElementById(this.parent));
         // $(".terminal").append(cursorStyle);
-    
+
+        // use the canvas addon to improve performance
+        this.xterm.loadAddon(new CanvasAddon());
+        // uncomment the following to use the search addon
+        // this.xterm.loadAddon(new SearchAddon());
+
         // install handlers
         this.installHandlers();
 
@@ -2913,18 +2933,28 @@ export class XTermPvs extends Backbone.Model {
         $(document).on("dblclick", (evt: JQuery.DoubleClickEvent) => {
             if (this.sessionType === "prover") {
                 // this give the raw position of the cursor, in px, how do we convert this into lines/cols?
-                // const pos: ISelectionPosition = this.xterm.getSelectionPosition();
-                const sel = this.xterm.getSelection();
+                // const pos: IBufferRange = this.xterm.getSelectionPosition();
+                const sel: string = this.xterm.getSelection();
+                // console.log("[xterm-pvs] dblclick", { evt: evt, pos, sel });
                 if (sel && this.autocomplete.validSymbol(sel)) {
                     this.autocomplete.showTooltip([
                         `(expand "${sel}")`,
                         `(expand "${sel}" +)`,
                         `(expand "${sel}" -)`
                     ], { top: evt.pageY, left: evt.pageX });
+                } else if (sel && this.autocomplete.isForall(sel)) {
+                    this.autocomplete.showTooltip([
+                        `(skeep)`,
+                        `(skosimp*)`
+                    ], { top: evt.pageY, left: evt.pageX });
+                } else if (sel && this.autocomplete.isImplication(sel)) {
+                    this.autocomplete.showTooltip([
+                        `(flatten)`,
+                        `(split)`
+                    ], { top: evt.pageY, left: evt.pageX });
                 } else {
                     this.autocomplete.deleteTooltips();
                 }
-                // console.log("[xterm-pvs] dblclick", { evt: evt, pos, sel });
             }
         });
         $(document).on("click", (evt: JQuery.ClickEvent) => {

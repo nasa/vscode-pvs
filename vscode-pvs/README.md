@@ -1,7 +1,7 @@
 # VSCode-PVS: An Integrated Development Environment for the Prototype Verification System
 
-[![version](https://vsmarketplacebadges.dev/version/paolomasci.vscode-pvs.png)](https://marketplace.visualstudio.com/items?itemName=paolomasci.vscode-pvs)
-[![installs](https://vsmarketplacebadges.dev/installs-short/paolomasci.vscode-pvs.png)](https://marketplace.visualstudio.com/items?itemName=paolomasci.vscode-pvs)
+[![version](https://img.shields.io/visual-studio-marketplace/v/paolomasci.vscode-pvs)](https://marketplace.visualstudio.com/items?itemName=paolomasci.vscode-pvs)
+[![installs](https://img.shields.io/visual-studio-marketplace/i/paolomasci.vscode-pvs)](https://marketplace.visualstudio.com/items?itemName=paolomasci.vscode-pvs)
 [![license](https://img.shields.io/badge/license-NASA-blue.svg)](https://opensource.org/licenses/NASA-1.3)
 [![chat](https://img.shields.io/badge/Chat%20on-PVS%20Google%20Group-blue.svg)](https://groups.google.com/g/pvs-group)
 

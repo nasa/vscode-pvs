@@ -1,4 +1,11 @@
 ## ChangeLog
+### 1.0.65 (2024.04.xx)
+- Improved NASALib search to support navigating/searching the PVS Prelude Library
+- Improved navigation of TCCs (hover tooltips, wobbly line and quickfix actions in the .pvs files highlight expressions associated to unproved TCCs; hover tooltips in the .tccs files show which PVS expression generated each proof obligation; .tccs files are now treated as read-only in vscode)
+- Improved support for theorem names that include letters with accents
+- Improved proof command suggestions
+- Added new setting "Mirror Console To File" to mirror the prover/evaluator console to a log file.
+
 ### 1.0.64 (2023.04.12)
 - Added more math symbols (\top ⊤, \infty ∞, see also [symbols.json](symbols.json))
 - Improved Workspace Explorer (introduced setting pvs.pvsWorkspaceTheoriesFromActiveFile to show theories from the active PVS file; disabled auto-expansion of theory items)

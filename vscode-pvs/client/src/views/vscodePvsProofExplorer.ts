@@ -109,7 +109,7 @@ export abstract class Explorer extends Backbone.Model implements TreeDataProvide
 	/**
 	 * Timer used to implement a delayed refresh of the view, useful to improve performance
 	 */
-	protected timer: NodeJS.Timer = null;
+	protected timer: NodeJS.Timeout = null;
 	protected tcounter: number = 0;
 	readonly maxSkip: number = 32768;
 	readonly maxTimer: number = 500; //ms 
@@ -2304,7 +2304,7 @@ class LoadingItem extends TreeItem {
 	id: string = fsUtils.get_fresh_id();
 	protected points: number = 0;
 	protected MAX_POINTS: number = 3;
-	protected timer: NodeJS.Timer = null;
+	protected timer: NodeJS.Timeout = null;
 	constructor () {
 		super ("loading-content", TreeItemCollapsibleState.None);
 		this.label = this.message;

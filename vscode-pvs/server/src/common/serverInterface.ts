@@ -442,7 +442,7 @@ export declare interface StatusProofChain {
 export declare interface EvalExpressionRequest extends PvsTheory {
 	expr: string;
 }
-export type SearchLibrary = "nasalib" | "pvslib";
+export type SearchLibrary = "nasalib" | "pvslib" | "prelude";
 export declare interface SearchRequest {
 	searchString: string,
 	caseSensitive?: boolean,

@@ -7,13 +7,13 @@
 		"sourceMap": false,
 		"outDir": "dist",
 		"rootDir": "src",
-		"lib": [ "es6", "dom" ],
+		"lib": [ "es7", "dom" ],
 		"baseUrl": ".",
 		"paths": {
 			"*": [ "node_modules/*", "node_modules/@types/*" ]
 		},
 		"types": [
-			"handlebars", "jquery", "node"
+			"jquery", "node"
 		],
 		"typeRoots": [
             "node_modules/@types"

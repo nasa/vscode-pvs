@@ -1432,6 +1432,17 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		return ans;
 	}
 	/**
+	 * search prelude
+	 */
+	async searchPrelude (req: SearchRequest, opt?: { quiet?: boolean }): Promise<SearchResult[]> {
+		const ans: SearchResult[] = await this.pvsSearchEngine?.searchPvsLibraryPath(req?.searchString, {
+			...opt,
+			libraryPath: path.join(this.pvsPath, "lib"),
+			caseSensitive: req?.caseSensitive
+		});
+		return ans;
+	}
+	/**
 	 * Returns a descriptor with information on all theories in a given file
 	 */
 	async getFileDescriptor (desc: FileDescriptor, opt?: { listTheorems?: boolean, includeTccs?: boolean }): Promise<PvsFileDescriptor> {
@@ -2224,9 +2235,10 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 
 			// search request
 			this.connection?.onRequest(serverRequest.search, async (req: SearchRequest) => {
-				const ans: SearchResult[] = req?.library !== "nasalib" ? 
-					await this.searchPvsLibraryPath(req)
-						: await this.searchNasalib(req);
+				const ans: SearchResult[] = 
+					req?.library === "nasalib" ? await this.searchNasalib(req)
+					: req?.library === "pvslib" ? await this.searchPvsLibraryPath(req)
+					: await this.searchPrelude(req);
 				const res: SearchResponse = { req, ans };
 				this.connection?.sendNotification(serverRequest.search, res);
 			});

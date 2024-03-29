@@ -40,7 +40,7 @@ import {
     ExtensionContext, Position, Range, Uri, ViewColumn, WebviewPanel, window 
 } from "vscode";
 import { 
-    LookUpTableStats, PvsContextDescriptor, PvsTheory, SearchLibrary,
+    LookUpTableStats, PvsContextDescriptor, PvsFileDescriptor, PvsTheory, SearchLibrary,
     SearchRequest, SearchResponse, SearchResult, serverRequest 
 } from "../common/serverInterface";
 import * as path from 'path';
@@ -50,6 +50,7 @@ import * as Handlebars from "handlebars";
 // button labels
 const SEARCH_PVSLIB: string = "Search User Libraries";
 const SEARCH_NASALIB: string = "Search NASALib";
+const SEARCH_PRELUDE: string = "Search Prelude";
 
 /**
  * Handlebars template for the html content of the view
@@ -171,6 +172,9 @@ $(document).ready(function() {
                                 <button type="button" class="btn btn-outline-secondary" id="pvslib-btn" name="pvslib">
                                     <span> User-Defined Libraries </span>
                                 </button>
+                                <button type="button" class="btn btn-outline-secondary" id="prelude-btn" name="prelude">
+                                    <span> Prelude Libraries </span>
+                                </button>
                             </div>
                         </div>
                         <div class="card-body">
@@ -185,6 +189,12 @@ $(document).ready(function() {
                             </div>
                             <div class="lib-footer" id="pvslib-footer" style="display:none;">
                             {{#each pvslibStats}}
+                                {{#if @first}} {{this}} <br> ({{else}} {{@key}}: {{this}} {{/if}}
+                                {{#if @first}} {{else}} {{#if @last}} {{else}} - {{/if}}{{/if}}
+                            {{/each}})
+                            </div>
+                            <div class="lib-footer" id="prelude-footer" style="display:none;">
+                            {{#each preludeStats}}
                                 {{#if @first}} {{this}} <br> ({{else}} {{@key}}: {{this}} {{/if}}
                                 {{#if @first}} {{else}} {{#if @last}} {{else}} - {{/if}}{{/if}}
                             {{/each}})
@@ -234,7 +244,9 @@ $(document).ready(function() {
             $(".search-input")[0].setSelectionRange(len, len);
         }
         function selectActiveView () {
-            activeView === "nasalib" ? nasalibView() : pvslibView();
+            activeView === "nasalib" ? nasalibView() 
+            : activeView === "pvslib" ? pvslibView()
+            : preludeView();
         }
         function refreshSearchOptions () {
             console.log("[refresh-search-options]", { caseSensitive });
@@ -247,6 +259,7 @@ $(document).ready(function() {
             $("#nasalib-tree").css("display", "block");
             $("#nasalib-footer").css("display", "block");
             $("#pvslib-btn").removeClass("active");
+            $("#prelude-btn").removeClass("active");
             $("#nasalib-btn").addClass("active");
             $("#search-btn").text("${SEARCH_NASALIB}");
             focus();
@@ -258,8 +271,21 @@ $(document).ready(function() {
             $("#pvslib-tree").css("display", "block");
             $("#pvslib-footer").css("display", "block");
             $("#nasalib-btn").removeClass("active");
+            $("#prelude-btn").removeClass("active");
             $("#pvslib-btn").addClass("active");
             $("#search-btn").text("${SEARCH_PVSLIB}");
+            focus();
+        }
+        function preludeView () {
+            activeView = "prelude";
+            $(".lib-tree").css("display", "none");
+            $(".lib-footer").css("display", "none");
+            $("#prelude-tree").css("display", "block");
+            $("#prelude-footer").css("display", "block");
+            $("#nasalib-btn").removeClass("active");
+            $("#pvslib-btn").removeClass("active");
+            $("#prelude-btn").addClass("active");
+            $("#search-btn").text("${SEARCH_PRELUDE}");
             focus();
         }
         function enableCaseSensitiveSearch () {
@@ -302,7 +328,9 @@ $(document).ready(function() {
             const isActive = $(evt?.currentTarget).hasClass("active");
             if (!isActive) {
                 const btn_name = $(evt?.currentTarget).attr("name");
-                btn_name === "nasalib" ? nasalibView() : pvslibView();
+                btn_name === "nasalib" ? nasalibView() 
+                : btn_name === "pvslib" ? pvslibView()
+                : preludeView();
             }
         });
         // initialize all tooltips
@@ -430,11 +458,25 @@ ul, #myUL {
         </ul>
     </li>
     {{/each}}
+</ul>
+<ul id="prelude-tree" class="lib-tree">
+    {{#each preludeFolders}}
+    <li><span class="caret">{{@key}}</span>
+        <ul class="nested">
+        {{#each this}}
+        <li>
+            <a class="result-item" href="{{contextFolder}}/{{fileName}}{{fileExtension}}" {{#if line}}line="{{line}}"{{/if}} style="white-space:nowrap;">{{theoryName}}</a>
+        </li>
+        {{/each}}
+        </ul>
+    </li>
+    {{/each}}
 </ul>`;
 interface LibraryList {
     nasalibFolders: LibraryMap,
     nasalibPath: string,
-    pvslibFolders: LibraryMap
+    pvslibFolders: LibraryMap,
+    preludeFolders: LibraryMap
 }
 interface SearchResultsOrSpinner {
     res?: SearchResult[],
@@ -455,13 +497,15 @@ interface HtmlContent extends SearchResultsOrSpinner, WebViewStyles {
     activeView: SearchLibrary,
     logo?: Uri,
     nasalibStats?: LookUpTableStats,
-    pvslibStats?: LookUpTableStats
+    pvslibStats?: LookUpTableStats,
+    preludeStats?: LookUpTableStats
 };
 interface LibraryMap { [folderName: string]: PvsTheory[] };
 
 import * as vscodeUtils from '../utils/vscode-utils';
 import { nasalib_lookup_table } from '../common/nasalib-lookup-table';
 import * as fsUtils from '../common/fsUtils';
+import { getFileDescriptor } from "../common/fsUtils";
 
 /**
  * NASALib search class
@@ -482,9 +526,11 @@ export class VSCodePvsSearch {
     // pvs library data
     protected pvsLibraries: LibraryMap = {};
     protected pvslibStats: LookUpTableStats;
+    protected preludeLibraries: LibraryMap = {};
+    protected preludeStats: LookUpTableStats;
 
     // webview title
-    readonly title: string = "Search NASALib";
+    readonly title: string = "Search: NASALib + User Libraries + Prelude ";
 
     // active view, either nasalib or pvslib
     protected activeView: SearchLibrary = "nasalib";
@@ -512,6 +558,7 @@ export class VSCodePvsSearch {
     async reveal (): Promise<void> {
         if (!this.panel) {
             await this.loadPvsLibraryDescriptors();
+            await this.loadPvsPreludeDescriptors();
             this.renderView();
         }
         this.panel.reveal()
@@ -530,7 +577,8 @@ export class VSCodePvsSearch {
         const data: LibraryList = {
             nasalibFolders: this.nasalibLibraries,
             nasalibPath: this.nasalibPath,
-            pvslibFolders: this.pvsLibraries
+            pvslibFolders: this.pvsLibraries,
+            preludeFolders: this.preludeLibraries
         };
         this.welcomeScreen = Handlebars.compile(libraryListTemplate, { noEscape: true })(data);            
         // create panel
@@ -561,7 +609,9 @@ export class VSCodePvsSearch {
                 switch (message.command) {
                     case 'search': {
                         if (message.searchString) {
-                            this.activeView = message.activeView === "nasalib" ? "nasalib" : "pvslib";
+                            this.activeView = message.activeView === "nasalib" ? "nasalib" 
+                                : message.activeView === "pvslib" ? "pvslib"
+                                : "prelude";
                             this.caseSensitive = message.caseSensitive === true;
                             this.showSearching({ searchString: message.searchString });
                             const res: SearchResult[] = await this.search(message.searchString, { caseSensitive: this.caseSensitive });
@@ -652,6 +702,7 @@ export class VSCodePvsSearch {
             logo,
             nasalibStats: nasalib_lookup_table.stats,
             pvslibStats: this.pvslibStats,
+            preludeStats: this.preludeStats,
             activeView: this.activeView,
             caseSensitive: this.caseSensitive,
             css,
@@ -688,7 +739,7 @@ export class VSCodePvsSearch {
 		return null;
 	}
 	/**
-	 * Internal function, returns nasalib path
+	 * Internal function, loads pvs library descriptors
 	 */
     protected async loadPvsLibraryDescriptors (): Promise<void> {
         this.pvsLibraries = {};
@@ -731,6 +782,67 @@ export class VSCodePvsSearch {
         this.pvslibStats = {
             version: "User-defined libraries",
             folders: this.pvsLibraries ? Object.keys(this.pvsLibraries).length : 0,
+            theories: nTheories               
+        };
+    }
+	/**
+	 * Internal function, loads prelude libraries descriptors
+	 */
+    protected async loadPvsPreludeDescriptors (): Promise<void> {
+        this.preludeLibraries = {};
+        const pvsPath: string = vscodeUtils.getConfiguration("pvs.path");
+        const preludePath: string = path.join(pvsPath, "lib");
+        const files: string[] = [ "prelude.pvs", "pvsio_prelude.pvs" ];
+        let nTheories: number = 0;
+
+        const contextFolders: string[] = [ preludePath ].concat(fsUtils.listSubFolders(preludePath)?.map(elem => {
+            return path.join(preludePath, elem);
+        }));
+        for (let k = 0; k < contextFolders?.length; k++) {
+            const desc: PvsContextDescriptor = await fsUtils.getContextDescriptor(contextFolders[k], {
+                listTheorems: false, 
+                includeTccs: false
+            });
+            const files: string[] = Object.keys(desc?.fileDescriptors);
+            for (let f = 0; f < files?.length; f++) {
+                const contextFolder: string = desc.fileDescriptors[files[f]].contextFolder;
+                const contextFolderName: string = fsUtils.getContextFolderName(contextFolder);
+                if (desc.fileDescriptors[files[f]]?.theories?.length) {
+                    this.preludeLibraries[contextFolderName] = this.preludeLibraries[contextFolderName] || [];
+                    this.preludeLibraries[contextFolderName] = this.preludeLibraries[contextFolderName].concat(desc.fileDescriptors[files[f]]?.theories?.map(elem => {
+                        return {
+                            theoryName: elem.theoryName,
+                            line: elem.position.line,
+                            contextFolder: elem.contextFolder,
+                            fileName: elem.fileName,
+                            fileExtension: elem.fileExtension
+                        };
+                    }));
+                    nTheories += desc.fileDescriptors[files[f]]?.theories?.length;
+
+        // for (let i = 0; i < files?.length; i++) {
+        //     const fname: string = path.join(preludePath, files[i]);
+        //     const desc: PvsFileDescriptor = await getFileDescriptor(fname, { listTheorems: false, includeTccs: false, prelude: true });
+        //     const contextFolder: string = desc.contextFolder;
+        //     // const contextFolderName: string = fsUtils.getContextFolderName(contextFolder);
+        //     if (desc?.theories?.length) {
+                //     this.preludeLibraries[files[i]] = this.preludeLibraries[files[i]] || [];
+                //     this.preludeLibraries[files[i]] = this.preludeLibraries[files[i]].concat(desc?.theories?.map(elem => {
+                //         return {
+                //             theoryName: elem.theoryName,
+                //             line: elem.position.line,
+                //             contextFolder: elem.contextFolder,
+                //             fileName: elem.fileName,
+                //             fileExtension: elem.fileExtension
+                //         };
+                //     }));
+                //     nTheories += desc?.theories?.length;
+                }
+            }
+        }
+        this.preludeStats = {
+            version: "Prelude libraries",
+            folders: this.preludeLibraries ? Object.keys(this.preludeLibraries).length : 0,
             theories: nTheories               
         };
     }

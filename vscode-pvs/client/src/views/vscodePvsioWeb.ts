@@ -223,7 +223,7 @@ export class VSCodePvsioWeb {
     protected data: builderUtils.PrototypeData;
 
     // tick timer
-    protected tickTimer: NodeJS.Timer = null;
+    protected tickTimer: NodeJS.Timeout = null;
     readonly MIN_TICK_FREQ: number = 250; //ms
     readonly DEFAULT_TICK_FREQ: number = 1000; //ms
 

@@ -39,7 +39,7 @@
 
 import {
     Uri, WebviewPanel, ExtensionContext, Terminal, TerminalOptions, 
-    ExtensionTerminalOptions, TerminalExitStatus, window, ViewColumn, TextEditor, commands, WebviewPanelOnDidChangeViewStateEvent
+    ExtensionTerminalOptions, TerminalExitStatus, window, ViewColumn, TextEditor, commands, WebviewPanelOnDidChangeViewStateEvent, TerminalState
 } from 'vscode';
 import * as path from 'path';
 import * as Handlebars from "handlebars";
@@ -48,7 +48,6 @@ import * as utils from '../common/languageUtils';
 import { LanguageClient } from 'vscode-languageclient';
 import {
     EvaluatorCommandResponse, HintsObject, MathObjects, ProofCommandResponse, ProveFormulaRequest, ProveFormulaResponse, 
-    PvsFile, 
     PvsFormula, PvsioEvaluatorCommand, PvsProofCommand, PvsTheory, SequentDescriptor, serverEvent, serverRequest 
 } from '../common/serverInterface';
 import { PvsResponse } from '../common/pvs-gui';
@@ -200,6 +199,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     processId: Thenable<number>;
     creationOptions: Readonly<TerminalOptions | ExtensionTerminalOptions>;
     exitStatus: TerminalExitStatus;
+    state: TerminalState;
 
     /**
      * Constructor

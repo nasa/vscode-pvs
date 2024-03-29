@@ -519,7 +519,7 @@ export class VSCodePvsVizTree {
     /**
 	 * Timer used to implement a delayed refresh of the view, useful to improve performance
 	 */
-	protected timer: NodeJS.Timer = null;
+	protected timer: NodeJS.Timeout = null;
 	protected tcounter: number = 0;
 	readonly maxSkip: number = 10;
 	readonly maxTimer: number = 500; //ms

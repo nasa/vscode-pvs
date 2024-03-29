@@ -77,7 +77,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	protected context: ExtensionContext;
 
 	// timers, for periodic events such as autosave
-	protected timers: {[key: string]: NodeJS.Timer } = {};
+	protected timers: {[key: string]: NodeJS.Timeout } = {};
 
 	// providers for text editor
 	protected decorationProvider: VSCodePvsDecorationProvider;
