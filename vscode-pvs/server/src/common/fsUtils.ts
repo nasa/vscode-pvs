@@ -48,7 +48,7 @@ import {
 } from '../common/serverInterface';
 import {
 	commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon,
-	icons, isInvalidCommand, isProved, proofliteDeclRegexp, proofliteRegexp, pvsSyntaxHighlighting, sanitizeForRegEx, theoremParamsRegexp, theoremRegexp, theoryOrDatatypeRegexp, theoryRegexp, typesRegexp, validTermRegExp
+	icons, isInvalidCommand, isProved, isQEDCommand, proofliteDeclRegexp, proofliteRegexp, pvsSyntaxHighlighting, sanitizeForRegEx, theoremParamsRegexp, theoremRegexp, theoryOrDatatypeRegexp, theoryRegexp, typesRegexp, validTermRegExp, isQEDProofState
 } from './languageUtils';
 import { execFileSync } from 'child_process';
 import { PrettyPrinter } from './xtermInterface';
@@ -2335,11 +2335,17 @@ export function commentaryToString (commentary: string | string[], opt?: {
     colorTheme?: XTermColorTheme,
     htmlEncoding?: boolean
 }): string {
+	function looksLikeASequent(msg: string): boolean {
+		let lines: string[] = msg.split('\n');
+		return lines.some((l)=>{return /\|-------/.test(l)}) && /[a-z_\d]+[\d\.]* *(?:\(TCC\))? *:/i.test(lines[0]);
+	}
+
 	let res = "";
     if (commentary) {
         const colorTheme: XTermColorTheme = opt.colorTheme || "dark";
         const gray: PvsColor = getColor(PvsColor.gray, colorTheme);
         const yellow: PvsColor = getColor(PvsColor.yellow, colorTheme);
+        const green: PvsColor = getColor(PvsColor.green, colorTheme);
         if (typeof commentary === "string") {
             commentary = commentary.trim().endsWith(",") ? commentary.trim().slice(0, -1) : commentary.trim();
             res += opt.htmlEncoding ? `<br>${commentary}<br>` 
@@ -2349,12 +2355,23 @@ export function commentaryToString (commentary: string | string[], opt?: {
             res += opt.htmlEncoding ? "<br>" : "\n";
             for (let i = 0; i < commentary.length; i++) {
                 let line: string = commentary[i];
-                if (i === commentary.length - 1) {
-                    line = line.trim().endsWith(",") ? line.trim().slice(0, -1) : line.trim();
-                }
-                res += opt.htmlEncoding ? `${line}<br>` 
-                    : opt.useColors ? `${colorText(`${line}`, line.includes("This completes the proof") ? yellow : gray)}\n`
-                        : `${line}\n`;
+
+								if(looksLikeASequent(line)) {
+									if (i === commentary.length - 1 || i == 0 || looksLikeASequent(commentary[i-1]))
+									// Ignore the last commentary if it looks like a sequent,
+									// because it's the same sequent being informed in the 
+									// proof status @M3.
+										line = null;
+								} else {
+								  if (i === commentary.length - 1)	
+										line = line.trim().endsWith(",") ? line.trim().slice(0, -1) : line.trim();
+								}
+								if (line)
+                	res += opt.htmlEncoding ? `${line}<br>` 
+                  	  : opt.useColors ? `${colorText(`${line}`, 
+											line.includes("This completes the proof") ? yellow :
+											line.includes("Q.E.D.") ? green : gray)}\n`
+                      	  : `${line}\n`;
             }
         }
     }
@@ -2423,13 +2440,13 @@ export function sformulas2string (desc: PvsProofState): string {
  */
 export function formatSequent (desc: PvsProofState, opt?: {
 	useColors?: boolean,
-    colorizeParens?: boolean,
-    colorTheme?: XTermColorTheme,
+  colorizeParens?: boolean,
+  colorTheme?: XTermColorTheme,
 	showAction?: boolean,
 	htmlEncoding?: boolean,
 	formulasOnly?: boolean,
-    ignoreCommentary?: boolean,
-    prettyPrinter?: PrettyPrinter
+  ignoreCommentary?: boolean,
+  prettyPrinter?: PrettyPrinter
 }): string {
 	if (desc) {
 		opt = opt || {};
@@ -2443,10 +2460,11 @@ export function formatSequent (desc: PvsProofState, opt?: {
 				res += commentaryToString(desc.commentary, opt);
 			}
 		}
-        // print label and comment only if 
-        // - the sequent is non-empty (sequent empty means proof completed)
-        // - the commentary string does not indicate error
-		if (desc.sequent && (opt.ignoreCommentary || !isInvalidCommand(desc))) {
+		let deemedAsQED: boolean = isQEDProofState(desc);
+		// print sequent, label and comment only if 
+		// - the sequent is non-empty (sequent empty means proof completed)
+		// - the commentary string does not indicate error
+		if (desc.sequent && !deemedAsQED && (opt.ignoreCommentary || !isInvalidCommand(desc))) {
 			if (desc.label) {
 				res += labelToString(desc.label, opt);
 			}

@@ -61,6 +61,7 @@ import {
 import { balancePar, checkPar, CheckParResult, getHints, isInvalidCommand, isQEDCommand, noChange } from '../common/languageUtils';
 import { VSCodePvsProofExplorer } from './vscodePvsProofExplorer';
 import { YesNoCancel } from '../utils/vscode-utils';
+import { isQEDProofState } from '../common/languageUtils';
 
 export enum XTermPvsEvent {
     DidCloseTerminal = "DidCloseTerminal",
@@ -403,7 +404,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         if (data) {
             if (typeof data.res === "string") {
                 if (data.res === "Q.E.D." || data.res === "bye!") {
-                    const xtermMsg: string = colorUtils.colorText(data.res, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme));
+                    const xtermMsg: string = (data.res === "bye!"? colorUtils.colorText(data.res, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme)) : "");
                     this.log("\n" + xtermMsg, {
                         sessionEnd: true
                     });
@@ -431,7 +432,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 }
                 // load prettyprinter from vscode configuration
                 const pp: string = this.prettyPrinter?.file; //vscodeUtils.getPrettyPrinter();
-                console.log({ pp });
+                // console.log({ pp }); // debug #TODO remove
                 // format sequent
                 const sequent: string = fsUtils.formatSequent(data?.res, { 
                     colorTheme: this.colorTheme, 
@@ -447,8 +448,9 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     theoryContent
                 });
                 this.log(sequent, { hints, mathObjects: this.mathObjects });
-                // show prompt
-                this.showPrompt();
+                // show prompt unless QED 
+                if(! isQEDProofState(data.res))
+                    this.showPrompt();
                 commands.executeCommand("xterm.did-execute-command");
             }
         }
@@ -1109,7 +1111,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                                             this.showPrompt();
                                                         }
                                                     } else {
-                                                        const actionConfirmed: boolean = await this.proofExplorer.queryQuitProof({ force: true });
+                                                        const actionConfirmed: boolean = await this.proofExplorer.queryQuitProof({ force: false });
                                                         if (!actionConfirmed) {
                                                             this.showPrompt();
                                                         }

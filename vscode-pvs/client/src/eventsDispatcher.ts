@@ -775,7 +775,7 @@ export class EventsDispatcher {
 			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesNo[0])
 			if (ans === yesNo[0]) {
                 const currentContext: string = vscodeUtils.getRootPath();
-                const req = { cleanFolder: currentContext };
+                const req = { cleanFolder: currentContext, externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer") };
                 this.client.sendRequest(serverRequest.rebootPvsServer, req);
                 // terminate any prover session
                 this.xterm.dispose();

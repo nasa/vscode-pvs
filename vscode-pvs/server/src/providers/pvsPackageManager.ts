@@ -65,7 +65,7 @@ export class PvsPackageManager {
      * List of approved patches for pvs
      */
     static readonly approvedPatches: { fname: string, description: string }[] = [
-        { fname: "patch-20240510.lisp", description: "Improves feedback provided by PVS during proving sessions" }
+        { fname: "patch-20240510-prover-interaction.lisp", description: "Improves feedback provided by PVS during proving sessions" }
     ];
 
     /**
@@ -283,24 +283,27 @@ export class PvsPackageManager {
             let successSummary: boolean = fsUtils.createFolder(targetFolder);
             if (successSummary) {
                 for (let i = 0; i < PvsPackageManager.approvedPatches.length; i++) {
-                    const fileName: string = PvsPackageManager.approvedPatches[i].fname;
-                    if (!fsUtils.fileExists(fileName)) {
-                        console.warn(`[pvs-package-manager] Warning: expected patch not found ${fileName}`);
+                    const patchFileName: string = PvsPackageManager.approvedPatches[i].fname;
+                    const src: string = path.join(__dirname, "..", "..", "..", "pvs-patches", patchFileName);
+                    if (!fsUtils.fileExists(src)) {
+                        console.warn(`[pvsPackageManager] Warning: expected patch not found ${src}`);
                     } else {
-                        const fname: string = path.join(targetFolder, fileName);
-                        if (!fsUtils.fileExists(fname)) {
-                            const src: string = path.join(__dirname, "..", "..", "..", "pvs-patches", fileName);
+                        const tgt: string = path.join(targetFolder, patchFileName);
+                        const tgtExists: boolean = fsUtils.fileExists(tgt);
+                        if (!tgtExists || (await fsUtils.stat(tgt)).ctime < (await fsUtils.stat(src)).ctime) {
+                            if (tgtExists) console.log(`[pvsPackageManager] Overwriting ${tgt} with ${src}.`);
+                            else console.log(`[pvsPackageManager] Copying ${src} into ${tgt}.`);
                             const fileContent: string = fsUtils.readFile(src);
-                            const success: boolean = fileContent && fsUtils.writeFile(fname, fileContent);
+                            const success: boolean = fileContent && fsUtils.writeFile(tgt, fileContent);
                             if (!success) {
-                                console.warn(`[pvs-package-manager] Warning: could not install patch ${PvsPackageManager.approvedPatches[i]?.fname} (${PvsPackageManager.approvedPatches[i]?.description})`);
+                                console.warn(`[pvsPackageManager] Warning: could not install patch ${PvsPackageManager.approvedPatches[i]?.fname} (${PvsPackageManager.approvedPatches[i]?.description})`);
                             }
                             successSummary = successSummary && success;
                         }
                     }
                 }
             } else {
-                console.warn(`[pvs-package-manager] Warning: could not install patches (folder ${targetFolder} could not be created)`);
+                console.warn(`[pvsPackageManager] Warning: could not install patches (folder ${targetFolder} could not be created)`);
             }
             return successSummary;
         }

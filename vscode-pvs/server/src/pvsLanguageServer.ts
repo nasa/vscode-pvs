@@ -1847,6 +1847,8 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			}
 			if (desc.pvsPath || this.pvsPath) {
 				console.log(`[pvs-language-server] Rebooting PVS (installation folder is ${this.pvsPath})`);
+				// Copy pvs patches into $PVS_DIR/pvs-patches folder
+				await PvsPackageManager.installPvsPatches(desc); 
 				const externalServer: boolean = !!desc.externalServer;
 				if (this.pvsProxy && desc.pvsPath === this.pvsPath && (desc.pvsLibraryPath === undefined || this.pvsLibraryPath === desc.pvsLibraryPath)) {
 					await this.pvsProxy?.enableExternalServer({ enabled: externalServer });
@@ -1873,8 +1875,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				const result: boolean = (success === ProcessCode.SUCCESS);
 				if (result) {
 					this.notifyServerMode("lisp");
-					// Copy pvs patches into $PVS_DIR/pvs-patches folder
-					await PvsPackageManager.installPvsPatches(desc); 
 					// Send version info to the front-end
 					await this.sendPvsServerReadyEvent();
 				}

@@ -3732,3 +3732,27 @@ export function getInvalidCommandName (result: { commentary: string | string[] }
 	process.env["LC_ALL"] = "en_US.UTF-8";
 	process.env["LANG"] = "en_US.UTF-8";
 }
+
+export function getLabelFromPSDisplayId(pvsProofStateDisplayId: string): string {
+    return pvsProofStateDisplayId.split("-")[0];
+}
+export function getBranchIdFromPSDisplayId(pvsProofStateDisplayId: string): string {
+    return getBranchId(getLabelFromPSDisplayId(pvsProofStateDisplayId));
+}
+/**
+ * 
+ * @param displayIdA string representation of a ps-display-id
+ * @param displayIdB 
+ * @returns 
+ */
+export function successivePSDisplayIds(displayIdA: string, displayIdB: string): boolean {
+	return +displayIdA.split("-")[1] + 1 === +displayIdB.split("-")[1];
+}
+
+export function sameBranchPSDisplayIds(displayIdA: string, displayIdB: string): boolean {
+	return getBranchIdFromPSDisplayId(displayIdA)===getBranchIdFromPSDisplayId(displayIdB);
+}
+
+export function isQEDProofState(ps: PvsProofState): boolean {
+    return ps.commentary && (ps.commentary.length ? (ps.commentary as string[]).some(isQEDCommand) : isQEDCommand(ps.commentary as string))
+}

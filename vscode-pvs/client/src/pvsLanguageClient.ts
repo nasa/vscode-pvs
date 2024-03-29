@@ -468,7 +468,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				pvsPath: this.pvsPath,
 				pvsLibraryPath: this.pvsLibraryPath,
 				contextFolder,
-				externalServer: false
+				externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer")
 			});
 			// set vscode context variable pvs-server-active to true -- this will create the PVS icon on the activity bar
 			commands.executeCommand('setContext', 'pvs-server-active', true);

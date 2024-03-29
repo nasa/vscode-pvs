@@ -247,27 +247,36 @@ export class PvsProcess {
 				this.pvsProcess.stdout.on("data", async (data: string) => {
 					logOutputToConsole(data, "[pvsProcess.stdout] ");
 
-					this.data += data;
+					const dataNoLineBreaks = data.replace('\n',' ');
+					this.data += dataNoLineBreaks;
 					logData += data;
 
-					const dataNoLineBreaks = data.replace('\n',' ');
+					// if PVS reports entering to the debugger, an unrecoverable error has occurred.
+					// We try to restart the server.
+					const matchLispDebugger: RegExpMatchArray = /Welcome to LDB, a low-level debugger for the Lisp runtime environment/gi.exec(dataNoLineBreaks);
+					if (matchLispDebugger) {
+						this.pvsErrorManager.notifyPvsFailure({msg: "PVS entered the debugger. Please use M-x reboot-pvs to restart the process.", src: "pvs"});
+					}
 
-					const matchNoExecutable: RegExpMatchArray = /No executable available in (.+)/gi.exec(dataNoLineBreaks);
-					if (matchNoExecutable) {
-						this.pvsProcess = null;
-						resetLocalLog();
-						this.currentStatus = ProcessCode.UNSUPPORTED_PLATFORM;
+					if(this.currentStatus !== ProcessCode.SUCCESS){
+						const matchNoExecutable: RegExpMatchArray = /No executable available in (.+)/gi.exec(dataNoLineBreaks);
+						if (matchNoExecutable) {
+							this.pvsProcess = null;
+							resetLocalLog();
+							this.currentStatus = ProcessCode.UNSUPPORTED_PLATFORM;
+						}
+						const matchUsedPort: RegExpMatchArray = /\bListening +on +127\.0\.0\.1:(\d+)/g.exec(this.data);
+						if(matchUsedPort){
+							this.reportedServerPort = +matchUsedPort[1];
+							// @M3 Now it's not necessary to wait for the pvs-REPL prompt to 
+							//     decide that the process is ready; it suffices with checking
+							//     that the 'Listening on' message is printed on stdout.
+							this.currentStatus = ProcessCode.SUCCESS;
+						}
 					}
-					const matchUsedPort: RegExpMatchArray = /\bListening on 127\.0\.0\.1:(\d+)/g.exec(dataNoLineBreaks);
-					if(matchUsedPort){
-						this.reportedServerPort = +matchUsedPort[1];
-						// @M3 Now it's not necessary to wait for the pvs-REPL prompt to 
-						//     decide that the process is ready; it suffices with checking
-						//     that the 'Listening on' message is printed on stdout.
-						this.currentStatus = ProcessCode.SUCCESS;
-					}
+
 					const matchPvsPrompt: RegExpMatchArray = /(?:\[\d+\w*\])?\s+pvs\(\d+\)\s*:/ig.exec(dataNoLineBreaks);
-					const matchProverPrompt: RegExpMatchArray = /\bRule\?/g.exec(dataNoLineBreaks);
+					const matchProverPrompt: RegExpMatchArray = /\bRule\?/g.exec(dataNoLineBreaks); // @M3 we should stop checking for this prompt #TODO 
 					if (matchPvsPrompt || matchProverPrompt) {
 						// @M3 If the pvs-REPL or prover prompt is found, it is assumed that the process is active and ready to answer.
 						this.currentStatus = ProcessCode.SUCCESS;
@@ -311,7 +320,7 @@ export class PvsProcess {
 			}
 			// Wait for the PVS process to notify it started listening at the given port			
 			return await new Promise((resolveWait,rejectWait) => {
-				const maxNumberOfAttempts = 20; 
+				const maxNumberOfAttempts = 100; 
 				const intervalTime = 200; //ms
 	
 				let currentAttempt = 0
