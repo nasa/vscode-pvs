@@ -68,85 +68,6 @@
 	      (acons "commentary" comntry (car (last intermediate-alists)))))
       intermediate-alists)))
 
-;; (defun read-intermediate-proof-states (commentary id)
-;;   (when commentary
-;;       (let ((current-proof-state (when (pvs::proofstate? (car commentary)) (car commentary))))
-;; 	(if current-proof-state
-;; 	    (append
-;; 	     (pvs2alist-ps current-proof-state nil id (pvs::status-flag current-proof-state))
-;; 	     (read-intermediate-proof-states (cdr commentary) id))
-;; 	  (read-intermediate-proof-states (cdr commentary) id)))))
-
-;; (defun read-intermediate-proof-states (commentary id &optional prev-proof-state)
-;;   (if commentary
-;;       (let ((current-proof-state (when (pvs::proofstate? (car commentary)) (car commentary))))
-;; 	(if current-proof-state
-;; 	    (let ((prev-proof-state-id (when prev-proof-state (pvs::ps-display-id prev-proof-state)))
-;; 		  (curr-ps-id (pvs::ps-display-id current-proof-state)))
-;; 	      (cond
-;; 	       ;; either, the display-id is different
-;; 	       ((not (string= curr-ps-id prev-proof-state-id))
-;; 		(if prev-proof-state
-;; 		    (append (pvs2alist-ps prev-proof-state nil id (pvs::status-flag prev-proof-state))
-;; 			    (read-intermediate-proof-states (cdr commentary) id current-proof-state))
-;; 		  (read-intermediate-proof-states (cdr commentary) id current-proof-state)))
-;; 	       ;; or it has additional information
-;; 	       (t
-;; 		;; I assume the current ps has more information than the previous one
-;; 		;; @M3 do I need to keep the "no action" proof states?
-;; 		(read-intermediate-proof-states (cdr commentary) id prev-proof-state))))
-;; 	  (read-intermediate-proof-states (cdr commentary) id prev-proof-state)))
-;;     (when prev-proof-state
-;;       (pvs2alist-ps prev-proof-state nil id (pvs::status-flag prev-proof-state)))))
-
-
-;; (defun read-intermediate-proof-states (commmentary)
-;;   (let ((intermediate-alists
-;; 	 (let (prev-proof-state-id)
-;; 	   (loop for e in commentary
-;; 		 for step = 1 then (1+ step)
-;; 		 for has-to-be-added
-;; 		 = (and (pvs::proofstate? e)
-;; 			;; there could be repeated proof states,if
-;; 			;; some of the branches were closed during
-;; 			;; the proof command application.
-;; 			(let*((curr-ps-id (pvs::ps-display-id e)))
-;; 			  (or
-;; 			   ;; either, the display-id is different
-;; 			   (and (not (string= curr-ps-id prev-proof-state-id))
-;; 				(setq prev-proof-state-id curr-ps-id))
-;; 			   ;; or it has additional information
-;; 			   (let ((e-action
-;; 				  (let ((pout (pvs:format-printout e t)))
-;; 				    (when pout (pvs:strim pout)))))
-;; 			     (and
-;; 			      (pvs::wish-current-rule e)
-;; 			      (not (pvs::prefix? "No change on:" e-action)))))))
-;; 		 do (format t "~&~%{pvs2alist-ps} Step# ~a~%" step)
-;; 		 do (if (pvs::proofstate? e)
-;; 			(format t "~&{pvs2alist-ps} => ?~a vs. ?~a ~%" (pvs::ps-display-id e) prev-proof-state-id)
-;; 		      (format t "~&{pvs2alist-ps} => No ps ~%"))
-;; 		 do (when (pvs::proofstate? e)
-;; 		      (format t "~&{pvs2alist-ps} Reviewing !~a ?~a ~%" (pvs::unique-ps-id e) (pvs::ps-display-id e))) ;;debug
-;; 		 do (format t "~&{pvs2alist-ps} has-to-be-added: ~a ~%" has-to-be-added) ;;debug
-;; 		 when has-to-be-added
-;; 		 append (pvs2alist-ps e nil id (pvs::status-flag e))
-;; 		 else do (format t "~&{pvs2alist-ps} omitting: ~a ~%" (if (pvs::proofstate? e) (pvs::ps-display-id e) e))
-;; 		 ;; when (and (pvs::proofstate? e)
-;; 		 ;; 	     ;; there could be repeated proof states,if
-;; 		 ;; 	     ;; some of the branches were closed during
-;; 		 ;; 	     ;; the proof command application.
-;; 		 ;; 	     (let((curr-ps-id (pvs::ps-display-id e)))
-;; 		 ;; 	       (and (not (string= curr-ps-id prev-proof-state-id))
-;; 		 ;; 		    (setq prev-proof-state-id curr-ps-id))))
-;; 		 ;; append (pvs2alist-ps e nil id (pvs::status-flag e))
-;; 		 ))))
-;;     (when (and comntry intermediate-alists)
-;;       (setf (car (last intermediate-alists))
-;; 	    (acons "commentary" comntry (car (last intermediate-alists)))))
-;;     intermediate-alists))
-
-
 (defun pvs2alist-ps  (ps commentary id status)
   (with-slots (pvs:label pvs:comment pvs:current-goal (pps pvs:parent-proofstate)) ps
     (let* ((action (pvs:strim (pvs:format-printout ps t)))
@@ -163,8 +84,8 @@
 	   				    ((stringp e) e)
 	   				    (t (format nil "~a" e)))))
 	   		    commentary))
-	   (debug (format t "{pvs2alist-ps} all comntry (~a)~%" (length comntry))) ;; debug
-	   (debug (format t "~{~&{pvs2alist-ps} ~a ~}~%" comntry)) ;; debug
+	   ;; (debug (format t "{pvs2alist-ps} all comntry (~a)~%" (length comntry))) ;; debug
+	   ;; (debug (format t "~{~&{pvs2alist-ps} ~a ~}~%" comntry)) ;; debug
 	   (comntry (let*((prev-com)
 			  (length-commentary-1 (1- (length commentary))))
 		      (loop for com in commentary
@@ -179,8 +100,8 @@
 				       (string= (pvs::ps-display-id prev-com) (pvs::ps-display-id com)))))
 			    collect com
 			    do (setq prev-com com))))
-	   (debug (format t "{pvs2alist-ps} filtered comntry (~a)~%" (length comntry))) ;; debug
-	   (debug (format t "~{~&{pvs2alist-ps} ~a ~}~%" comntry)) ;; debug	   
+	   ;; (debug (format t "{pvs2alist-ps} filtered comntry (~a)~%" (length comntry))) ;; debug
+	   ;; (debug (format t "~{~&{pvs2alist-ps} ~a ~}~%" comntry)) ;; debug	   
 	   (intermediate-ps (when commentary
 			      (read-intermediate-proof-states
 			       (if (string= status "proved")
@@ -190,8 +111,8 @@
 				   commentary
 				 (append commentary (list ps)))
 			       id)))
-	   (debug (format t "{pvs2alist-ps} filtered comntry 2 (~a)~%" (length comntry))) ;; debug
-	   (debug (format t "~{~&{pvs2alist-ps} ~a ~}~%" comntry)) ;; debug	   
+	   ;; (debug (format t "{pvs2alist-ps} filtered comntry 2 (~a)~%" (length comntry))) ;; debug
+	   ;; (debug (format t "~{~&{pvs2alist-ps} ~a ~}~%" comntry)) ;; debug	   
 	   )
       (or intermediate-ps
 	  (list
@@ -214,106 +135,15 @@
 	      ("path" . ,(format nil "~{~a~^.~}" (pvs:path-from-top ps)))
 	      ("sequent" . ,final-sequent)
 	      ("children" . ,(loop for child in
-				   ;; (append (pvs::done-subgoals ps)
-				   ;; 	(pvs::pending-subgoals ps)
-				   ;; 	(pvs::remaining-subgoals ps))
 				   (pvs::x-subgoals ps)
-				   ;; append (pvs2alist-ps child nil id (pvs::status-flag child))
 				   collect (pvs::ps-display-id child))))))
 		  final-ps))))))
 
 (defun pvs2json-ps (ps commentary id status)
   (arr (pvs2alist-ps ps commentary id status)))
 
-;; @M3 this version returns the whole internal proof tree, but it's too verbose
-;;     (compare with the wish proof-tree, for example)
-;; BEGIN pvs2json-ps too verbose
-;;
-;; (defun pvs2json-ps (ps commentary id status)
-;;   (arr (proof-state-tree-to-alist ps commentary id status)))
-;;
-;; (defun proof-state-tree-root (ps)
-;;   (let ((parent-ps (pvs:parent-proofstate ps)))
-;;     (if parent-ps (proof-state-tree-root parent-ps) ps)))
-;;
-;; (defun proof-state-tree-preorder-top-down (ps)
-;;   (cons ps (loop for child in (pvs::children ps)
-;; 		 append (proof-state-tree-preorder-top-down child))))
-;;
-;; (defun proof-state-tree-to-alist (ps commentary id status)
-;;   (let*((comntry (mapcar #'(lambda (e)
-;; 			     (pvs:strim (cond
-;; 					 ((stringp e) e)
-;; 					 ((pvs::proofstate? e)
-;; 					  (format nil "{|~a|} ~a" (pvs::unique-ps-id e) e))
-;; 					 (t (format nil "~a" e)))))
-;; 			 commentary))
-;; 	(ps-tree-preorder (proof-state-tree-preorder-top-down (proof-state-tree-root ps)))
-;; 	(ps-tree-alist (loop for ps in ps-tree-preorder
-;; 			     append (pvs2alist-ps ps nil id (pvs::status-flag ps)))))
-;;     (when (and comntry ps-tree-alist)
-;;       (setf (car (last ps-tree-alist))
-;; 	    (acons "commentary" comntry (car (last ps-tree-alist)))))
-;;     ps-tree-alist))
-;;
-;; (defun pvs2alist-ps  (ps commentary id status)
-;;   (with-slots (pvs:label pvs:comment pvs:current-goal (pps pvs:parent-proofstate)) ps
-;;     (let* ((action (when pps (pvs:strim (pvs:format-printout pps t))))
-;; 	   (num-subgoals (pvs:proofstate-num-subgoals ps))
-;; 	   (final-sequent (pvs2json-seq pvs:current-goal pps))
-;; 	   (curr-cmd (let ((curr-rule (pvs:wish-current-rule ps)))
-;; 		       (when curr-rule (format nil "~s" curr-rule))))
-;; 	   (prev-cmd (let ((parent-ps (pvs:parent-proofstate ps)))
-;; 		       (when parent-ps
-;; 			 (let ((parent-rule (pvs:current-rule parent-ps)))
-;; 			   (when parent-rule (format nil "~s" parent-rule))))))
-;; 	   (comntry (mapcar #'(lambda (e)
-;; 				(pvs:strim (cond
-;; 					    ((stringp e) e)
-;; 					    ((pvs::proofstate? e)
-;; 					     (format nil "{|~a|} ~a" (pvs::unique-ps-id e) e))
-;; 					    (t (format nil "~a" e)))))
-;; 			    commentary)))
-;;       (list (let ((final-ps 
-;; 	    `(("id" . ,(string id))
-;; 	      ("ps-id" . ,(pvs::unique-ps-id ps))
-;; 	      ("parent" . ,(let ((parent-proofstate (pvs:parent-proofstate ps)))
-;; 			     (if parent-proofstate
-;; 			       (pvs::unique-ps-id parent-proofstate)
-;; 			       ;; (pvs2alist-ps parent-proofstate nil id (pvs::status-flag parent-proofstate))
-;; 			     "None")))
-;; 	      ("status" . ,(string status))
-;; 	      ,@(when comntry `(("commentary" . ,comntry)))
-;; 	      ,@(when action `(("action" . ,action)))
-;; 	      ,@(when num-subgoals `(("num-subgoals" . ,num-subgoals)))
-;; 	      ("label" . ,pvs:label)
-;; 	      ,@(when prev-cmd `(("prev-cmd" . ,prev-cmd)))
-;; 	      ,@(when curr-cmd `(("curr-cmd" . ,curr-cmd)))
-;; 	      ,@(when pvs:comment `(("comment" . ,pvs:comment)))
-;; 	      ("path" . ,(format nil "~{~a~^.~}" (pvs:path-from-top ps)))
-;; 	      ("sequent" . ,final-sequent)
-;; 	      ("children" . ,(mapcar #'pvs::unique-ps-id (pvs::children ps)))
-;; 	      )))
-;; 	      final-ps)))))
-;;
-;; END pvs2json-ps too verbose
-
 (in-package :pvs)
-
-;; (defun display-proofstate (proofstate)
-;;   (format t "~&[display-proofstate] proofstate ~a ~%" (show proofstate)) ;; debug
-;;   (when (and (not *in-apply*) *displaying-proof*)
-;;     (let ((changed (and *current-displayed*
-;; 			(not (eq *current-displayed* proofstate)))))
-;;       (when changed
-;; 	(if *flush-displayed*
-;; 	    (progn
-;; 	      (display-proof-from *flush-displayed*)
-;; 	      (setf *flush-displayed* nil))
-;; 	    (display-proof-from *current-displayed*))
-;; 	(display-current proofstate)))))
-
-(in-package :pvs)
+;; The only difference w.r.t. the current version of proofstepper is tagged [2024]
 (defmethod proofstepper ((proofstate proofstate))
 
 ;;The key part of the proofstate for the stepper is the strategy field.
@@ -484,10 +314,9 @@
 	(format nil "~a-~d" label num)
 	(ps-display-id par-ps label (1+ num)))))
 
-;;
-;; Add message om undoing proof command
-;;
+
 (in-package :pvs)
+;; CHANGE: Add message on undoing proof command @M3
 (defun undo-proof (info ps)
   (if (eq info 'undo)
       (cond ((and *record-undone-proofstate*
@@ -527,7 +356,7 @@
 			    (pvs-y-or-n-p "~%This will undo the proof to: ~a~%Sure? "
 					  newps))))
 		   (cond (response
-			  (commentary "~&Undoing last proof command application,~%this simplifies to:")
+			  (commentary "~&Undoing last proof command application,~%this simplifies to:") ;; [2024] @M3
 			  (when *displaying-proof*
 			    (setf *flush-displayed* newps))
 			  (setq *record-undone-proofstate*
@@ -548,39 +377,3 @@
 			  newps)
 			 (t (setf (strategy ps) (query*-step))
 			    ps))))))))
-
-
-;; BEGIN debug
-
-;; (defmethod print-object ((ps proofstate) stream)
-;;   (let* ((*ps* ps)
-;; 	 (*print-ancestor* (if *print-ancestor*
-;; 			       *print-ancestor*
-;; 			       (parent-proofstate *ps*)))
-;; 	 (*pp-print-parens* *show-parens-in-proof*))
-;;     (if *debugging-print-object*
-;; 	(call-next-method)
-;; 	(if (comment ps)
-;; 	    (format stream "~%~a (~a) : ~%~a~%~a"
-;; 	      (label ps) (unique-ps-id ps)
-;; 	      (comment ps)
-;; 	      (current-goal ps))
-;; 	    (format stream "~%~a (~a) :  ~%~a"  (label ps) (unique-ps-id ps)
-;; 		    (current-goal ps))))))
-
-;; (in-package :pvs-jsonrpc)
-;; (defun pvs2json-response (prv-result)
-;;   "prv-result is an alist of the form
-;;  ((\"proofstate\" ...) (\"commentary\" ...) (\"id\" ...) (\"status\" ...))"
-;;   (let* ((id (cdr (assoc "id" prv-result :test #'string-equal)))
-;; 	 (ps (cdr (assoc "proofstate" prv-result :test #'string-equal)))
-;; 	 (err (cdr (assoc "error" prv-result :test #'string-equal)))
-;; 	 (errstr (when err (concatenate 'string "Error: " (strim-all err))))
-;; 	 (com (cdr (assoc "commentary" prv-result :test #'string-equal)))
-;; 	 (commentary (if err (cons errstr com) com))
-;; 	 (status (cdr (assoc "status" prv-result :test #'string-equal)))
-;; 	 (ps-json (pvs2json-ps ps commentary id status)))
-;;     ;; (format t "~&{pvs2json-response} ps-json = ~s~%" ps-json)
-;;     ps-json))
-
-;; END debug
