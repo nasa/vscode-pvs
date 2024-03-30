@@ -252,7 +252,7 @@ export class EventsDispatcher {
             if (desc?.args?.fileName && desc?.args?.contextFolder && desc?.response) {
                 // open tcc file in the editor
                 const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: desc.args.fileName, contextFolder: desc.args.contextFolder, fileExtension: ".tccs"}));
-                const editors: vscode.TextEditor[] = vscode.window.visibleTextEditors;
+                const editors: readonly vscode.TextEditor[] = vscode.window.visibleTextEditors;
                 const viewColumn: number = (editors && editors.length > 0) ? editors[0].viewColumn : vscode.ViewColumn.Beside;
                 vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
             }
@@ -897,7 +897,7 @@ export class EventsDispatcher {
                 // ask the user confirmation of what needs to be done: view existing prooflite, generate prooflite
                 const viewOrGenerate: string[] = [ "View Existing Prooflite", "Generate Prooflite" ];
                 const msg: string = `Show Prooflite for formula ${desc.formulaName}?`;
-                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, viewOrGenerate[0], viewOrGenerate[1]);
+                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true, detail: "Press 'Esc' to Cancel" }, viewOrGenerate[0], viewOrGenerate[1]);
                 if (ans === viewOrGenerate[0]) {
                     // view existing prooflite
                     await this.workspaceExplorer.viewProofliteFile(desc, { showFileInEditor: true });
@@ -1338,7 +1338,7 @@ export class EventsDispatcher {
                 // ask the user confirmation before discharging
                 const yesno: string[] = [ `Match ${formulaName}`, "All TTCs", "No" ];
                 const msg: string = opt.useJprf ? `Discharge TCCs using J-PRF?` : `Discharge TCCs?`;
-                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0], yesno[1]);
+                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true, detail: "Press 'Esc' to Cancel" }, yesno[0], yesno[1]);
                 if (ans === yesno[0] || ans === yesno[1]) {
                     const allTccs: boolean = ans === yesno[1];
                     this.quietMode = true;

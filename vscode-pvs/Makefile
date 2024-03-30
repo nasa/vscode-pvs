@@ -47,17 +47,17 @@ loc-client:
 	find . -name '*.ts' ! -name '*.d.ts' -path '*client/src/*' | xargs wc -l
 
 release: all install-vsce audit
-	node_modules/vsce/vsce package
+	node_modules/@vscode/vsce/vsce package
 	@echo "\033[0;32m** Release ready! To publish the release, type 'make publish' **\033[0m"
 
 vsix:
 	make release
 
 publish:
-	node_modules/vsce/vsce publish
+	node_modules/@vscode/vsce/vsce publish
 
 package:
-	node_modules/vsce/vsce package
+	node_modules/@vscode/vsce/vsce package
 
 install-tsc:
 	cd server && npm install typescript
@@ -68,12 +68,12 @@ install-ws:
 	cd server && npm install ws
 
 install-vsce:
-	npm install vsce
+	npm install @vscode/vsce
 
 vsce:
-	node_modules/vsce/out/vsce package
+	node_modules/@vscode/vsce/vsce package
 
-install: install-tsc install-ws
+install: install-tsc install-ws install-vsce
 	npm install
 
 build-nasalib-decls:

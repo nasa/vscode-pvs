@@ -442,7 +442,7 @@ export declare interface StatusProofChain {
 export declare interface EvalExpressionRequest extends PvsTheory {
 	expr: string;
 }
-export type SearchLibrary = "nasalib" | "pvslib";
+export type SearchLibrary = "nasalib" | "pvslib" | "prelude";
 export declare interface SearchRequest {
 	searchString: string,
 	caseSensitive?: boolean,
@@ -638,6 +638,11 @@ export const serverEvent = {
 	pvsIncorrectVersion: "pvs.event.pvs-incorrect-version",
 
 	profilerData: "pvs.event.profiler-data"
+};
+
+export interface RebootPvsServerRequest {
+	pvsPath?: string, 
+	cleanFolder?: string
 };
 
 export interface ShellCommand {

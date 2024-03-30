@@ -39,7 +39,7 @@
 
 import {
     Uri, WebviewPanel, ExtensionContext, Terminal, TerminalOptions, 
-    ExtensionTerminalOptions, TerminalExitStatus, window, ViewColumn, TextEditor, commands, WebviewPanelOnDidChangeViewStateEvent
+    ExtensionTerminalOptions, TerminalExitStatus, window, ViewColumn, TextEditor, commands, WebviewPanelOnDidChangeViewStateEvent, TerminalState
 } from 'vscode';
 import * as path from 'path';
 import * as Handlebars from "handlebars";
@@ -201,6 +201,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     processId: Thenable<number>;
     creationOptions: Readonly<TerminalOptions | ExtensionTerminalOptions>;
     exitStatus: TerminalExitStatus;
+    state: TerminalState;
 
     /**
      * Constructor

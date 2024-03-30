@@ -203,7 +203,7 @@ class LoadingItem extends TreeItem {
 	message: string = "Loading"
 	protected points: number = 0;
 	protected MAX_POINTS: number = 3;
-	protected timer: NodeJS.Timer;
+	protected timer: NodeJS.Timeout;
 	constructor () {
 		super ("loading-content", TreeItemCollapsibleState.None);
 		this.label = this.message;

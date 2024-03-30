@@ -37,6 +37,7 @@
  **/
 
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { ChildProcess, exec, execSync } from 'child_process';
 import * as crypto from 'crypto';
@@ -488,6 +489,18 @@ export function isPvsFile(desc: string | { fileName: string, fileExtension: stri
 	return false;
 }
 /**
+ * Utility function, returns true if the file extension indicates this is a pvs file
+ */
+export function isProofFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
+	if (desc) {
+		const ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
+		if (ext) {
+			return ext.endsWith('.prf') || ext.endsWith('.jprf');
+		}
+	}
+	return false;
+}
+/**
  * Utility function, returns true if the file extension indicates this is a dump file
  */
 export function isDumpFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
@@ -735,7 +748,7 @@ export const logFileExtension: string = ".pr";
  * Utility function, checks if wget or curl are available
  */
 export function getDownloader (): Downloader {
-	const candidates: Downloader[] = [ "wget", "curl" ];
+	const candidates: Downloader[] = [ "curl", "wget" ];
 	for (let i = 0; i < candidates.length; i++) {
 		try {
 			if (execSync(`which ${candidates[i]}`)) {
@@ -816,7 +829,7 @@ export function getDownloadCommand (url: string, opt?: { out?: string }): ShellC
 	const cmd: string = getDownloader();
 	if (cmd) {
 		let args: string[] = (cmd === "curl") ? [ "-L" ] // -L allows curl to follow URL redirect.
-			: [ "--progress=bar:force" ]; // wget automatically follows up to 20 URL redirect. ,"--show-progress"
+			: [ "--show-progress" ]; // wget automatically follows up to 20 URL redirect. ,"--progress=bar:force"
 		args.push(url);
 		if (opt?.out) {
 			if (cmd === "curl") {
@@ -2217,12 +2230,12 @@ export function getUndumpFolderName (dmpFile: FileDescriptor): string {
  */
 export abstract class PostTask {
 	// timer used for delayed execution of tasks
-	protected timer: NodeJS.Timer = null;
+	protected timer: NodeJS.Timeout = null;
 	// task start delay
 	protected TASK_START_DELAY: number = 250; //ms
 
 	/**
-     * Utility function for posting the execution of a potentially long tasks
+     * Utility function for posting the execution of potentially long tasks
 	 * that do not require immediate completion
      */
 	postTask (task: () => void): void {
@@ -2540,3 +2553,53 @@ export function prunePvsLibraryPath(pvsLibraryPath: string): string {
 	return result;
 }
 
+/**
+ * Utility function, shows username, uid and gid
+ */
+export function getUserInfo (): os.UserInfo<string> {
+	const userInfo: os.UserInfo<string> = os.userInfo();
+	console.log({ username: userInfo.username, uid: userInfo.uid, gid: userInfo.gid });
+	return userInfo;
+}
+
+/**
+ * Utility function, changes the ownership of folders and pvs files
+ */
+export function chown (contextFolder: string, opt?: { uid?: number, gid?: number, fileExtension?: string }): boolean {
+	if (contextFolder) {
+		opt = opt || {};
+		const userInfo: os.UserInfo<string> = getUserInfo();
+		const uid: number = opt.uid || userInfo.uid;
+		const gid: number = opt.gid || userInfo.gid;
+		if (uid && gid) {
+			contextFolder = tildeExpansion(contextFolder);
+			if (fs.existsSync(contextFolder)) {
+				try {
+					console.log(`[fsUtils] chown `, { contextFolder, uid, gid, files: opt?.fileExtension || "*.*" });
+					// chown the folder
+					console.log(`[fsUtils] chown(${uid}:${gid}, ${contextFolder})`);
+					fs.chownSync (contextFolder, uid, gid);
+					let files: string[] = fs.readdirSync(contextFolder);
+					if (files?.length) {
+						// filter files if needed
+						files = files.filter(name => {
+							// console.log(name);
+							return (opt?.fileExtension) ? name.endsWith(opt.fileExtension)
+								: (isPvsFile(name) || isProofFile(name));
+						});
+						// chown all files
+						for (let i = 0; i < files.length; i++) {
+							const fname: string = path.join(contextFolder, files[i]);
+							console.log(`[fsUtils] chown(${uid}:${gid}, ${fname})`);
+							fs.chownSync (fname, uid, gid);
+						}
+					}
+					return true;
+				} catch (err) {
+					console.warn(`[fsUtils] Warning: unable to change owner for files in folder ${contextFolder}`);
+				}
+			}
+		}
+	}
+	return false;
+}
