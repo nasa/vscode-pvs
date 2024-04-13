@@ -84,6 +84,7 @@ const cmds: string[] = [
 	"view-pvs-library-path",
 	"reboot-pvs",
 	"restart-pvs",
+	"reset-pvs",
 	"install-pvs",
 	"reinstall-pvs", // equivalent to install-pvs
 	"install-nasalib",
@@ -285,6 +286,7 @@ export class VSCodePvsEmacsBindingsProvider {
 					commands.executeCommand('vscode-pvs.prove-formula', desc);
 					break;
 				}
+				case "reset-pvs":
 				case "restart-pvs":
 				case "reboot-pvs": {
 					commands.executeCommand('vscode-pvs.reboot-pvs');
