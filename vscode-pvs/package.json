@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.65-lambda",
+	"version": "1.0.65",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -1828,7 +1828,8 @@
 				"when": "resourceLangId == pvs"
 			},
 			{
-				"key": "ctrl+alt+t",
+				"key": "shift+alt+t",
+				"note": "ctrl+alt+t should be avoided because it is used to open a terminal in Ubuntu Linux",
 				"command": "vscode-pvs.typecheck-file",
 				"when": "resourceLangId == pvs"
 			},
@@ -1981,7 +1982,7 @@
 		"@types/vscode": "^1.76.0",
 		"@typescript-eslint/eslint-plugin": "^5.10.0",
 		"@typescript-eslint/parser": "^5.10.0",
-		"@vscode/vsce": "^2.24.0",
+		"@vscode/vsce": "^2.26.0",
 		"assert": "^2.0.0",
 		"chai": "^4.3.4",
 		"eslint": "^8.7.0",

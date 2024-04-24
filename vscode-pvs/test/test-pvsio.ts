@@ -1,5 +1,5 @@
 import * as fsUtils from "../server/src/common/fsUtils";
-import { PvsIoProxy } from '../server/src/pvsIoProxy'; // XmlRpcSystemMethods
+import { PvsIoProxy } from '../server/src/pvsioProxy'; // XmlRpcSystemMethods
 import { EvalExpressionRequest } from "../server/src/common/serverInterface";
 import { PvsResult } from "../server/src/common/pvs-gui";
 import { configFile, pvsioExamples } from './test-utils';
@@ -9,6 +9,7 @@ import { expect } from 'chai';
 //   Test cases for pvsio
 //----------------------------
 describe("pvsio", () => {
+	// @ts-ignore
 	let pvsioProxy: PvsIoProxy = null;
 	before(async () => {
 		const config: string = await fsUtils.readFile(configFile);

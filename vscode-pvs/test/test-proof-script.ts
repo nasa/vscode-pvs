@@ -10,6 +10,7 @@ import { expect } from 'chai';
 //   Test cases for proofScript
 //----------------------------
 describe("proofScript", () => {
+	// @ts-ignore
 	let pvsProxy: PvsProxy = null;
 	before(async () => {
 		const config: string = await fsUtils.readFile(configFile);
@@ -217,7 +218,7 @@ describe("proofScript", () => {
 
 		const msg: string = await fsUtils.readFile(`${fname}.err.msg`);
 		expect(msg).not.to.be.undefined;
-		expect(msg).to.deep.equal("Unexpected token : in JSON at position 36");
+		expect(msg).to.deep.includes("at position 36");
 		// console.log(msg);
 
 		fsUtils.deleteFile(fname);

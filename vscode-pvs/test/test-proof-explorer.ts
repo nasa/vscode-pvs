@@ -429,7 +429,7 @@ describe("proof-explorer", () => {
 		// console.dir(response.result);
 		expect(response.result[0].commentary.includes("Unbalanced parentheses"));
 		let root: ProofNodeX = proofExplorer.getProofX();
-		// console.dir(root);
+		console.dir(root);
 		expect(root.rules.length).to.equal(3);
 		expect(root.rules[0].name).to.equal(cmds[0]);
 		expect(root.rules[1].name).to.equal(cmds[1]);
