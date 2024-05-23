@@ -55,6 +55,8 @@ class PvsIoProcess {
 	protected pvsioProcess: ChildProcess = null;
 	protected pvsVersionInfo: PvsVersionDescriptor;
 
+	protected enableNotifications: boolean;
+
 	protected pvsPath: string;
 	protected pvsLibPath: string;
 	protected pvsLibraryPath: string;
@@ -86,10 +88,10 @@ class PvsIoProcess {
 	 */
 	protected error(msg: string): void {
 		if (msg) {
-			if (this.connection) {
+			if (this.connection && this.enableNotifications) {
 				this.connection.sendNotification('pvs-error', msg);
 			}
-			console.log('[pvsio-process] pvs-error', msg);
+			console.log('[pvsio-process] ', msg);
 		}
 	}
 
@@ -175,12 +177,14 @@ class PvsIoProcess {
 	 * @returns true if the process has been created; false if the process could not be created.
 	 */
 	async activate (desc: PvsTheory, opt?: {
+		enableNotifications?: boolean,
 		showBanner?: boolean,
 		workspaceFolders?: WorkspaceFolder[],
 		onExit?: () => void, 
 		onError?: (err?: Error) => void
 	}): Promise<boolean> {
 		opt = opt || {};
+		this.enableNotifications = !!opt.enableNotifications;
 		this.desc = desc;
 		this.resetData();
 		forceLocale();

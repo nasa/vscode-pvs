@@ -65,7 +65,7 @@ export class PvsPackageManager {
      * List of approved patches for pvs
      */
     static readonly approvedPatches: { fname: string, description: string }[] = [
-        { fname: "patch-20240510-prover-interaction.lisp", description: "Improves feedback provided by PVS during proving sessions" }
+        // { fname: "", description: "" }
     ];
 
     /**

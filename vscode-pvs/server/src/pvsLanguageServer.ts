@@ -1851,7 +1851,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			opt = opt || {};
 			desc = fsUtils.decodeURIComponents(desc);
 			if (this.pvsProxy) {
-				if (opt.forceKill || (desc.pvsPath !== undefined && (desc.pvsPath !== this.pvsPath)) || (desc.pvsLibraryPath !== undefined && (desc.pvsLibraryPath !== this.pvsLibraryPath))) {
+				if ((opt.forceKill && this.pvsProxy?.pvsServerProcessStatus == ProcessCode.SUCCESS) || 
+					  (desc.pvsPath !== undefined && (desc.pvsPath !== this.pvsPath)) || 
+						(desc.pvsLibraryPath !== undefined && (desc.pvsLibraryPath !== this.pvsLibraryPath))) {
 					// the server was already running, the user must have selected a different pvs path. Kill the existing server.
 					await this.pvsProxy?.killPvsServer();
 				}	

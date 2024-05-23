@@ -440,7 +440,13 @@ export class PvsProxy {
 		return ws && !(ws.readyState === WebSocket.CLOSED);
 	}
 
-	protected pvsServerProcessStatus: ProcessCode;
+	private _pvsServerProcessStatus: ProcessCode;
+	public get pvsServerProcessStatus(): ProcessCode {
+		return this._pvsServerProcessStatus;
+	}
+	protected set pvsServerProcessStatus(value: ProcessCode) {
+		this._pvsServerProcessStatus = value;
+	}
 	/**
 	 * pvs-proxy activation function
 	 * @param opt 
