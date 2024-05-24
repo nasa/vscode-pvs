@@ -649,6 +649,7 @@ export interface ShellCommand {
 	cmd: string, 
 	args?: string[], 
 	cwd?: string,
+	env?: NodeJS.ProcessEnv,
 	quiet?: boolean
 };
 export interface DownloadWithProgressRequest {
@@ -687,6 +688,7 @@ export interface InstallWithProgressRequest {
 	saveAndRestore?: string, // folder to be saved before the extraction and restored after the extraction, e.g., nasalib
 	installScript?: string, // installation script to be executed at the end
 	cwd?: string, // working directory
+	env?: NodeJS.ProcessEnv, // environment variables
 	cancellationToken?: true
 };
 export interface InstallWithProgressResponse {
