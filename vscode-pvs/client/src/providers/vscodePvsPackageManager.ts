@@ -559,6 +559,8 @@ export class VSCodePvsPackageManager {
                                     : `cd ${tmpdir} && unzip -o -qq ${fname} -d ${tmpdir} && mv ${path.join(tmpdir, "pvslib-master")} ${nasalibPath} && cd ${nasalibPath} && ./install-scripts --pvs-dir ${pvsPath}`,
                         cleanTarget: !opt?.update
                     });
+					// add nasalib to pvsLibraryPath in vscode settings
+					await vscodeUtils.addPvsLibraryFolder(fsUtils.tildeExpansion(nasalibPath));
                 }
             } else if (item === this.messages.setNASALibPath) { 
                 const uris: Uri[] = await window.showOpenDialog({

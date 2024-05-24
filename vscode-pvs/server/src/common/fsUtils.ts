@@ -798,11 +798,12 @@ export function getOs (): OsVersion {
 /**
  * Utility function, creates the 'git clone' / 'git pull' for nasalib
  */
-export function cloneNASALibCommand (url: string, opt?: { update?: boolean, branch?: string, basePath }): ShellCommand {
+export function cloneNASALibCommand (url: string, opt?: { update?: boolean, branch?: string, basePath?: string }): ShellCommand {
+	const basePath: string = opt?.basePath ? tildeExpansion(opt.basePath) : null
 	const shellCommand: ShellCommand = {
 		cmd: "git",
 		args: (opt?.update) ? [ "pull" ] : [ `clone "${url}" "nasalib"` ],
-		cwd: (opt?.update) ? path.join(opt.basePath, "nasalib") : opt.basePath
+		cwd: (opt?.update && basePath) ? path.join(basePath, "nasalib") : basePath
 	};
 	if (opt.branch && !opt.update) {
 		shellCommand.args.push(`-b "${opt.branch}"`);
