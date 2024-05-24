@@ -2139,7 +2139,10 @@ export class PvsProxy {
 				});
 				console.log(`[pvsProxy] pvs Process activate returned ${success}`);
 				if (success === ProcessCode.PVS_NOT_FOUND) {
-					this.pvsServerProcessStatus =  ProcessCode.PVS_NOT_FOUND;
+					// if the pvs executable is not found, pvs needs to be installed -- notify the client to trigger the installation wizard
+					this.pvsServerProcessStatus = ProcessCode.PVS_NOT_FOUND;
+					this.pvsErrorManager.notifyPvsNotFound(this.pvsPath);
+					return;
 				} else if (success === ProcessCode.UNSUPPORTED_PLATFORM) {
 					this.pvsServerProcessStatus = ProcessCode.UNSUPPORTED_PLATFORM;
 				} else if (success === ProcessCode.PVS_START_FAIL) {
