@@ -1,0 +1,98 @@
+#-----------------------------------------
+#--       environment variables        ---
+#-----------------------------------------
+SHELL=/bin/bash
+_OS=$(shell uname -s)
+
+INSTALLATION_PATH=$(HOME)/PVS
+
+SBCL_GIT=https://github.com/sbcl/sbcl
+SBCL_COMMIT=23daa9d45ac1824fe45ce8438d8e5ffec0f85750
+SBCL_FOLDER=sbcl
+SBCL_PATH=$(INSTALLATION_PATH)/$(SBCL_FOLDER)
+SBCL_SRC=$(SBCL_PATH)/src
+SBCL=$(SBCL_PATH)/bin/sbcl
+
+PVS_GIT=https://github.com/SRI-CSL/PVS
+PVS_COMMIT=5284756f3c463e1279461fd2010ceb303943e716
+PVS_FOLDER=pvs-8.0
+PVS_PATH=$(INSTALLATION_PATH)/$(PVS_FOLDER)
+PVS=$(PVS_PATH)/pvs
+
+NASALIB_GIT="https://github.com/nasa/pvslib" -b "v8.0"
+NASALIB_FOLDER=nasalib
+NASALIB_PATH=$(INSTALLATION_PATH)/$(PVS_FOLDER)/$(NASALIB_FOLDER)
+NASALIB=$(NASALIB_PATH)/nasalib-version
+
+
+#-----------------------------------------
+#--             targets                ---
+#-----------------------------------------
+all: install-sbcl install-pvs install-nasalib
+
+install-pvs:
+	@if [ -f "$(PVS)" ]; then\
+		echo -e "\033[0;32m** PVS found at $(PVS) **\033[0m";\
+	else \
+		echo -e "\033[0;32m** Installing PVS at $(PVS_PATH) **\033[0m";\
+		(\
+			mkdir -p $(INSTALLATION_PATH);\
+			cd $(INSTALLATION_PATH);\
+			git clone $(PVS_GIT) ${PVS_FOLDER};\
+			cd $(PVS_FOLDER);\
+			git checkout $(PVS_COMMIT);\
+			make clean;\
+			SBCL=$(SBCL) sh configure;\
+			make SBCL=$(SBCL);\
+		);\
+		echo -e "\033[0;32m** PVS ready at $(PVS) **\033[0m";\
+	fi
+
+install-nasalib:
+	@if [ -f "$(NASALIB)" ]; then\
+		echo -e "\033[0;32m** NASALib found at $(NASALIB_PATH) **\033[0m";\
+	else \
+		echo -e "\033[0;32m** Installing NASALib at $(NASALIB_PATH) **\033[0m";\
+		(\
+			cd $(PVS_PATH);\
+			git clone $(NASALIB_GIT) $(NASALIB_FOLDER);\
+			cd $(NASALIB_FOLDER);\
+			PVS_LIBRARY_PATH=$(NASALIB_PATH) sh ./install-scripts --pvs-dir $(PVS_PATH);\
+			./install-scripts --pvs-dir $(PVS_PATH);\
+		);\
+		echo -e "\033[0;32m** NASALib ready at $(NASALIB_PATH) **\033[0m";\
+	fi
+
+install-sbcl:
+	@if [ -f "$(SBCL)" ]; then\
+		echo -e "\033[0;32m** SBCL found at $(SBCL) **\033[0m";\
+	else \
+		echo -e "\033[0;32m** Installing SBCL at $(SBCL_PATH) **\033[0m";\
+		(\
+			mkdir -p $(SBCL_PATH);\
+			cd $(SBCL_PATH);\
+			git clone $(SBCL_GIT) src;\
+			cd src;\
+			git checkout $(SBCL_COMMIT);\
+			./make.sh;\
+			INSTALL_ROOT=$(SBCL_PATH) sh install.sh;\
+		);\
+		echo -e "\033[0;32m** SBCL ready at $(SBCL) **\033[0m";\
+	fi
+
+clean-pvs:
+	@if [ -f "$(PVS)" ]; then\
+		rm -rf $(PVS_PATH);\
+	fi
+
+clean-nasalib:
+	@if [ -f "$(NASALIB)" ]; then\
+		rm -rf $(NASALIB_PATH);\
+	fi
+
+clean-sbcl:
+	@if [ -f "$(SBCL)" ]; then\
+		rm -rf $(SBCL_PATH);\
+	fi
+
+clean: clean-sbcl clean-pvs clean-nasalib

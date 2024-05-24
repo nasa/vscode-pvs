@@ -68,6 +68,7 @@ import { checkPar, CheckParResult, getErrorRange, isQuitCommand, isQuitDontSaveC
 import * as languageUtils from './common/languageUtils';
 // import { PvsProxyLegacy } from './legacy/pvsProxyLegacy';
 import { PvsErrorManager } from './pvsErrorManager';
+import { execSync } from 'child_process';
 
 export class PvsProgressInfo {
 	protected progressLevel: number = 0;
@@ -157,8 +158,8 @@ export class PvsProxy {
 		}) {
 		opt = opt || {};
 		this.pvsPath = pvsPath;
-		// this.pvsLibPath = path.join(pvsPath, "lib");
-		// this.nasalibPath = path.join(pvsPath, "nasalib");
+		this.pvsLibPath = path.join(pvsPath, "lib");
+		this.nasalibPath = path.join(pvsPath, "nasalib");
 		this.pvsLibraryPath = opt.pvsLibraryPath || "";
 		this.webSocketPort = (!!opt.webSocketPort) ? opt.webSocketPort : 23456; // 22334; // 23456;
 		this.client_methods.forEach(mth => {
@@ -1943,10 +1944,11 @@ export class PvsProxy {
 			const regexp: RegExp = /\(\"?(\d+(?:.?\d+)*)\"?[\s|NIL]*\"?([\w\s\d\.]*)\"?/g; // group 1 is pvs version, group 2 is lisp version
 			const info: RegExpMatchArray = regexp.exec(res.result);
 			if (info && info.length > 2) {
+				const nasalibInfo: string[] = nasalib?.split(" ");
 				this.pvsVersionInfo = {
 					"pvs-version": info[1].trim(),
 					"lisp-version": info[2].replace("International", "").trim(),
-					"nasalib-version": nasalib ? "NASALib" : null,
+					"nasalib-version": nasalib ? nasalibInfo?.length ? nasalibInfo[0] : "NASALib" : null,
 					version: res.result
 				}
 				return this.pvsVersionInfo;
@@ -1961,7 +1963,12 @@ export class PvsProxy {
 	async getNasalibVersionInfo(): Promise<string | null> {
 		const nasalibPresent: boolean = await this.NasalibPresent();
 		if (nasalibPresent) {
-			const nasalibVersion: PvsResponse = await this.lisp(`(when (fboundp 'extra-pvslib-keyval) (extra-pvslib-keyval "NASALib" "version"))`);
+
+			// const nasalibVersion: PvsResponse = await this.lisp(`(when (fboundp 'extra-pvslib-keyval) (extra-pvslib-keyval "NASALib" "version"))`);
+			const cmd: string = `PVS_LIBRARY_PATH=${this.nasalibPath} sh ${path.join(this.nasalibPath, "nasalib-version")}`;
+			const result: string = execSync(cmd, { encoding: "utf-8" });
+			const nasalibVersion: { result: string } = { result };
+
 			this.useNasalib = (nasalibVersion?.result !== 'NIL' && nasalibVersion?.result !== 'nil');
 			return this.useNasalib? nasalibVersion.result : null;
 		}
@@ -2370,8 +2377,10 @@ export class PvsProxy {
 	}
 
 	async NasalibPresent(): Promise<boolean> {
-		const response: PvsResponse = await this.pvsRequest('lisp', [`(fboundp 'nasalib-path)`]);
-		return response && response.result !== "nil" && response.result !== "NIL";
+		// const response: PvsResponse = await this.pvsRequest('lisp', [`(fboundp 'nasalib-path)`]);
+		// return response && response.result !== "nil" && response.result !== "NIL";
+		const nasalibVersion: string = path.join(this.nasalibPath, "nasalib-version");
+		return fsUtils.fileExists(nasalibVersion);
 	}
 
 	async installProofliteScript(desc: PvsFormula, proofLiteScript: string): Promise<PvsResponse> {
