@@ -684,7 +684,7 @@ export class EventsDispatcher {
             });
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.install-pvs", async () => {
-            await this.packageManager.pvsInstallationWizard();
+            await this.packageManager.pvsInstallationWizard({ update: true });
             // create default workspaces folder if it doesn't exist
             await vscodeUtils.createDefaultPvsWorkspacesDirectory();
         }));
@@ -692,7 +692,11 @@ export class EventsDispatcher {
             await this.packageManager.pvsInstallationWizard({ update: true });
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.select-pvs-path", async () => {
-            await this.packageManager.pvsInstallationWizard({ msg: `Please choose one of the following actions.\n` });
+            await this.packageManager.pvsInstallationWizard({
+				msg: `Please choose one of the following actions.\n`, 
+				update: true, 
+				preferDefaultFolder: true
+			});
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.open-vscode-pvs-settings", async () => {
             vscodeUtils.openVscodePvsSettings();

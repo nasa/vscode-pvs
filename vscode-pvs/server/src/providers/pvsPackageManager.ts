@@ -82,14 +82,14 @@ export class PvsPackageManager {
             }
         }
         if (connection && req?.targetFolder && req?.shellCommand) {
-            const tmpFolder: string = req?.saveAndRestore ? path.join(os.tmpdir(), "iwp") : null;
+            const tmpFolder: string = req?.saveAndRestore ? path.join(os.tmpdir(), "iwp") : null; // iwp = install with progress
             let restoreFolder: boolean = false;
 
             // check if there's a sub-folder of targetFolder to be saved and restored after install (e.g., nasalib)
             if (req?.saveAndRestore && fsUtils.folderExists(req.saveAndRestore)) {
                 const res: InstallWithProgressResponse = {
                     progressInfo: true,
-                    stdOut: `Saving ${req.saveAndRestore}`
+                    stdOut: `Saving ${req.saveAndRestore}\n`
                 };
                 connection?.sendNotification(serverRequest.installWithProgress, { req, res });
                 fsUtils.deleteFolder(tmpFolder);
@@ -178,7 +178,8 @@ export class PvsPackageManager {
             // all done when we get to this point!
             if (success) {
                 const res: InstallWithProgressResponse = {
-                    progressInfo: true,
+					success,
+                    progressInfo: false,
                     stdOut: colorText(`Done!`, PvsColor.green)
                 };
                 connection?.sendNotification(serverRequest.installWithProgress, { req, res });

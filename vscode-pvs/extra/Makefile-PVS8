@@ -34,7 +34,7 @@ install-pvs:
 	@if [ -f "$(PVS)" ]; then\
 		echo -e "\033[0;32m** PVS found at $(PVS) **\033[0m";\
 	else \
-		echo -e "\033[0;32m** Installing PVS at $(PVS_PATH) **\033[0m";\
+		echo -e "\033[0;32m** Installing PVS to $(PVS_PATH) **\033[0m";\
 		(\
 			mkdir -p $(INSTALLATION_PATH);\
 			cd $(INSTALLATION_PATH);\
@@ -52,13 +52,12 @@ install-nasalib:
 	@if [ -f "$(NASALIB)" ]; then\
 		echo -e "\033[0;32m** NASALib found at $(NASALIB_PATH) **\033[0m";\
 	else \
-		echo -e "\033[0;32m** Installing NASALib at $(NASALIB_PATH) **\033[0m";\
+		echo -e "\033[0;32m** Installing NASALib to $(NASALIB_PATH) **\033[0m";\
 		(\
 			cd $(PVS_PATH);\
 			git clone $(NASALIB_GIT) $(NASALIB_FOLDER);\
 			cd $(NASALIB_FOLDER);\
 			PVS_LIBRARY_PATH=$(NASALIB_PATH) sh ./install-scripts --pvs-dir $(PVS_PATH);\
-			./install-scripts --pvs-dir $(PVS_PATH);\
 		);\
 		echo -e "\033[0;32m** NASALib ready at $(NASALIB_PATH) **\033[0m";\
 	fi
@@ -67,7 +66,7 @@ install-sbcl:
 	@if [ -f "$(SBCL)" ]; then\
 		echo -e "\033[0;32m** SBCL found at $(SBCL) **\033[0m";\
 	else \
-		echo -e "\033[0;32m** Installing SBCL at $(SBCL_PATH) **\033[0m";\
+		echo -e "\033[0;32m** Installing SBCL to $(SBCL_PATH) **\033[0m";\
 		(\
 			mkdir -p $(SBCL_PATH);\
 			cd $(SBCL_PATH);\

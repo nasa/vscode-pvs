@@ -859,7 +859,7 @@ export function execShellCommand (req: ShellCommand, opt?: {
 }): ChildProcess {
 	if (req?.cmd) {
 		const cmd: string = req.args ? `${req.cmd} ${req.args?.join(" ")}` : req.cmd;
-		const shellProcess: ChildProcess = exec(cmd, { cwd: req?.cwd });
+		const shellProcess: ChildProcess = exec(cmd, { cwd: req?.cwd, env: req?.env });
 		
 		// spawn(req.cmd, req.args || [], { cwd: req?.cwd });
         shellProcess.stdout.setEncoding("utf8");
