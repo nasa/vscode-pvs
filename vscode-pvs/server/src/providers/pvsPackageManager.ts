@@ -65,7 +65,7 @@ export class PvsPackageManager {
      * List of approved patches for pvs
      */
     static readonly approvedPatches: { fname: string, description: string }[] = [
-        // { fname: "", description: "" }
+        { fname: "patch-20250530-avoids-debbuger-on-proving-session.lisp", description: "Avoids errors to trigger the debugger in a proof session" }
     ];
 
     /**

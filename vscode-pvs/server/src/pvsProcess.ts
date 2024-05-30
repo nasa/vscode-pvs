@@ -254,7 +254,9 @@ export class PvsProcess {
 					// if PVS reports entering to the debugger, an unrecoverable error has occurred.
 					// We try to restart the server.
 					const matchLispDebugger: RegExpMatchArray = /Welcome to LDB, a low-level debugger for the Lisp runtime environment/gi.exec(dataNoLineBreaks);
-					if (matchLispDebugger) {
+					if (matchLispDebugger || 
+						  /debugger invoked on/gi.exec(dataNoLineBreaks)
+					) {
 						this.pvsErrorManager.notifyPvsFailure({msg: "PVS entered the debugger. Please use M-x reboot-pvs to restart the process.", src: "pvs"});
 					}
 
@@ -299,6 +301,11 @@ export class PvsProcess {
 					} 
 				});
 				this.pvsProcess.stderr.on("data", (data: string) => {
+					const dataNoLineBreaks = data.replace('\n',' ');
+					if (/debugger invoked on/gi.exec(dataNoLineBreaks)
+					) {
+						this.pvsErrorManager.notifyPvsFailure({msg: "PVS entered the debugger. Please use M-x reboot-pvs to restart the process.", src: "pvs"});
+					}
 					logOutputToConsole(data, "[pvsProcess.stderr] ");
 				});
 				this.pvsProcess.on("error", (err: Error) => {
