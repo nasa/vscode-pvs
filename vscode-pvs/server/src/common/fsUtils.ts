@@ -2549,7 +2549,7 @@ export function prunePvsLibraryPath(pvsLibraryPath: string): string {
 					paths[idx] = undefined;
 				} 
 		});
-		result = paths.filter(Boolean).join(path.sep);
+		result = paths.filter(Boolean).join(path.delimiter);
 	}
 	return result;
 }
