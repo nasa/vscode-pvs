@@ -159,8 +159,18 @@ export class PvsProxy {
 		opt = opt || {};
 		this.pvsPath = pvsPath;
 		this.pvsLibPath = path.join(pvsPath, "lib");
-		this.nasalibPath = path.join(pvsPath, "nasalib");
+
 		this.pvsLibraryPath = opt.pvsLibraryPath || "";
+		if (this.pvsLibraryPath) {
+			let paths: string[] = this.pvsLibraryPath.split(path.delimiter);
+			paths.forEach( (libPath: string) => {
+				  if (this.NasalibPresent(libPath)){
+						this.nasalibPath = libPath;
+					  return;
+					}
+			});
+		}	
+
 		this.webSocketPort = (!!opt.webSocketPort) ? opt.webSocketPort : 23456; // 22334; // 23456;
 		this.client_methods.forEach(mth => {
 			this.handlers[mth] = (params: string[]): string[] => {
@@ -2362,7 +2372,7 @@ export class PvsProxy {
 		return [];
 	}
 	getNasalibPath(): string {
-		return fsUtils.tildeExpansion(path.join(this.pvsPath, "nasalib/"));
+		return this.nasalibPath;
 	}
 
 	async setNasalibPath(opt?: { externalServer?: boolean }): Promise<PvsResponse | null> {
@@ -2379,10 +2389,11 @@ export class PvsProxy {
 		return null;
 	}
 
-	async NasalibPresent(): Promise<boolean> {
+	async NasalibPresent(nasalibPath?: string): Promise<boolean> {
 		// const response: PvsResponse = await this.pvsRequest('lisp', [`(fboundp 'nasalib-path)`]);
 		// return response && response.result !== "nil" && response.result !== "NIL";
-		const nasalibVersion: string = path.join(this.nasalibPath, "nasalib-version");
+		if(nasalibPath === undefined) nasalibPath = this.nasalibPath;
+		const nasalibVersion: string = path.join(nasalibPath, "nasalib-version");
 		return fsUtils.fileExists(nasalibVersion);
 	}
 

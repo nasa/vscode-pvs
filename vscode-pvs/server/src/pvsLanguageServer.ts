@@ -240,7 +240,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * Returns the nasalib path
 	 */
 	getNasalibPath (): string {
-		return this.pvsPath ? path.join(this.pvsPath, "nasalib") : "";
+		return this.pvsProxy.getNasalibPath();
 	}
 	/**
 	 * Returns the list of external library paths
