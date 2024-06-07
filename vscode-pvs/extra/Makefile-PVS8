@@ -24,28 +24,31 @@ NASALIB_FOLDER=nasalib
 NASALIB_PATH=$(INSTALLATION_PATH)/$(PVS_FOLDER)/$(NASALIB_FOLDER)
 NASALIB=$(NASALIB_PATH)/nasalib-version
 
+EMACS_APP := $(shell (emacs --version 2>1 > /dev/null && echo "emacs") ||\
+	(which open > /dev/null && open -na Aquamacs.app --args -version 2>1 > /dev/null && echo "open -na Aquamacs.app --args " ))
 
 #-----------------------------------------
 #--             targets                ---
 #-----------------------------------------
 all: install-sbcl install-pvs install-nasalib
 
-install-pvs:
-	@if [ -f "$(PVS)" ]; then\
+install-pvs: install-sbcl
+	if [ -f "$(PVS)" ]; then\
 		echo -e "\033[0;32m** PVS found at $(PVS) **\033[0m";\
 	else \
 		echo -e "\033[0;32m** Installing PVS to $(PVS_PATH) **\033[0m";\
 		(\
-			mkdir -p $(INSTALLATION_PATH);\
-			cd $(INSTALLATION_PATH);\
-			git clone $(PVS_GIT) ${PVS_FOLDER};\
-			cd $(PVS_FOLDER);\
-			git checkout $(PVS_COMMIT);\
-			make clean;\
-			SBCL=$(SBCL) sh configure;\
-			make SBCL=$(SBCL);\
-		);\
-		echo -e "\033[0;32m** PVS ready at $(PVS) **\033[0m";\
+			mkdir -p $(INSTALLATION_PATH) &&\
+			cd $(INSTALLATION_PATH) &&\
+			git clone $(PVS_GIT) ${PVS_FOLDER} &&\
+			cd $(PVS_FOLDER) &&\
+			git checkout $(PVS_COMMIT) &&\
+			SBCL=$(SBCL) XEMACS="$(EMACS_APP)" sh configure &&\
+			make clean &&\
+			make SBCL=$(SBCL) XEMACS="$(EMACS_APP)" &&\
+			echo -e "\033[0;32m** PVS ready at $(PVS) **\033[0m";\
+		) ||\
+		echo -e "\033[0;31m** ERROR PVS could not be installed at $(PVS) **\033[0m";\
 	fi
 
 install-nasalib:
@@ -54,12 +57,13 @@ install-nasalib:
 	else \
 		echo -e "\033[0;32m** Installing NASALib to $(NASALIB_PATH) **\033[0m";\
 		(\
-			cd $(PVS_PATH);\
-			git clone $(NASALIB_GIT) $(NASALIB_FOLDER);\
-			cd $(NASALIB_FOLDER);\
-			PVS_LIBRARY_PATH=$(NASALIB_PATH) sh ./install-scripts --pvs-dir $(PVS_PATH);\
-		);\
-		echo -e "\033[0;32m** NASALib ready at $(NASALIB_PATH) **\033[0m";\
+			cd $(PVS_PATH) &&\
+			git clone $(NASALIB_GIT) $(NASALIB_FOLDER) &&\
+			cd $(NASALIB_FOLDER) &&\
+			PVS_LIBRARY_PATH=$(NASALIB_PATH) sh ./install-scripts --pvs-dir $(PVS_PATH) &&\
+			echo -e "\033[0;32m** NASALib ready at $(NASALIB_PATH) **\033[0m";\
+		) ||\
+		echo -e "\033[0;31m** ERROR NASALib could not be installed at $(NASALIB_PATH) **\033[0m";\
 	fi
 
 install-sbcl:

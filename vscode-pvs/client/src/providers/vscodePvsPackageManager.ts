@@ -203,13 +203,15 @@ export class VSCodePvsPackageManager {
         const label: string = opt.msg || "PVS Installation Wizard";
 		let item = await window.showInformationMessage(label, { modal: true }, 
 			opt.update ? this.messages.updatePvs : this.messages.downloadPvs, 
-			// this.messages.setPvsPath,
+			this.messages.setPvsPath,
 			this.messages.moreOptions
 		);
 		let userDefinedInstallationFolder: string = null;
 
         if (!item) { return false; }
-        if (item === this.messages.setPvsPath) { return await this.selectPvsPath(); }
+        if (item === this.messages.setPvsPath) { 
+            return await this.selectPvsPath(); // this restarts the server on success
+        }
 		if (item === this.messages.moreOptions) { 
 			userDefinedInstallationFolder = await this.choosePvsInstallationFolder();
 			if (userDefinedInstallationFolder) {
@@ -244,6 +246,7 @@ export class VSCodePvsPackageManager {
 						const shellCommand: ShellCommand = {
 							cmd: "make",
 							args: [
+                                'install-pvs',
 								`-f ${makefileOnDisk} INSTALLATION_PATH=${baseFolder}`
 							]
 						};
@@ -581,14 +584,19 @@ export class VSCodePvsPackageManager {
                     this.terminal.log(colorText(message, PvsColor.blue), { addNewLine: true });
                     const tmpdir: string = os.tmpdir();
                     const fname: string = `${tmpdir}/nasalib${this.DEFAULT_NASALIB_VERSION}.zip`;
-					const targetFolder: string = path.join(pvsPath, "nasalib");
+                    const nasalibFolderName: string = "nasalib";
+					const targetFolder: string = path.join(pvsPath, nasalibFolderName);
 
 					if (shellCommand.cmd === "git") {
 						const makefileOnDisk: string = path.join(this.context.extensionPath, 'extra/Makefile-PVS8');
 						const shellCommand: ShellCommand = {
 							cmd: "make",
 							args: [
-								`-f ${makefileOnDisk} NASALIB_PATH=${targetFolder}`
+								'install-nasalib',
+                                `-f ${makefileOnDisk}`,
+                                `PVS_PATH=${pvsPath}`,
+                                `NASALIB_FOLDEr=${nasalibFolderName}`,
+                                `NASALIB_PATH=${targetFolder}`
 							]
 						};
 						nasalibReady = await this.installWithProgress("NASALib", {
@@ -607,7 +615,9 @@ export class VSCodePvsPackageManager {
 						});
 					}
 					// add nasalib to pvsLibraryPath in vscode settings
-					await vscodeUtils.addPvsLibraryFolder(fsUtils.tildeExpansion(nasalibPath));
+                    if (nasalibReady)
+					    nasalibReady = await vscodeUtils.addPvsLibraryFolder(fsUtils.tildeExpansion(nasalibPath));
+                    // TODO Add error handling @M3 what happens if the library couldn't be added to vscode settings?
                 }
             } else if (item === this.messages.setNASALibPath) { 
                 const uris: Uri[] = await window.showOpenDialog({

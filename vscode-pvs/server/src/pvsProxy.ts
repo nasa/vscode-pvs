@@ -1973,7 +1973,6 @@ export class PvsProxy {
 	async getNasalibVersionInfo(): Promise<string | null> {
 		const nasalibPresent: boolean = await this.NasalibPresent();
 		if (nasalibPresent) {
-
 			// const nasalibVersion: PvsResponse = await this.lisp(`(when (fboundp 'extra-pvslib-keyval) (extra-pvslib-keyval "NASALib" "version"))`);
 			const cmd: string = `PVS_LIBRARY_PATH=${this.nasalibPath} sh ${path.join(this.nasalibPath, "nasalib-version")}`;
 			const result: string = execSync(cmd, { encoding: "utf-8" });
@@ -2265,11 +2264,14 @@ export class PvsProxy {
 		});
 	}
 
-	async rebootPvsServer(desc: { pvsPath?: string }): Promise<void> {
+	async rebootPvsServer(desc: { pvsPath?: string }): Promise<boolean> {
 		this.pvsPath = desc?.pvsPath || "";
 		console.log(`[pvs-proxy] New PVS path: ${this.pvsPath}`);
 		await this.killPvsServer();
-		await this.restartPvsServer();
+		const processStatus : ProcessCode = await this.restartPvsServer();
+		const result: boolean = (processStatus === ProcessCode.SUCCESS);
+		return result;
+
 	}
 
 	protected async sendWorkspaceInfo(): Promise<void> {
@@ -2393,8 +2395,7 @@ export class PvsProxy {
 		// const response: PvsResponse = await this.pvsRequest('lisp', [`(fboundp 'nasalib-path)`]);
 		// return response && response.result !== "nil" && response.result !== "NIL";
 		if(nasalibPath === undefined) nasalibPath = this.nasalibPath;
-		const nasalibVersion: string = path.join(nasalibPath, "nasalib-version");
-		return fsUtils.fileExists(nasalibVersion);
+		return nasalibPath !== undefined && fsUtils.fileExists(path.join(nasalibPath, "nasalib-version"));
 	}
 
 	async installProofliteScript(desc: PvsFormula, proofLiteScript: string): Promise<PvsResponse> {

@@ -456,8 +456,8 @@ export async function addPvsLibraryFolder (folder: string): Promise<boolean> {
         if (!libs.includes(folder)) {
             const newPvsLibraryPath: string = fsUtils.createPvsLibraryPath(libs.concat([ folder ]));
             await vscode.workspace.getConfiguration().update("pvs.pvsLibraryPath", newPvsLibraryPath, vscode.ConfigurationTarget.Global);
-            return true;
         }
+        return true;
     }
     return false;
 }

@@ -273,28 +273,30 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				pvsLibraryPathChanged = (this.pvsLibraryPath !== pvsLibraryPath);
 			}
 			if(pvsPathChanged || pvsLibraryPathChanged){
+				let pvsServerHasToBeRestarted: boolean = true;
 				if (this.pvsPath === '' && pvsPath !== ''){
 					// If pvsPath was set, and pvsLibraryPath was empty and NASALib is not in the pvsLibraryPath, we suggest the user to get it
 					if(!this.alreadySuggestedNASALib && !fsUtils.isNasalibInPvsLibraryPath(pvsLibraryPath)){
 						this.alreadySuggestedNASALib = true;
-						const pvsHasRestarted: boolean = await this.packageManager.nasalibInstallationWizard();
-						if (pvsHasRestarted) return;
+						this.pvsPath = pvsPath;
+						const nasalibHasBeenInstalled: boolean = await this.packageManager.nasalibInstallationWizard();
+						pvsServerHasToBeRestarted = !nasalibHasBeenInstalled;
 					}
 				} else {
 					// if the pvs path was cleared, we'll suggest NASALib again when a new PVS is selected
 					this.alreadySuggestedNASALib = this.alreadySuggestedNASALib && !(pvsPath === undefined || pvsPath === '');
-					this.pvsPath = pvsPath || this.pvsPath; // #TODO this prevents removing the PVS folder... is this what we want?
-					this.pvsLibraryPath = pvsLibraryPath;
-					if (this.pvsPath) {
-						const msg: string = `Restarting PVS from ${this.pvsPath}`;
-						this.statusBar.showProgress(msg);
-						// window.showInformationMessage(msg);
-						this.client.sendRequest(serverRequest.startPvsServer, {
-							pvsPath: this.pvsPath, 
-							pvsLibraryPath: this.pvsLibraryPath
-						}); // the server will use the last context folder it was using	
-					}
 				}	
+				this.pvsPath = pvsPath || this.pvsPath; // #TODO this prevents removing the PVS folder... is this what we want?
+				this.pvsLibraryPath = pvsLibraryPath;
+				if (this.pvsPath && pvsServerHasToBeRestarted) {
+					const msg: string = `Restarting PVS from ${this.pvsPath}`;
+					this.statusBar.showProgress(msg);
+					// window.showInformationMessage(msg);
+					this.client.sendRequest(serverRequest.startPvsServer, {
+						pvsPath: this.pvsPath, 
+						pvsLibraryPath: this.pvsLibraryPath
+					}); // the server will use the last context folder it was using	
+				}
 			}
 
 			// update xterm-pvs settings, if xterm is active

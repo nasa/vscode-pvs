@@ -1893,7 +1893,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				}
 				return result;
 			} else {
-				console.error("[pvs-language-server] Error: failed to identify PVS path");
+				console.error("[pvs-language-server] Error: PVS path not set");
 				this.connection?.sendRequest(serverEvent.pvsNotFound);
 			}
 		}
