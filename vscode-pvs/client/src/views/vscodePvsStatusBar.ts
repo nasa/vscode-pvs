@@ -102,7 +102,9 @@ export class VSCodePvsStatusBar {
     // protected crashReport: VSCodePvsStatusBarItem;
     protected restartPvs: VSCodePvsStatusBarItem;
     protected interruptProver: VSCodePvsStatusBarItem;
+
     protected downloadNasalib: VSCodePvsStatusBarItem;
+    protected installPVSButton: VSCodePvsStatusBarItem;
 
     // running flag, disables this.ready()
     protected runningFlag: boolean = false;
@@ -125,6 +127,7 @@ export class VSCodePvsStatusBar {
 
         this.interruptProver = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
         this.downloadNasalib = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
+        this.installPVSButton = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
     }
 
 
@@ -331,6 +334,21 @@ export class VSCodePvsStatusBar {
         this.downloadNasalib.hide();
     }
 
+    showInstallPvsButton (showButton?: boolean): void {
+        showButton = showButton === undefined ? true : !!showButton;
+        if (showButton === true) {
+            this.installPVSButton.icon("");
+            this.installPVSButton.text(`$(symbol-function)  Install PVS`);
+            this.installPVSButton.command("vscode-pvs.install-pvs");
+            this.installPVSButton.show();
+        } else {
+            this.hideinstallpvsButton();
+        }
+    }
+    hideinstallpvsButton (): void {
+        this.installPVSButton.hide();
+    }
+
     /**
      * Shows a critical failures in the status bar -- these failures require restarting pvs
      * @param msg message
@@ -363,6 +381,7 @@ export class VSCodePvsStatusBar {
         this.hideVersionInfo();
         this.hideInstallNasalib();
         // this.hideRestartButton();
+        this.hideinstallpvsButton();
     }
 
     showInstallNasalib (): void {

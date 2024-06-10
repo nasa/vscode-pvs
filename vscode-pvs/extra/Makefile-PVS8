@@ -6,6 +6,7 @@ _OS=$(shell uname -s)
 
 INSTALLATION_PATH=$(HOME)/PVS
 
+SOME_LISP=sbcl
 SBCL_GIT=https://github.com/sbcl/sbcl
 SBCL_COMMIT=23daa9d45ac1824fe45ce8438d8e5ffec0f85750
 SBCL_FOLDER=sbcl
@@ -24,8 +25,8 @@ NASALIB_FOLDER=nasalib
 NASALIB_PATH=$(INSTALLATION_PATH)/$(PVS_FOLDER)/$(NASALIB_FOLDER)
 NASALIB=$(NASALIB_PATH)/nasalib-version
 
-EMACS_APP := $(shell (emacs --version 2>1 > /dev/null && echo "emacs") ||\
-	(which open > /dev/null && open -na Aquamacs.app --args -version 2>1 > /dev/null && echo "open -na Aquamacs.app --args " ))
+EMACS_APP := $(shell (emacs --version 2>&1 > /dev/null && echo "emacs") ||\
+	(which open > /dev/null && open -na Aquamacs.app --args -version 2>&1 > /dev/null && echo "open -na Aquamacs.app --args " ))
 
 #-----------------------------------------
 #--             targets                ---
@@ -33,7 +34,7 @@ EMACS_APP := $(shell (emacs --version 2>1 > /dev/null && echo "emacs") ||\
 all: install-sbcl install-pvs install-nasalib
 
 install-pvs: install-sbcl
-	if [ -f "$(PVS)" ]; then\
+	@if [ -f "$(PVS)" ]; then\
 		echo -e "\033[0;32m** PVS found at $(PVS) **\033[0m";\
 	else \
 		echo -e "\033[0;32m** Installing PVS to $(PVS_PATH) **\033[0m";\
@@ -51,6 +52,10 @@ install-pvs: install-sbcl
 		echo -e "\033[0;31m** ERROR PVS could not be installed at $(PVS) **\033[0m";\
 	fi
 
+check-some-lisp:
+	@ which $(SOME_LISP) 2> /dev/null || ( echo -e "\033[0;31m** ERROR the installer needs a common lisp to be already installed and available to the system. Please install some (for instance, SBCL) and make sure it is available from the terminal. **\033[0m" ; exit 1 ) &&\
+	echo -e "\033[0;32m** Common lisp $(SOME_LISP) found **\033[0m";\
+
 install-nasalib:
 	@if [ -f "$(NASALIB)" ]; then\
 		echo -e "\033[0;32m** NASALib found at $(NASALIB_PATH) **\033[0m";\
@@ -66,21 +71,22 @@ install-nasalib:
 		echo -e "\033[0;31m** ERROR NASALib could not be installed at $(NASALIB_PATH) **\033[0m";\
 	fi
 
-install-sbcl:
+install-sbcl: check-some-lisp
 	@if [ -f "$(SBCL)" ]; then\
 		echo -e "\033[0;32m** SBCL found at $(SBCL) **\033[0m";\
 	else \
 		echo -e "\033[0;32m** Installing SBCL to $(SBCL_PATH) **\033[0m";\
 		(\
-			mkdir -p $(SBCL_PATH);\
-			cd $(SBCL_PATH);\
-			git clone $(SBCL_GIT) src;\
-			cd src;\
-			git checkout $(SBCL_COMMIT);\
-			./make.sh;\
-			INSTALL_ROOT=$(SBCL_PATH) sh install.sh;\
-		);\
-		echo -e "\033[0;32m** SBCL ready at $(SBCL) **\033[0m";\
+			mkdir -p $(SBCL_PATH) &&\
+			cd $(SBCL_PATH) &&\
+			git clone $(SBCL_GIT) src &&\
+			cd src &&\
+			git checkout $(SBCL_COMMIT) &&\
+			./make.sh &&\
+			INSTALL_ROOT=$(SBCL_PATH) sh install.sh &&\
+			echo -e "\033[0;32m** SBCL ready at $(SBCL) **\033[0m";\
+		) ||\
+		echo -e "\033[0;31m** SBCL could not be installed at $(SBCL) **\033[0m";\
 	fi
 
 clean-pvs:

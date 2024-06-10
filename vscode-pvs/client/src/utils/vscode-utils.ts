@@ -96,6 +96,7 @@ export function getDefaultContextFolder (): string {
 /**
  * Utility function, creates a default workspace folder
  */
+// #TODO deprecate @M3
  export async function createDefaultPvsWorkspacesDirectory (): Promise<string> {
     const workspaces: string = getConfiguration("pvs.pvsWorkspaces");
     if (workspaces) {

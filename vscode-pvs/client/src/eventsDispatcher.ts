@@ -683,11 +683,6 @@ export class EventsDispatcher {
                 vscodeUtils.showTextDocument(desc);
             });
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.install-pvs", async () => {
-            await this.packageManager.pvsInstallationWizard({ update: true });
-            // create default workspaces folder if it doesn't exist
-            await vscodeUtils.createDefaultPvsWorkspacesDirectory();
-        }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.update-pvs", async () => {
             await this.packageManager.pvsInstallationWizard({ update: true });
         }));
@@ -705,9 +700,11 @@ export class EventsDispatcher {
             this.packageManager.choosePvsPath();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.install-nasalib", () => {
+            this.statusBar.hideDownloadNasalibButton();
             this.packageManager.nasalibInstallationWizard();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.update-nasalib", () => {
+            this.statusBar.hideDownloadNasalibButton();
             this.packageManager.nasalibInstallationWizard({ update: true });
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.add-pvs-library", async () => {
@@ -821,10 +818,17 @@ export class EventsDispatcher {
             this.statusBar.clear();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.download-nasalib", async () => {
+            this.statusBar.hideDownloadNasalibButton();
             const success: boolean = await this.packageManager.nasalibInstallationWizard();
             if (success) {
                 this.statusBar.hideDownloadNasalibButton();
-                this.client.sendRequest(serverRequest.rebootPvsServer);
+            }
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.install-pvs", async () => {
+            this.statusBar.hideinstallpvsButton();
+            const success: boolean = await this.packageManager.pvsInstallationWizard();
+            if (!success) {
+                this.statusBar.showInstallPvsButton();
             }
         }));
 

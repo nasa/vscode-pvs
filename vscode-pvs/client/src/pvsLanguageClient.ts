@@ -279,6 +279,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 					if(!this.alreadySuggestedNASALib && !fsUtils.isNasalibInPvsLibraryPath(pvsLibraryPath)){
 						this.alreadySuggestedNASALib = true;
 						this.pvsPath = pvsPath;
+						this.statusBar.hideDownloadNasalibButton();
 						const nasalibHasBeenInstalled: boolean = await this.packageManager.nasalibInstallationWizard();
 						pvsServerHasToBeRestarted = !nasalibHasBeenInstalled;
 					}
