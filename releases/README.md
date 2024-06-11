@@ -2,6 +2,8 @@ This page contains instructions on how to install nighty builds of the VSCode-PV
 Please, be careful and note that these versions are usually **highly experimental**.
 Use them defensively and be prepared for unexpected fails.
 
+If you have any issues of doubt about this process, please contact mariano.m.moscato _at_ nasa.gov
+
 # VSCode-PVS for PVS 8.0 on a Mac Computer
 
 ## Prerequisites
