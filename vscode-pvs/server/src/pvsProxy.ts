@@ -165,12 +165,13 @@ export class PvsProxy {
 		this.pvsLibraryPath = opt.pvsLibraryPath || "";
 		if (this.pvsLibraryPath) {
 			let paths: string[] = this.pvsLibraryPath.split(path.delimiter);
-			paths.forEach( (libPath: string) => {
-				  if (this.NasalibPresent(libPath)){
-						this.nasalibPath = libPath;
-					  return;
-					}
-			});
+			for (let libPath of paths){
+				const nasalibExists: boolean = this.NasalibPresent(libPath);
+				if (nasalibExists){
+					this.nasalibPath = libPath;
+					return;
+				}
+			}
 		}	
 
 		this.webSocketPort = (!!opt.webSocketPort) ? opt.webSocketPort : 23456; // 22334; // 23456;
@@ -1979,7 +1980,7 @@ export class PvsProxy {
 	 * Returns pvs version information
 	 */
 	async getNasalibVersionInfo(): Promise<string | null> {
-		const nasalibPresent: boolean = await this.NasalibPresent();
+		const nasalibPresent: boolean = this.NasalibPresent();
 		if (nasalibPresent) {
 			// const nasalibVersion: PvsResponse = await this.lisp(`(when (fboundp 'extra-pvslib-keyval) (extra-pvslib-keyval "NASALib" "version"))`);
 			const cmd: string = `PVS_LIBRARY_PATH=${this.nasalibPath} sh ${path.join(this.nasalibPath, "nasalib-version")}`;
@@ -2386,7 +2387,7 @@ export class PvsProxy {
 	}
 
 	async setNasalibPath(opt?: { externalServer?: boolean }): Promise<PvsResponse | null> {
-		const present: boolean = await this.NasalibPresent();
+		const present: boolean = this.NasalibPresent();
 		if (!present) {
 			const pvsLibraries: string[] = await this.getPvsLibraryPath(opt);
 			const nasalibPath: string = this.getNasalibPath();
@@ -2399,7 +2400,7 @@ export class PvsProxy {
 		return null;
 	}
 
-	async NasalibPresent(nasalibPath?: string): Promise<boolean> {
+	NasalibPresent(nasalibPath?: string): boolean {
 		// const response: PvsResponse = await this.pvsRequest('lisp', [`(fboundp 'nasalib-path)`]);
 		// return response && response.result !== "nil" && response.result !== "NIL";
 		if(nasalibPath === undefined) nasalibPath = this.nasalibPath;

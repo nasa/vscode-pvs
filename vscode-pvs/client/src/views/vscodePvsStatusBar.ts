@@ -137,6 +137,7 @@ export class VSCodePvsStatusBar {
      */
     pvsReady (desc: PvsVersionDescriptor): void {
         if (desc) {
+            this.hideinstallpvsButton();
             this.pvsVersionInfo = desc;
             const activeEditor: TextEditor = vscodeUtils.getActivePvsEditor();
             if (activeEditor?.document?.languageId === "pvs") {
