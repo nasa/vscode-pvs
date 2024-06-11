@@ -119,7 +119,7 @@ export class VSCodePvsStatusBar {
         this.client = client;
         // create status bar elements
         this.workspaceStatus = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
-        this.pvsStatus = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
+        this.pvsStatus = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
         this.versionInfo = new VSCodePvsStatusBarItem(StatusBarAlignment.Right, StatusBarPriority.Medium);
 
         this.restartPvs = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
@@ -127,7 +127,7 @@ export class VSCodePvsStatusBar {
 
         this.interruptProver = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
         this.downloadNasalib = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
-        this.installPVSButton = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
+        this.installPVSButton = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
     }
 
 
@@ -319,7 +319,7 @@ export class VSCodePvsStatusBar {
     hideInterruptButton (): void {
         this.interruptProver.hide();
     }
-    showDownloadNasalibButton (showButton?: boolean): void {
+    toggleVisibilityDownloadNasalibButton (showButton?: boolean): void {
         showButton = showButton === undefined ? true : !!showButton;
         if (showButton === true) {
             this.downloadNasalib.icon("");
@@ -385,7 +385,7 @@ export class VSCodePvsStatusBar {
     }
 
     showInstallNasalib (): void {
-        this.showDownloadNasalibButton();
+        this.toggleVisibilityDownloadNasalibButton();
     }
     hideInstallNasalib (): void {
         this.hideDownloadNasalibButton();

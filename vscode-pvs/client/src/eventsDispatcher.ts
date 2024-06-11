@@ -154,7 +154,7 @@ export class EventsDispatcher {
 			if (version) {
                 this.statusBar.pvsReady(version);
                 vscode.commands.executeCommand('setContext', 'nasalib-present', !!version["nasalib-version"]);
-                this.statusBar.showDownloadNasalibButton(!version["nasalib-version"]);
+                this.statusBar.toggleVisibilityDownloadNasalibButton(!version["nasalib-version"]);
                 try {
                     // check if this is a session start and there's a file that needs to be opened
                     const currentWorkspace: string = vscodeUtils.getRootFolder();
@@ -776,7 +776,10 @@ export class EventsDispatcher {
 			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesNo[0])
 			if (ans === yesNo[0]) {
                 const currentContext: string = vscodeUtils.getRootPath();
-                const req = { cleanFolder: currentContext, externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer") };
+                const req = { 
+                    cleanFolder: currentContext, 
+                    externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
+                    webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber") };
                 this.client.sendRequest(serverRequest.rebootPvsServer, req);
                 // terminate any prover session
                 this.xterm.dispose();

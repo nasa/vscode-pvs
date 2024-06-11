@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.66-eta-3",
+	"version": "1.0.66-eta-4",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -170,6 +170,11 @@
 						"type": "boolean",
 						"default": false,
 						"description": "Don't start PVS server automatically, if true, the user is responsible to start PVS (default: false)"
+					},
+					"pvs.initialPortNumber": {
+						"type": "number",
+						"default": 23456,
+						"description": "Port number to use to communicate with the PVS server (default: 23456). If you change this value, the new port number will be used the next time the PVS server is restarted. Tip: you can restart the server using 'M-x reboot-server'"
 					}
 				}
 			}

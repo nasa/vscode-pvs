@@ -295,7 +295,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 					// window.showInformationMessage(msg);
 					this.client.sendRequest(serverRequest.startPvsServer, {
 						pvsPath: this.pvsPath, 
-						pvsLibraryPath: this.pvsLibraryPath
+						pvsLibraryPath: this.pvsLibraryPath, 
+						externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
+						webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber")
 					}); // the server will use the last context folder it was using	
 				}
 			}
@@ -471,7 +473,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				pvsPath: this.pvsPath,
 				pvsLibraryPath: this.pvsLibraryPath,
 				contextFolder,
-				externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer")
+				externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
+				webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber"),
 			});
 			// set vscode context variable pvs-server-active to true -- this will create the PVS icon on the activity bar
 			commands.executeCommand('setContext', 'pvs-server-active', true);
@@ -493,7 +496,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				this.statusBar.clear();
 				this.statusBar.ready();
 
-				this.statusBar.showDownloadNasalibButton(!info["nasalib-version"]);
+				this.statusBar.toggleVisibilityDownloadNasalibButton(!info["nasalib-version"]);
 
 				const activeEditor: TextEditor = getActivePvsEditor();
 				if (activeEditor?.document) {
