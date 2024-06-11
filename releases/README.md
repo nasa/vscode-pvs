@@ -20,11 +20,11 @@ The basic requirements for this extension are:
 
 4. PVS 8.0: On start, VSCode-PVS will show the following pop-up.
 
-   <img src="../vscode-pvs/screenshots/vscode-pvs-installer-basic-options.png">
+   <img src="../vscode-pvs/screenshots/vscode-pvs-installer-basic-options.png" width="200">
  
    a. If you already have PVS 8.0 installed in your system, choose the option "Advanced Options...". Then, VSCode-PVS will show the pop-up depicted below, where you must choose "Select location of PVS 8.0 executables" and find the folder where PVS 8.0 is installed in your system.
 
-   <img src="../vscode-pvs/screenshots/vscode-pvs-installer-advanced-options.png">
+   <img src="../vscode-pvs/screenshots/vscode-pvs-installer-advanced-options.png"  width="600">
 
    b. Alternatively, if you don't have PVS 8.0 installed in your computer, follow these steps:
 
@@ -36,7 +36,7 @@ The basic requirements for this extension are:
 
 5. NASALib: after checking PVS is installed, VSCode-PVS will ask if you want to install the NASA Library (NASALib).
 
-   <img src="../vscode-pvs/screenshots/vscode-pvs-installer-download-nasalib.png">
+   <img src="../vscode-pvs/screenshots/vscode-pvs-installer-download-nasalib.png"  width="200">
 
    a. If you already have NASALib installed, click on "Select location of NASALib",
 
