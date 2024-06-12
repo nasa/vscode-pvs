@@ -44,9 +44,9 @@ install-pvs: install-sbcl
 			git clone $(PVS_GIT) ${PVS_FOLDER} &&\
 			cd $(PVS_FOLDER) &&\
 			git checkout $(PVS_COMMIT) &&\
-			SBCL=$(SBCL) XEMACS="$(EMACS_APP)" sh configure &&\
+			SBCL=$(SBCL) EMACS="$(EMACS_APP)" sh configure &&\
 			make clean &&\
-			make SBCL=$(SBCL) XEMACS="$(EMACS_APP)" &&\
+			make SBCL=$(SBCL) EMACS="$(EMACS_APP)" &&\
 			echo -e "\033[0;32m** PVS ready at $(PVS) **\033[0m";\
 		) ||\
 		echo -e "\033[0;31m** ERROR PVS could not be installed at $(PVS) **\033[0m";\
@@ -65,7 +65,7 @@ install-nasalib:
 			cd $(PVS_PATH) &&\
 			git clone $(NASALIB_GIT) $(NASALIB_FOLDER) &&\
 			cd $(NASALIB_FOLDER) &&\
-			PVS_LIBRARY_PATH=$(NASALIB_PATH) sh ./install-scripts --pvs-dir $(PVS_PATH) &&\
+			PVSEMACS="$(EMACS_APP)" PVS_LIBRARY_PATH=$(NASALIB_PATH) sh ./install-scripts --pvs-dir $(PVS_PATH) &&\
 			echo -e "\033[0;32m** NASALib ready at $(NASALIB_PATH) **\033[0m";\
 		) ||\
 		echo -e "\033[0;31m** ERROR NASALib could not be installed at $(NASALIB_PATH) **\033[0m";\
