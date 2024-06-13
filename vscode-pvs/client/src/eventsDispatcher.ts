@@ -1322,6 +1322,7 @@ export class EventsDispatcher {
                         unprovedOnly: opt.unprovedOnly
                     });
                     // clear status bar
+                    this.statusBar.clear();
                     this.statusBar.ready();
                     this.quietMode = false;
                 }
@@ -1369,6 +1370,7 @@ export class EventsDispatcher {
                         match: formulaName && !allTccs ? new RegExp(`${formulaName}_TCC`, "g") : null
                     });
                     // clear status bar
+                    this.statusBar.clear();
                     this.statusBar.ready();
                     this.quietMode = false;
                 }
