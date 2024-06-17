@@ -447,6 +447,15 @@ export function getPvsLibraryPath (): string {
     return pvsLibraryPath;
 }
 /**
+ * 
+ * @returns Every non-empty path in pvs-library-path
+ */
+export function getPvsLibraryPaths (): string[] {
+    return getPvsLibraryPath().split(path.delimiter)
+           .map( elem => { return elem.trim(); })
+           .filter( elem => { return elem && elem !== ""; })
+}
+/**
  * Utility function, adds a folder to the list of folders in pvs.pvsLibraryPath
  */
 export async function addPvsLibraryFolder (folder: string): Promise<boolean> {

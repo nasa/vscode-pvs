@@ -276,7 +276,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				let pvsServerHasToBeRestarted: boolean = true;
 				if (this.pvsPath === '' && pvsPath !== ''){
 					// If pvsPath was set, and pvsLibraryPath was empty and NASALib is not in the pvsLibraryPath, we suggest the user to get it
-					if(!this.alreadySuggestedNASALib && !fsUtils.isNasalibInPvsLibraryPath(pvsLibraryPath)){
+					if(!this.alreadySuggestedNASALib && !fsUtils.getNasalibPath(pvsLibraryPath)){
 						this.alreadySuggestedNASALib = true;
 						this.pvsPath = pvsPath;
 						this.statusBar.hideDownloadNasalibButton();

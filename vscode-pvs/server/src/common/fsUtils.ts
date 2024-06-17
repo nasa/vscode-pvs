@@ -2103,7 +2103,6 @@ export function createPvsLibraryPath (libs: string[]): string {
 	}
 	return "";
 }
-
 /**
  * Utility function, appends a proof summary at the end of a given file
  * @param fname Name of the summary file
@@ -2501,38 +2500,45 @@ export function formatSequent (desc: PvsProofState, opt?: {
 	}
 	return null;
 }
+/**
+ * @assumes folderExists(libPath)
+ * @param libPath a path assumed to exists in the file system
+ * @returns true if NASALib can be identified in the give path
+ */
+export function containsNasalib(libPath: string): boolean {
+	const pvsLibIdRE : RegExp = /id: *([\w]+)/gi;
+	const pvsLibVersionRE : RegExp = /version: *([\w\.]+)/gi;
+
+	const pvsLibFileName: string = path.join(libPath, '.pvslib');
+	const pvsLibFile : string = readFile(pvsLibFileName);
+	let match : RegExpMatchArray = pvsLibIdRE.exec(pvsLibFile);
+	if(match && match.length > 0 && match[1] === 'NASALib') {
+			match = pvsLibVersionRE.exec(pvsLibFile);
+			return (match && match.length > 0 && match[1] === '8.0')
+	}
+	return false;
+}
 
 /**
- * Checks if NASALib is among the paths in pvsLibraryPath
+ * From a string representing the pvs-library-paths, returns the path corresponding to NASALib (undefined if there is no such path)
  * 
  * Example: 
  *   isNasalibInPvsLibraryPath(process.env["PVS_LIBRARY_PATH"])
- * 	 returns true if NASALib is in one of the paths in the environment 
+ * 	 returns true if NASALib is in one of t	he paths in the environment 
  *   variable PVS_LIBRARY_PATH 
  * 
  * @param pvsLibraryPath a string representation of a list of paths, separated by
- *                       character path.delimiter.
+ *                       the character path.delimiter.
  * @returns true if NASALib is located in one of the paths in pvsLibraryPath
  */
-export function isNasalibInPvsLibraryPath(pvsLibraryPath: string): boolean {
-	let result: boolean = false;
+export function getNasalibPath(pvsLibraryPath: string): string | undefined {
+	let result: string | undefined = undefined;
 	if (pvsLibraryPath) {
-		const pvsLibIdRE : RegExp = /id: *([\w]+)/gi;
-		const pvsLibVersionRE : RegExp = /version: *([\w\.]+)/gi;
 		pvsLibraryPath.split(path.delimiter).forEach( (libPath) => {
 				libPath = tildeExpansion(libPath);
-				if(folderExists(libPath)){
-						const pvsLibFileName: string = path.join(libPath, '.pvslib');
-						const pvsLibFile : string = readFile(pvsLibFileName);
-						let match : RegExpMatchArray = pvsLibIdRE.exec(pvsLibFile);
-						if(match && match.length > 0 && match[1] === 'NASALib') {
-								match = pvsLibVersionRE.exec(pvsLibFile);
-								if (match && match.length > 0 && match[1] === '8.0') {
-										result = true;
-										console.log(`[nasalibInstallationWizard] NASALib v8.0 found at ${libPath}`);
-										// await vscodeUtils.addPvsLibraryFolder(libPath);
-								} // else console.log(`[nasalibInstallationWizard] omitting ${libPath} from PVS_LIBRARY_PATH (erroneous version?)`);
-						} // else await vscodeUtils.addPvsLibraryFolder(libPath);
+				if(folderExists(libPath) && containsNasalib(libPath)){
+					result = libPath;
+					console.log(`[getNasalibPath] NASALib v8.0 found at ${libPath}`);
 				} // else console.log(`[nasalibInstallationWizard] omitting ${libPath} from PVS_LIBRARY_PATH (folder not found)`);
 		});
 	}

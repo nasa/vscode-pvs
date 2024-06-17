@@ -164,14 +164,7 @@ export class PvsProxy {
 
 		this.pvsLibraryPath = opt.pvsLibraryPath || "";
 		if (this.pvsLibraryPath) {
-			let paths: string[] = this.pvsLibraryPath.split(path.delimiter);
-			for (let libPath of paths){
-				const nasalibExists: boolean = this.NasalibPresent(libPath);
-				if (nasalibExists){
-					this.nasalibPath = libPath;
-					return;
-				}
-			}
+			this.nasalibPath = fsUtils.getNasalibPath(this.pvsLibraryPath);
 		}	
 
 		this.webSocketPort = (!!opt.webSocketPort) ? opt.webSocketPort : 23456; // 22334; // 23456;
@@ -1980,8 +1973,7 @@ export class PvsProxy {
 	 * Returns pvs version information
 	 */
 	async getNasalibVersionInfo(): Promise<string | null> {
-		const nasalibPresent: boolean = this.NasalibPresent();
-		if (nasalibPresent) {
+		if (this.nasalibPath && this.nasalibPath !== '') {
 			// const nasalibVersion: PvsResponse = await this.lisp(`(when (fboundp 'extra-pvslib-keyval) (extra-pvslib-keyval "NASALib" "version"))`);
 			const cmd: string = `PVS_LIBRARY_PATH=${this.nasalibPath} sh ${path.join(this.nasalibPath, "nasalib-version")}`;
 			const result: string = execSync(cmd, { encoding: "utf-8" });
@@ -2387,8 +2379,7 @@ export class PvsProxy {
 	}
 
 	async setNasalibPath(opt?: { externalServer?: boolean }): Promise<PvsResponse | null> {
-		const present: boolean = this.NasalibPresent();
-		if (!present) {
+		if (!(this.nasalibPath && this.nasalibPath !== '')) {
 			const pvsLibraries: string[] = await this.getPvsLibraryPath(opt);
 			const nasalibPath: string = this.getNasalibPath();
 			if (!pvsLibraries.includes(nasalibPath) && fsUtils.folderExists(nasalibPath)) {
@@ -2398,13 +2389,6 @@ export class PvsProxy {
 			}
 		}
 		return null;
-	}
-
-	NasalibPresent(nasalibPath?: string): boolean {
-		// const response: PvsResponse = await this.pvsRequest('lisp', [`(fboundp 'nasalib-path)`]);
-		// return response && response.result !== "nil" && response.result !== "NIL";
-		if(nasalibPath === undefined) nasalibPath = this.nasalibPath;
-		return nasalibPath !== undefined && fsUtils.fileExists(path.join(nasalibPath, "nasalib-version"));
 	}
 
 	async installProofliteScript(desc: PvsFormula, proofLiteScript: string): Promise<PvsResponse> {
