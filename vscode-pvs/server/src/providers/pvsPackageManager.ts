@@ -65,7 +65,8 @@ export class PvsPackageManager {
      * List of approved patches for pvs
      */
     static readonly approvedPatches: { fname: string, description: string }[] = [
-        { fname: "patch-20250530-avoids-debbuger-on-proving-session.lisp", description: "Avoids errors to trigger the debugger in a proof session" }
+        { fname: "patch-20250530-avoids-debbuger-on-proving-session.lisp", description: "Avoids errors to trigger the debugger in a proof session" },
+        { fname: "patch-20250618-lisp-rule-no-quoted-string.lisp", description: "Prevents the lisp proof rule from returning quoted strings" }
     ];
 
     /**

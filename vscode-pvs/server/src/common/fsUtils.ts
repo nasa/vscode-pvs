@@ -2350,7 +2350,7 @@ export function commentaryToString (commentary: string | string[], opt?: {
 }): string {
 	function looksLikeASequent(msg: string): boolean {
 		let lines: string[] = msg.split('\n');
-		return lines.some((l)=>{return /\|-------/.test(l)}) && /[a-z_\d]+[\d\.]* *(?:\(TCC\))? *:/i.test(lines[0]);
+		return /[a-z_\d]+[\d\.]*(?: \(TCC\))? :/i.test(lines[0]) && lines.some((l)=>{return /\|-------/.test(l)});
 	}
 
 	let res = "";

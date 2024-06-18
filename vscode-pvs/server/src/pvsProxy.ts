@@ -1406,10 +1406,14 @@ export class PvsProxy {
 			if (test.success) {
 				// console.dir(desc, { depth: null });
 				const showHidden: boolean = isShowHiddenFormulas(desc.cmd);
+				const showExpandedSequent: boolean = languageUtils.isShowExpandedSequentCommand(desc.cmd);
 				// const isGrind: boolean = utils.isGrindCommand(desc.cmd);
 				// the following additional logic is a workaround necessary because pvs-server does not know the command show-hidden. 
 				// the front-end will handle the command, and reveal the hidden sequents.
-				const cmd: string = showHidden ? "(skip)" : desc.cmd;
+				const cmd: string = 
+					showHidden ? "(skip)" : 
+					showExpandedSequent ? `(lisp (format nil "Expanded sequent: ~%~a" (replace-string (with-output-to-string (*standard-output*) (show-expanded-sequent${languageUtils.isShowFullyExpandedSequentCommand(desc.cmd) ? " t" : ""})) "C-u M-x show-expanded-sequent" "'show-expanded-sequent t'")))` : 
+					desc.cmd ;
 				const pid: string = desc.proofId;
 				res = languageUtils.isHelpBangCommand(cmd)
 					? await this.showHelpBang({ cmd: cmd })
@@ -1429,7 +1433,7 @@ export class PvsProxy {
 								}
 							}
 						}
-					}
+					} 
 					for (let i = 0; i < proofStates.length; i++) {
 						const result: PvsProofState = proofStates[i];
 						if (languageUtils.QED(result)) {
