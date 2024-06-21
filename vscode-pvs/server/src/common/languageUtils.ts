@@ -3754,5 +3754,5 @@ export function sameBranchPSDisplayIds(displayIdA: string, displayIdB: string): 
 }
 
 export function isQEDProofState(ps: PvsProofState): boolean {
-    return ps.commentary && (ps.commentary.length ? (ps.commentary as string[]).some(isQEDCommand) : isQEDCommand(ps.commentary as string))
+    return ps.commentary && (typeof ps.commentary === "string" ? isQEDCommand(ps.commentary as string) : (ps.commentary as string[]).some(isQEDCommand) )
 }
