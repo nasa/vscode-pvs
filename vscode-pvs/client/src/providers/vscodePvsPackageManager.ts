@@ -39,7 +39,7 @@
 import { LanguageClient } from "vscode-languageclient";
 import {
     window, Uri, workspace, ConfigurationTarget, Progress, CancellationToken, 
-    ProgressLocation, Terminal, ViewColumn, WebviewPanel, ExtensionContext
+    ProgressLocation, Terminal, ViewColumn, WebviewPanel, ExtensionContext, env
 } from "vscode";
 import {
     serverEvent, sriUrl, serverRequest, PvsDownloadDescriptor, NASALibUrl, 
@@ -55,6 +55,7 @@ import * as vscodeUtils from '../utils/vscode-utils';
 import { VSCodePvsEchoTerminal } from "./vscodePvsEchoTerminal";
 import * as os from 'os';
 import { colorText, PvsColor } from "../common/colorUtils";
+import { homedir } from "os";
 
 export const errorMsgDownloaderNotPresent: string = `Error: Unable to download the file ('curl' or 'wget' not available). Please install 'curl' or 'wget', as vscode-pvs is unable to perform downloads without them.`; 
 export const errorPvsVersionsNotAvailable: string = `Error: Unable to retrieve information on the PVS versions. Please try again later or proceed with manual installation of PVS.`; 
@@ -303,13 +304,17 @@ export class VSCodePvsPackageManager {
             cancel: "Cancel"
         }
         msg =  msg || `Please choose PVS installation folder.\nA subfolder with the PVS executables will be automatically created under the selected folder.`;
+        if (env.remoteName==="dev-container"){
+            msg = `Please choose PVS installation folder.\nA subfolder with the PVS executables will be automatically created under the selected folder. If you are installing the extension in a dev container , select a folder inside home directory of the container.`
+        }
         const item = await window.showInformationMessage(msg, { modal: true }, labels.browse);//, labels.cancel);
         if (item === labels.browse) {
             const pvsInstallationFolder: Uri[] = await window.showOpenDialog({
                 canSelectFiles: false,
                 canSelectFolders: true,
                 canSelectMany: false,
-                openLabel: this.messages.selectInstallationFolder
+                openLabel: this.messages.selectInstallationFolder,
+                defaultUri: env.remoteName==="dev-container" ? Uri.file(homedir()) : undefined
             });
             if (pvsInstallationFolder && pvsInstallationFolder.length === 1) {
                 const baseFolder: string = pvsInstallationFolder[0].fsPath;

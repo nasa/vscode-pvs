@@ -26,3 +26,5 @@ pvsbin/
 */*/*.summary
 **/javaTarget/out/
 test/
+extra/xterm-pvs/bundle
+extra/xterm-pvs/dist

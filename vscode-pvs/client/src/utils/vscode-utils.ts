@@ -50,6 +50,7 @@ import { XTermColorTheme } from '../common/colorUtils';
 import { xTermDetectColorTheme } from '../common/xtermInterface';
 import { Extension, Progress } from 'vscode';
 import { PvsLanguageClient } from '../pvsLanguageClient';
+import { readdirSync, existsSync, mkdirSync, copyFileSync, readFileSync, writeFileSync} from 'fs';
 
 // vscode task
 export type ProgressTask = (progress: Progress<{ message?: string; increment?: number }>, token: CancellationToken) => Thenable<void>;
@@ -1395,3 +1396,108 @@ export async function annotateFormula (desc: PvsFormula, tag: Tag, opt?: TagOpti
         }
     })
 }
+
+export function setDevContainerConfig(context: vscode.ExtensionContext, workspace_folder?: vscode.WorkspaceFolder, force?: boolean) {
+    let globalStoragePath = context.globalStorageUri.fsPath;
+    globalStoragePath = globalStoragePath.substring(0, globalStoragePath.lastIndexOf(path.sep));
+    if (!workspace_folder){
+        workspace_folder=vscode.workspace.workspaceFolders[0];
+    }
+    if (workspace_folder){
+    const folderPath = workspace_folder.uri.fsPath;
+    const entries = readdirSync(folderPath, { withFileTypes: true });
+    const pvsFileExists = entries.some(entry => entry.isFile() && entry.name.endsWith('.pvs'))
+    if (pvsFileExists || force) {
+            let devContainerDir = path.join(globalStoragePath, 'ms-vscode-remote.remote-containers', 'configs', workspace_folder.name);
+            let configFilePath = path.join(devContainerDir, '.devcontainer-internal.json');
+            let folderSuffix = 2
+            // First check the base folder without suffix
+            if (existsSync(devContainerDir) && existsSync(configFilePath)) {
+                let configData = JSON.parse(readFileSync(configFilePath, 'utf8'));
+                if (configData.rootFolder !== folderPath) {
+                    // If the path differs, start checking or creating suffixed folders
+                    devContainerDir = path.join(globalStoragePath, 'ms-vscode-remote.remote-containers', 'configs', `${workspace_folder.name}-${folderSuffix}`);
+                    configFilePath = path.join(devContainerDir, '.devcontainer-internal.json');
+                    while (existsSync(devContainerDir)) {
+                        if (existsSync(configFilePath)) {
+                            let configData = JSON.parse(readFileSync(configFilePath, 'utf8'));
+                            if (configData.rootFolder === folderPath) {
+                                // Same path, so use this folder
+                                break;
+                            }
+                        }
+                        // Different path or missing config, try next suffix
+                        devContainerDir = path.join(globalStoragePath, 'ms-vscode-remote.remote-containers', 'configs', `${workspace_folder.name}-${++folderSuffix}`);
+                        configFilePath = path.join(devContainerDir, '.devcontainer-internal.json');
+                    }
+                }
+            }
+            
+            if (!existsSync(devContainerDir)) {
+                mkdirSync(devContainerDir, { recursive: true });
+            }
+            
+            // Create or confirm .devcontainer-internal.json
+            if (!existsSync(configFilePath)) {
+                const internalConfig = {
+                    "rootFolder": folderPath
+                };
+                writeFileSync(configFilePath, JSON.stringify(internalConfig, null, 4));
+            }
+            
+            // Handle .devcontainer.json
+            const devContainerJsonPath = path.join(devContainerDir, '.devcontainer', 'devcontainer.json');
+            if (!existsSync(devContainerJsonPath)) {
+                const defaultConfigPath = path.join(__dirname, '..', 'common', 'dev-container-template.json');
+                mkdirSync(path.dirname(devContainerJsonPath), { recursive: true });
+                copyFileSync(defaultConfigPath, devContainerJsonPath);
+            }
+        }
+    }
+}
+
+export function registerDevContainerCommands(context: vscode.ExtensionContext){
+    let globalStoragePath = context.globalStorageUri.fsPath;
+    globalStoragePath = globalStoragePath.substring(0, globalStoragePath.lastIndexOf(path.sep));
+
+    context.subscriptions.push(vscode.commands.registerCommand("vscode-pvs.open-devcontainer-config", () => {
+        if (vscode.workspace.workspaceFolders) {
+            const folder = vscode.workspace.workspaceFolders[0];
+            let devContainerDir = path.join(globalStoragePath, 'ms-vscode-remote.remote-containers', 'configs', folder.name);
+            let configFilePath = path.join(devContainerDir, '.devcontainer-internal.json');
+            let folderSuffix = 2;
+
+            // Check for an internal config file to find the correct directory
+            while (existsSync(devContainerDir)) {
+                if (existsSync(configFilePath)) {
+                    let configData = JSON.parse(readFileSync(configFilePath, 'utf8'));
+                    if (configData.rootFolder === folder.uri.fsPath) {
+                        // Correct folder found, break the loop
+                        break;
+                    }
+                }
+                // Check the next suffixed directory
+                devContainerDir = path.join(globalStoragePath, 'ms-vscode-remote.remote-containers', 'configs', `${folder.name}-${folderSuffix}`);
+                configFilePath = path.join(devContainerDir, '.devcontainer-internal.json');
+                folderSuffix++;
+            }
+
+            const devContainerJsonPath = path.join(devContainerDir, '.devcontainer', 'devcontainer.json');
+            if (existsSync(devContainerJsonPath)) {
+                vscode.window.showTextDocument(vscode.Uri.file(devContainerJsonPath));
+            } else {
+                vscode.window.showWarningMessage('No .devcontainer.json found for this workspace.');
+            }
+        } else {
+            vscode.window.showWarningMessage('No workspace detected. Please open a PVS workspace.');
+        }
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand("vscode-pvs.open-devcontainer",  () => {
+        vscode.commands.executeCommand('remote-containers.openFolder');
+    }));
+}
+
+export const setRuntimeEnvContext = (env: string) => {
+    vscode.commands.executeCommand('setContext', 'runtime-window', env);
+};

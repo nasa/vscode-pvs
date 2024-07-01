@@ -38,7 +38,7 @@
 import * as path from 'path';
 import { 
 	TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, 
-	commands, ConfigurationChangeEvent, Uri, FileRenameEvent, WindowState
+	commands, ConfigurationChangeEvent, Uri, FileRenameEvent, WindowState, env
 } from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions, CancellationToken } from 'vscode-languageclient';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
@@ -60,7 +60,7 @@ import { VSCodePvsSearch } from './views/vscodePvsSearch';
 import { VSCodePvsioWeb } from './views/vscodePvsioWeb';
 import { VSCodePvsXTerm } from './views/vscodePvsXTerm';
 import { XTermColorTheme } from './common/colorUtils';
-import { getActivePvsEditor } from './utils/vscode-utils';
+import { getActivePvsEditor, registerDevContainerCommands, setDevContainerConfig, setRuntimeEnvContext } from './utils/vscode-utils';
 import { VSCodePvsFileViewer } from './views/vscodePvsFileViewer';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
@@ -457,6 +457,20 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			});
 			this.eventsDispatcher.activate(context);
 			
+			// add default container file to appopriate path in globalStorage if it doesn't exist and add commands for devcontainer
+			try{
+			const remoteName = env.remoteName;
+			if (!remoteName){
+				setRuntimeEnvContext('other');
+				registerDevContainerCommands(this.context);
+				setDevContainerConfig(this.context);
+			} else {
+				setRuntimeEnvContext(remoteName);
+			}
+			} catch (error){
+				console.log(error);
+			}
+
 			// start PVS
 			// the server will respond with one of the following events: pvsServerReady, pvsNotPresent, pvsIncorrectVersion
 			const contextFolder = vscodeUtils.getEditorContextFolder();
