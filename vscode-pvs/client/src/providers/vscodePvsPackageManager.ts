@@ -39,7 +39,8 @@
 import { LanguageClient } from "vscode-languageclient";
 import {
     window, Uri, workspace, ConfigurationTarget, Progress, CancellationToken, 
-    ProgressLocation, Terminal, ViewColumn, WebviewPanel, ExtensionContext, env
+    ProgressLocation, Terminal, ViewColumn, WebviewPanel, ExtensionContext, env,
+    MessageItem
 } from "vscode";
 import {
     serverEvent, sriUrl, serverRequest, PvsDownloadDescriptor, NASALibUrl, 
@@ -86,14 +87,16 @@ export class VSCodePvsPackageManager {
      */
     readonly messages = {
         setPvsPath: "Select location of PVS executables",
-        downloadPvs: `Install PVS 8.0 to ${this.DEFAULT_INSTALLATION_FOLDER}`,
+        downloadPvs: "Default Installation",
         updatePvs: "Update PVS",
-		moreOptions: "More Options",
+		seeAdvancedOptions: "Advanced Options...",
         chooseInstallationFolder: "Choose PVS 8.0 installation folder",
         selectInstallationFolder: "Use as installation folder",
         downloadNASALib: "Download NASALib",
         setNASALibPath: "Select location of NASALib",
-        updateNASALib: "Update NASALib"
+        updateNASALib: "Update NASALib",
+        completeInstallationLater: "Complete installation later",
+        useExternalServer: "Use external server"
     };
 
     /**
@@ -116,11 +119,13 @@ export class VSCodePvsPackageManager {
             if (this.firstRun) {
                 // show the wizard only the first time vscode is opened, to avoid annoying the user with messages if they don't want to install pvs right away during the current session
                 this.firstRun = false;
-                await this.pvsInstallationWizard({
-                    msg: `VSCode-PVS is almost ready!\n\nTo complete the installation of all dependencies, please choose one of the following actions.\n `,
+                const pvsReady: boolean = await this.pvsInstallationWizard({
+                    msg: `VSCode-PVS is almost ready!\n Select '${this.messages.downloadPvs}' to install PVS 8.0 to ${this.DEFAULT_INSTALLATION_FOLDER} or '${this.messages.seeAdvancedOptions}' to access advanced options.`,
 					preferDefaultFolder: true,
 					force: true
                 });
+                this.statusBar.clear();
+                if (!pvsReady) this.statusBar.showInstallPvsButton();
             }
         });
         this.client.onRequest(serverEvent.pvsIncorrectVersion, async (msg: string) => {
@@ -141,7 +146,10 @@ export class VSCodePvsPackageManager {
         const pvsPath: string = await this.choosePvsInstallationFolder();
         if (pvsPath) {
             await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
-            const req = { pvsPath: pvsPath };
+            const req = { 
+                pvsPath: pvsPath, 
+                externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
+                webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber") };
             this.client.sendRequest(serverRequest.rebootPvsServer, req);
             window.showInformationMessage(`PVS path is ${pvsPath}`);
         }
@@ -201,29 +209,86 @@ export class VSCodePvsPackageManager {
      */
     async pvsInstallationWizard (opt?: { msg?: string, update?: boolean, preferDefaultFolder?: boolean, force?: boolean }): Promise<boolean> {
         opt = opt || {};
-        const label: string = opt.msg || "PVS Installation Wizard";
-		let item = await window.showInformationMessage(label, { modal: true }, 
-			opt.update ? this.messages.updatePvs : this.messages.downloadPvs, 
-			// this.messages.setPvsPath,
-			this.messages.moreOptions
-		);
-		let userDefinedInstallationFolder: string = null;
+        let label: string = opt.msg || "PVS Installation Wizard";
+        let detail: string = undefined;
 
-        if (!item) { return false; }
-        if (item === this.messages.setPvsPath) { return await this.selectPvsPath(); }
-		if (item === this.messages.moreOptions) { 
-			userDefinedInstallationFolder = await this.choosePvsInstallationFolder();
-			if (userDefinedInstallationFolder) {
-				item = this.messages.downloadPvs;
-				opt.update = true;
-			}
+        if(label.search('\n') > -1){
+            const splitteMsg = label.split('\n');
+            label = splitteMsg[0];
+            detail = splitteMsg.slice(1,splitteMsg.length).join('\n');
+        }
+
+        let askAgain: boolean = false;
+        let item : MessageItem = undefined;
+        let userDefinedInstallationFolder: string = undefined;
+
+        do {
+            askAgain = false;
+
+            item = await window.showInformationMessage(label, { detail: detail, 
+                modal: true }, 
+                { isCloseAffordance: true, title: this.messages.completeInstallationLater },
+                { isCloseAffordance: false, title: opt.update ? this.messages.updatePvs : this.messages.downloadPvs }, 
+                { isCloseAffordance: false, title: this.messages.seeAdvancedOptions }
+            );
+
+            if (!item || item.title === this.messages.completeInstallationLater) { return false; }
+
+            if (item.title === this.messages.seeAdvancedOptions) { 
+                item = await window.showInformationMessage(label, { detail: `Available actions:\n\n ▻ '${this.messages.chooseInstallationFolder}' allows to select the folder where PVS 8.0 will be installed\n ▻ If PVS 8.0 is already installed in your system, use '${this.messages.setPvsPath}' to inform its folder\n ▻ You can also use '${this.messages.useExternalServer}' to prevent VSCode-PVS from starting the PVS backend.`, 
+                    modal: true }, 
+                    { isCloseAffordance: true, title: "Basic Options..." },
+                    { isCloseAffordance: false, title: this.messages.chooseInstallationFolder },
+                    { isCloseAffordance: false, title: this.messages.setPvsPath },
+                    { isCloseAffordance: false, title: this.messages.useExternalServer }
+                );
+    
+                if (item.title === this.messages.setPvsPath) { 
+                    askAgain = ! await this.selectPvsPath(); // it restarts the server on success
+                } else if (item.title === "Basic Options...") { 
+                    askAgain = true; // it restarts the server on success
+                } else 	if (item.title === this.messages.chooseInstallationFolder) { 
+                    const pvsInstallationFolder: Uri[] = await window.showOpenDialog({
+                        canSelectFiles: false,
+                        canSelectFolders: true,
+                        canSelectMany: false,
+                        openLabel: this.messages.selectInstallationFolder
+                    });
+                    if (pvsInstallationFolder && pvsInstallationFolder.length === 1) {
+                        userDefinedInstallationFolder = pvsInstallationFolder[0].fsPath;
+                    } else
+                        askAgain = true;
+                }        
+            }
+    
+        } while(askAgain);
+
+        if (item.title === this.messages.useExternalServer) {
+            const webSocketPort: number = vscodeUtils.getConfigurationValue("pvs.initialPortNumber");
+
+            await window.showInformationMessage("External Server Mode Activated", { detail: `External Server mode was activated, VSCode-PVS will try to connect to the port ${webSocketPort}. You can choose a different port by editing the corresponding extention setting.`, 
+                modal: true }, 
+                { isCloseAffordance: true, title: "OK" });
+
+            await workspace.getConfiguration().update("pvs.externalServer", true, ConfigurationTarget.Global);
+
+            const req = { 
+                externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
+                webSocketPort: webSocketPort };
+            this.client.sendRequest(serverRequest.rebootPvsServer, req);
+        }
+
+		if (item.title === this.messages.chooseInstallationFolder && userDefinedInstallationFolder) {
+            item.title = this.messages.downloadPvs;
+            opt.update = true;
 		}
-        if (item === this.messages.downloadPvs || item === this.messages.updatePvs) {
+        
+        if (item.title === this.messages.downloadPvs || item.title === this.messages.updatePvs) {
             // create terminal to show feedback during download/update operations
             await this.createTerminal(label, { clearScreen: true });
 			const defaultInstallationFolder: string = path.join(fsUtils.tildeExpansion(this.DEFAULT_INSTALLATION_FOLDER), this.DEFAULT_PVS_FOLDER);
             let pvsPath: string = 
-				(opt?.preferDefaultFolder || item === this.messages.downloadPvs) ? 
+				(opt?.preferDefaultFolder || item.title === this.messages.downloadPvs) ? 
 					defaultInstallationFolder 
 						: vscodeUtils.getConfiguration("pvs.path");
             let baseFolder: string = fsUtils.tildeExpansion(userDefinedInstallationFolder) || fsUtils.getContextFolder(pvsPath) || defaultInstallationFolder;
@@ -245,6 +310,7 @@ export class VSCodePvsPackageManager {
 						const shellCommand: ShellCommand = {
 							cmd: "make",
 							args: [
+                                'install-pvs',
 								`-f ${makefileOnDisk} INSTALLATION_PATH=${baseFolder}`
 							]
 						};
@@ -260,10 +326,6 @@ export class VSCodePvsPackageManager {
 							cleanTarget: true
 						});
 						if (success) {            
-							// reboot pvs-server
-							const req = { pvsPath: pvsPath };
-							this.client.sendRequest(serverRequest.rebootPvsServer, req);
-
 							// show release info
 							vscodeUtils.showReleaseNotes();
 							return true;
@@ -287,9 +349,14 @@ export class VSCodePvsPackageManager {
         });
         if (uris?.length === 1) {
             const pvsPath: string = uris[0].fsPath;
-            await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
-            // pvs-server will be automatically rebooted when pvs.path is updated, see workspace.onDidChangeConfiguration in pvsLanguageClient.ts
-            return pvsPath !== null && pvsPath !== undefined && pvsPath?.trim() !== "";
+
+            if (pvsPath !== null && pvsPath !== undefined && pvsPath?.trim() !== "" && fsUtils.fileExists(path.join(pvsPath, "pvs"))) {
+                await workspace.getConfiguration().update("pvs.path", pvsPath, ConfigurationTarget.Global);
+                // pvs-server will be automatically rebooted when pvs.path is updated, see workspace.onDidChangeConfiguration in pvsLanguageClient.ts
+                return true;
+            } else {
+                window.showErrorMessage(`No executable found at ${pvsPath}. Please double check PVS is already installed in that folder.`, { modal: true });
+            }
         }
         return false;
     }
@@ -482,7 +549,9 @@ export class VSCodePvsPackageManager {
             await this.createTerminal(label);
 
 			// update status bar
-			this.statusBar.showProgress(label);
+			this.statusBar.showProgress(label, label);
+
+            let errorMessages: string = `${name} installation failed: `;
 
             // send request to the server
             this.client?.sendRequest(serverRequest.installWithProgress, req);
@@ -490,15 +559,29 @@ export class VSCodePvsPackageManager {
                 this.client?.onNotification(serverRequest.installWithProgress, (desc: { req: InstallWithProgressRequest, res: InstallWithProgressResponse }) => {
                     if (desc?.res?.progressInfo) {
                         if (!opt.quiet) {
-                            if (desc.res.stdOut) { this.terminal.log(desc.res.stdOut); }
-                            if (desc.res.stdErr) { this.terminal.log(desc.res.stdErr); }
+                            if (desc.res.stdOut) { 
+                                this.terminal.log(desc.res.stdOut);
+                                const errorMessage: RegExpMatchArray = /ERROR (.*)\*\*/gi.exec(desc.res.stdOut);
+                                if (errorMessage && errorMessage.length > 1) {
+                                    errorMessages += errorMessage[1];
+                                }
+                            }
+                            if (desc.res.stdErr) { 
+                                this.terminal.log(desc.res.stdErr); 
+                                const errorMessage: RegExpMatchArray = /ERROR (.*)\*\*/gi.exec(desc.res.stdErr);
+                                if (errorMessage && errorMessage.length > 1) {
+                                    errorMessages += errorMessage[1];
+                                }
+                            }
                         }
                     } else {
                         resolve(desc?.res);
                     }
                 });
             });
-            if (res?.success && req?.targetFolder) {
+            if (!res?.success) {
+                window.showErrorMessage(errorMessages);
+            } else if (req?.targetFolder) {
 				if (name === "PVS") {
 					// update pvs.path
 					await workspace.getConfiguration().update("pvs.path", req.targetFolder, ConfigurationTarget.Global);
@@ -506,7 +589,7 @@ export class VSCodePvsPackageManager {
 					// update pvs.pvsLibraryPath
 					await vscodeUtils.addPvsLibraryFolder(req.targetFolder);
 				}
-            }
+            } 
 
 			// update status bar
 			this.statusBar.ready();
@@ -586,14 +669,19 @@ export class VSCodePvsPackageManager {
                     this.terminal.log(colorText(message, PvsColor.blue), { addNewLine: true });
                     const tmpdir: string = os.tmpdir();
                     const fname: string = `${tmpdir}/nasalib${this.DEFAULT_NASALIB_VERSION}.zip`;
-					const targetFolder: string = path.join(pvsPath, "nasalib");
+                    const nasalibFolderName: string = "nasalib";
+					const targetFolder: string = path.join(pvsPath, nasalibFolderName);
 
 					if (shellCommand.cmd === "git") {
 						const makefileOnDisk: string = path.join(this.context.extensionPath, 'extra/Makefile-PVS8');
 						const shellCommand: ShellCommand = {
 							cmd: "make",
 							args: [
-								`-f ${makefileOnDisk} NASALIB_PATH=${targetFolder}`
+								'install-nasalib',
+                                `-f ${makefileOnDisk}`,
+                                `PVS_PATH=${pvsPath}`,
+                                `NASALIB_FOLDEr=${nasalibFolderName}`,
+                                `NASALIB_PATH=${targetFolder}`
 							]
 						};
 						nasalibReady = await this.installWithProgress("NASALib", {
@@ -612,7 +700,9 @@ export class VSCodePvsPackageManager {
 						});
 					}
 					// add nasalib to pvsLibraryPath in vscode settings
-					await vscodeUtils.addPvsLibraryFolder(fsUtils.tildeExpansion(nasalibPath));
+                    if (nasalibReady)
+					    nasalibReady = await vscodeUtils.addPvsLibraryFolder(fsUtils.tildeExpansion(nasalibPath));
+                    // TODO Add error handling @M3 what happens if the library couldn't be added to vscode settings?
                 }
             } else if (item === this.messages.setNASALibPath) { 
                 const uris: Uri[] = await window.showOpenDialog({

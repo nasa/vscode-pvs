@@ -97,6 +97,7 @@ export function getDefaultContextFolder (): string {
 /**
  * Utility function, creates a default workspace folder
  */
+// #TODO deprecate @M3
  export async function createDefaultPvsWorkspacesDirectory (): Promise<string> {
     const workspaces: string = getConfiguration("pvs.pvsWorkspaces");
     if (workspaces) {
@@ -447,6 +448,15 @@ export function getPvsLibraryPath (): string {
     return pvsLibraryPath;
 }
 /**
+ * 
+ * @returns Every non-empty path in pvs-library-path
+ */
+export function getPvsLibraryPaths (): string[] {
+    return getPvsLibraryPath().split(path.delimiter)
+           .map( elem => { return elem.trim(); })
+           .filter( elem => { return elem && elem !== ""; })
+}
+/**
  * Utility function, adds a folder to the list of folders in pvs.pvsLibraryPath
  */
 export async function addPvsLibraryFolder (folder: string): Promise<boolean> {
@@ -457,8 +467,8 @@ export async function addPvsLibraryFolder (folder: string): Promise<boolean> {
         if (!libs.includes(folder)) {
             const newPvsLibraryPath: string = fsUtils.createPvsLibraryPath(libs.concat([ folder ]));
             await vscode.workspace.getConfiguration().update("pvs.pvsLibraryPath", newPvsLibraryPath, vscode.ConfigurationTarget.Global);
-            return true;
         }
+        return true;
     }
     return false;
 }

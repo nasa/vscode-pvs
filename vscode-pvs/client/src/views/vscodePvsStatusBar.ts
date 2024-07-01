@@ -102,7 +102,9 @@ export class VSCodePvsStatusBar {
     // protected crashReport: VSCodePvsStatusBarItem;
     protected restartPvs: VSCodePvsStatusBarItem;
     protected interruptProver: VSCodePvsStatusBarItem;
+
     protected downloadNasalib: VSCodePvsStatusBarItem;
+    protected installPVSButton: VSCodePvsStatusBarItem;
 
     // running flag, disables this.ready()
     protected runningFlag: boolean = false;
@@ -117,7 +119,7 @@ export class VSCodePvsStatusBar {
         this.client = client;
         // create status bar elements
         this.workspaceStatus = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
-        this.pvsStatus = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
+        this.pvsStatus = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
         this.versionInfo = new VSCodePvsStatusBarItem(StatusBarAlignment.Right, StatusBarPriority.Medium);
 
         this.restartPvs = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
@@ -125,6 +127,7 @@ export class VSCodePvsStatusBar {
 
         this.interruptProver = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
         this.downloadNasalib = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
+        this.installPVSButton = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
     }
 
 
@@ -134,6 +137,7 @@ export class VSCodePvsStatusBar {
      */
     pvsReady (desc: PvsVersionDescriptor): void {
         if (desc) {
+            this.hideinstallpvsButton();
             this.pvsVersionInfo = desc;
             const activeEditor: TextEditor = vscodeUtils.getActivePvsEditor();
             if (activeEditor?.document?.languageId === "pvs") {
@@ -316,7 +320,7 @@ export class VSCodePvsStatusBar {
     hideInterruptButton (): void {
         this.interruptProver.hide();
     }
-    showDownloadNasalibButton (showButton?: boolean): void {
+    toggleVisibilityDownloadNasalibButton (showButton?: boolean): void {
         showButton = showButton === undefined ? true : !!showButton;
         if (showButton === true) {
             this.downloadNasalib.icon("");
@@ -329,6 +333,21 @@ export class VSCodePvsStatusBar {
     }
     hideDownloadNasalibButton (): void {
         this.downloadNasalib.hide();
+    }
+
+    showInstallPvsButton (showButton?: boolean): void {
+        showButton = showButton === undefined ? true : !!showButton;
+        if (showButton === true) {
+            this.installPVSButton.icon("");
+            this.installPVSButton.text(`$(symbol-function)  Install PVS`);
+            this.installPVSButton.command("vscode-pvs.install-pvs");
+            this.installPVSButton.show();
+        } else {
+            this.hideinstallpvsButton();
+        }
+    }
+    hideinstallpvsButton (): void {
+        this.installPVSButton.hide();
     }
 
     /**
@@ -363,10 +382,11 @@ export class VSCodePvsStatusBar {
         this.hideVersionInfo();
         this.hideInstallNasalib();
         // this.hideRestartButton();
+        this.hideinstallpvsButton();
     }
 
     showInstallNasalib (): void {
-        this.showDownloadNasalibButton();
+        this.toggleVisibilityDownloadNasalibButton();
     }
     hideInstallNasalib (): void {
         this.hideDownloadNasalibButton();

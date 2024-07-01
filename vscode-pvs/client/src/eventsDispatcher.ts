@@ -154,7 +154,7 @@ export class EventsDispatcher {
 			if (version) {
                 this.statusBar.pvsReady(version);
                 vscode.commands.executeCommand('setContext', 'nasalib-present', !!version["nasalib-version"]);
-                this.statusBar.showDownloadNasalibButton(!version["nasalib-version"]);
+                this.statusBar.toggleVisibilityDownloadNasalibButton(!version["nasalib-version"]);
                 try {
                     // check if this is a session start and there's a file that needs to be opened
                     const currentWorkspace: string = vscodeUtils.getRootFolder();
@@ -683,11 +683,6 @@ export class EventsDispatcher {
                 vscodeUtils.showTextDocument(desc);
             });
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.install-pvs", async () => {
-            await this.packageManager.pvsInstallationWizard({ update: true });
-            // create default workspaces folder if it doesn't exist
-            await vscodeUtils.createDefaultPvsWorkspacesDirectory();
-        }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.update-pvs", async () => {
             await this.packageManager.pvsInstallationWizard({ update: true });
         }));
@@ -705,9 +700,11 @@ export class EventsDispatcher {
             this.packageManager.choosePvsPath();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.install-nasalib", () => {
+            this.statusBar.hideDownloadNasalibButton();
             this.packageManager.nasalibInstallationWizard();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.update-nasalib", () => {
+            this.statusBar.hideDownloadNasalibButton();
             this.packageManager.nasalibInstallationWizard({ update: true });
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.add-pvs-library", async () => {
@@ -779,7 +776,10 @@ export class EventsDispatcher {
 			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesNo[0])
 			if (ans === yesNo[0]) {
                 const currentContext: string = vscodeUtils.getRootPath();
-                const req = { cleanFolder: currentContext, externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer") };
+                const req = { 
+                    cleanFolder: currentContext, 
+                    externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
+                    webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber") };
                 this.client.sendRequest(serverRequest.rebootPvsServer, req);
                 // terminate any prover session
                 this.xterm.dispose();
@@ -821,10 +821,17 @@ export class EventsDispatcher {
             this.statusBar.clear();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.download-nasalib", async () => {
+            this.statusBar.hideDownloadNasalibButton();
             const success: boolean = await this.packageManager.nasalibInstallationWizard();
             if (success) {
                 this.statusBar.hideDownloadNasalibButton();
-                this.client.sendRequest(serverRequest.rebootPvsServer);
+            }
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.install-pvs", async () => {
+            this.statusBar.hideinstallpvsButton();
+            const success: boolean = await this.packageManager.pvsInstallationWizard();
+            if (!success) {
+                this.statusBar.showInstallPvsButton();
             }
         }));
 
@@ -1315,6 +1322,7 @@ export class EventsDispatcher {
                         unprovedOnly: opt.unprovedOnly
                     });
                     // clear status bar
+                    this.statusBar.clear();
                     this.statusBar.ready();
                     this.quietMode = false;
                 }
@@ -1362,6 +1370,7 @@ export class EventsDispatcher {
                         match: formulaName && !allTccs ? new RegExp(`${formulaName}_TCC`, "g") : null
                     });
                     // clear status bar
+                    this.statusBar.clear();
                     this.statusBar.ready();
                     this.quietMode = false;
                 }

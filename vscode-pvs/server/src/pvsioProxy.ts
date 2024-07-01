@@ -420,9 +420,9 @@ export class PvsIoProxy {
 	 */
 	constructor (pvsPath: string, opt?: { connection?: SimpleConnection, pvsLibraryPath?: string }) {
 		opt = opt || {};
-		this.pvsPath = pvsPath;
+		this.pvsPath = pvsPath || "";
 		this.pvsLibraryPath = opt.pvsLibraryPath || "";
-		this.pvsLibPath = path.join(pvsPath, "lib");
+		this.pvsLibPath = path.join(this.pvsPath, "lib");
 		this.connection = opt.connection;
 	}
 

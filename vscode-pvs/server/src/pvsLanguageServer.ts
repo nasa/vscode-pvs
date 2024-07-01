@@ -107,7 +107,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	protected diags: ContextDiagnostics = {}; 
 
 	// pvs path, context folder, server path
-	protected pvsPath: string;
+	protected pvsPath: string = '';
 	protected pvsLibraryPath: string;
 	protected pvsVersionDescriptor: PvsVersionDescriptor;
 
@@ -234,7 +234,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * Returns the pvs path
 	 */
 	getPvsPath (): string {
-		return this.pvsPath ? this.pvsPath : "";
+		return this.pvsPath;
 	}
 	/**
 	 * Returns the nasalib path
@@ -1845,7 +1845,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * Utility function, starts pvs-server
 	 */
 	async startPvsServer (
-		desc: { pvsPath: string, pvsLibraryPath?: string, contextFolder?: string, externalServer?: boolean }, 
+		desc: { pvsPath?: string, pvsLibraryPath?: string, contextFolder?: string, externalServer?: boolean, webSocketPort: number }, 
 		opt?: { verbose?: boolean, debugMode?: boolean, forceKill?: boolean }): Promise<boolean> {
 		if (desc) {
 			opt = opt || {};
@@ -1856,13 +1856,18 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 						(desc.pvsLibraryPath !== undefined && (desc.pvsLibraryPath !== this.pvsLibraryPath))) {
 					// the server was already running, the user must have selected a different pvs path. Kill the existing server.
 					await this.pvsProxy?.killPvsServer();
+					this.pvsProxy.abortingActivation = true;
+					this.pvsProxy = null;
 				}	
 			}
-			if (desc.pvsPath || this.pvsPath) {
-				console.log(`[pvs-language-server] Rebooting PVS (installation folder is ${this.pvsPath})`);
+			const externalServer: boolean = !!desc.externalServer;
+			if (desc.pvsPath || this.pvsPath || externalServer ) {
+				console.log('[pvs-language-server] Rebooting PVS ' + (externalServer ? '(relying on external PVS server)' : `(installation folder is ${this.pvsPath && this.pvsPath !== ''? this.pvsPath : desc.pvsPath })`));
 				// Copy pvs patches into $PVS_DIR/pvs-patches folder
-				await PvsPackageManager.installPvsPatches(desc); 
-				const externalServer: boolean = !!desc.externalServer;
+				if (!externalServer){
+					console.log('[pvs-language-server] Installing own patches (if needed)... ');
+					await PvsPackageManager.installPvsPatches( { pvsPath: (desc.pvsPath ? desc.pvsPath : this.pvsPath) } ); 
+				}
 				if (this.pvsProxy && desc.pvsPath === this.pvsPath && (desc.pvsLibraryPath === undefined || this.pvsLibraryPath === desc.pvsLibraryPath)) {
 					await this.pvsProxy?.enableExternalServer({ enabled: externalServer });
 				} else {
@@ -1871,7 +1876,8 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					this.pvsProxy = new PvsProxy(this.pvsPath, 
 						{ connection: this.connection, 
 							pvsLibraryPath: this.pvsLibraryPath, 
-							externalServer: externalServer } );
+							externalServer: externalServer,
+							webSocketPort: desc.webSocketPort } );
 					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath });
 					this.createServiceProviders();
 				}	
@@ -1893,7 +1899,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				}
 				return result;
 			} else {
-				console.error("[pvs-language-server] Error: failed to identify PVS path");
+				console.error("[pvs-language-server] Error: PVS path not set");
 				this.connection?.sendRequest(serverEvent.pvsNotFound);
 			}
 		}
@@ -1905,7 +1911,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * FIXME: create separate functions for starting pvs-server and pvs-proxy
 	 * @param desc 
 	 */
-	protected async startPvsServerRequest (desc: { pvsPath: string, pvsLibraryPath: string, contextFolder?: string, externalServer?: boolean }): Promise<boolean> {
+	protected async startPvsServerRequest (
+		desc: { pvsPath: string, pvsLibraryPath: string, contextFolder?: string, externalServer?: boolean, webSocketPort: number }
+	): Promise<boolean> {
 		// make sure that all dependencies are installed; an error will be shown to the user if some dependencies are missing
 		const dependencies: boolean = await this.checkDependencies();
 		if(dependencies){
@@ -2071,7 +2079,8 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				pvsPath: string, 
 				pvsLibraryPath: string, 
 				contextFolder?: string, 
-				externalServer?: boolean
+				externalServer?: boolean, 
+				webSocketPort: number
 			}) => {
 				// setting the error manager here so I can report errors on starting-up
 				if (!this.pvsErrorManager)
@@ -2096,10 +2105,11 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				}
 			});
 			this.connection?.onRequest(serverRequest.rebootPvsServer, async (req?: { 
-				pvsPath: string, 
-				pvsLibraryPath: string, 
+				pvsPath?: string, 
+				pvsLibraryPath?: string, 
 				contextFolder?: string, 
-				externalServer?: boolean
+				externalServer?: boolean,
+				webSocketPort: number
 			}) => {
 				this.connection?.sendNotification("server.status.restart-server");
 				await this.startPvsServer(req, { forceKill: true});
