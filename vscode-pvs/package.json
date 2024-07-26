@@ -178,6 +178,28 @@
 						"type": "number",
 						"default": 23456,
 						"description": "Port number to use to communicate with the PVS server (default: 23456). If you change this value, the new port number will be used the next time the PVS server is restarted. Tip: you can restart the server using 'M-x reboot-server'"
+					},
+					"pvs.activateRemote": {
+						"type":"boolean",
+						"default": false,
+						"description": "Enables running PVS Server on a remote machine. All requests sent to PVS Server will be processed on a remote server instead of local machine."
+					},
+					"pvs.remoteServerIP": {
+						"type":"string",
+						"default": "0.0.0.0",
+						"description": "Enter the IP Address of your Remote Server",
+						"when": "pvs.activateRemote === true"
+					},
+					"pvs.remoteServerPort": {
+						"type": "number",
+						"default": 8080,
+						"description": "Enter the port number where remote server is listening",
+						"when": "pvs.activateRemote === true"
+					},
+					"pvs.privateSSHKeyPath": {
+						"type": "string",
+						"default": "",
+						"description": "Absolute path of private key which will be used in RSYNC operations with remote servers"
 					}
 				}
 			}
@@ -2027,7 +2049,7 @@
 		"@types/vscode": "^1.76.0",
 		"@typescript-eslint/eslint-plugin": "^5.10.0",
 		"@typescript-eslint/parser": "^5.10.0",
-		"@vscode/vsce": "^2.29.0",
+		"@vscode/vsce": "^2.31.0",
 		"assert": "^2.0.0",
 		"chai": "^4.3.4",
 		"eslint": "^8.7.0",

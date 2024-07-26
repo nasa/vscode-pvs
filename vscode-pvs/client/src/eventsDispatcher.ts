@@ -779,7 +779,9 @@ export class EventsDispatcher {
                 const req = { 
                     cleanFolder: currentContext, 
                     externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
-                    webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber") };
+                    webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber"),
+                    remote: vscodeUtils.getRemoteDetail(context)
+                };
                 this.client.sendRequest(serverRequest.rebootPvsServer, req);
                 // terminate any prover session
                 this.xterm.dispose();

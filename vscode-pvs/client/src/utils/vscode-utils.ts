@@ -1511,3 +1511,31 @@ export function registerDevContainerCommands(context: vscode.ExtensionContext){
 export const setRuntimeEnvContext = (env: string) => {
     vscode.commands.executeCommand('setContext', 'runtime-window', env);
 };
+
+export const getRemoteDetail = (context: vscode.ExtensionContext): {[key: string]: unknown} => {
+    let ans = {};
+    if (getConfigurationFlag('pvs.activateRemote')){
+        if (getConfiguration('pvs.remoteServerIP')){
+            ans['ip']=getConfiguration('pvs.remoteServerIP');
+        } else {
+            vscode.window.showWarningMessage("Remote Server setting on , but no IP address provided.");
+        }
+        if (getConfigurationValue('pvs.remoteServerPort')){
+            ans['port']=getConfigurationValue('pvs.remoteServerPort');
+        } else {
+            vscode.window.showWarningMessage("Remote Server setting on, but no port number provided.")
+        }
+        if (getConfiguration('pvs.privateSSHKeyPath')){
+            ans['ssh_path']=getConfiguration('pvs.privateSSHKeyPath');
+        } else {
+            vscode.window.showWarningMessage("Remote Server setting on, but no ssh key path provided.")
+        }
+        ans['token'] = context.globalState.get('sessionTokenPVS', '');
+
+    }
+    if ('ip' in ans && 'port' in ans && 'ssh_path' in ans){
+        return ans;
+    } else {
+        return {};
+    }
+};

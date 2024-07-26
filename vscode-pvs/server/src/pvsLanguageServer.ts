@@ -53,7 +53,8 @@ import {
 	InstallWithProgressResponse, RebootPvsServerRequest, NASALibDownloader, NASALibDownloaderRequest, 
 	NASALibDownloaderResponse, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse, 
 	StatusProofChain, DumpPvsFilesRequest, DumpPvsFilesResponse, UndumpPvsFilesRequest, 
-	UndumpPvsFilesResponse, DumpFileDescriptor, PvsDocRequest, PvsDocKind, PvsDocDescriptor, PvsDocResponse
+	UndumpPvsFilesResponse, DumpFileDescriptor, PvsDocRequest, PvsDocKind, PvsDocDescriptor, PvsDocResponse,
+	remoteDetailsDesc
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -1845,7 +1846,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * Utility function, starts pvs-server
 	 */
 	async startPvsServer (
-		desc: { pvsPath?: string, pvsLibraryPath?: string, contextFolder?: string, externalServer?: boolean, webSocketPort: number }, 
+		desc: { pvsPath?: string, pvsLibraryPath?: string, contextFolder?: string, externalServer?: boolean, webSocketPort: number, remote: remoteDetailsDesc }, 
 		opt?: { verbose?: boolean, debugMode?: boolean, forceKill?: boolean }): Promise<boolean> {
 		if (desc) {
 			opt = opt || {};
@@ -1877,7 +1878,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 						{ connection: this.connection, 
 							pvsLibraryPath: this.pvsLibraryPath, 
 							externalServer: externalServer,
-							webSocketPort: desc.webSocketPort } );
+							webSocketPort: desc.webSocketPort,
+							remote: desc.remote
+						 } );
 					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath });
 					this.createServiceProviders();
 				}	
@@ -1912,7 +1915,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * @param desc 
 	 */
 	protected async startPvsServerRequest (
-		desc: { pvsPath: string, pvsLibraryPath: string, contextFolder?: string, externalServer?: boolean, webSocketPort: number }
+		desc: { pvsPath: string, pvsLibraryPath: string, contextFolder?: string, externalServer?: boolean, webSocketPort: number, remote: remoteDetailsDesc }
 	): Promise<boolean> {
 		// make sure that all dependencies are installed; an error will be shown to the user if some dependencies are missing
 		const dependencies: boolean = await this.checkDependencies();
@@ -1920,7 +1923,11 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			// start pvs
 			const success: boolean = await this.startPvsServer(desc);
 			return success;
-		}
+		} 
+		// else if (Object.keys(desc.remote).length !== 0){
+		// 	const success: boolean = await this.startPvsServer(desc);
+		// 	return success;
+		// }
 		return false;
 	}
 
@@ -2080,7 +2087,8 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				pvsLibraryPath: string, 
 				contextFolder?: string, 
 				externalServer?: boolean, 
-				webSocketPort: number
+				webSocketPort: number,
+				remote: remoteDetailsDesc
 			}) => {
 				// setting the error manager here so I can report errors on starting-up
 				if (!this.pvsErrorManager)
@@ -2109,7 +2117,8 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				pvsLibraryPath?: string, 
 				contextFolder?: string, 
 				externalServer?: boolean,
-				webSocketPort: number
+				webSocketPort: number,
+				remote: remoteDetailsDesc
 			}) => {
 				this.connection?.sendNotification("server.status.restart-server");
 				await this.startPvsServer(req, { forceKill: true});

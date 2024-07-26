@@ -291,13 +291,15 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				this.pvsLibraryPath = pvsLibraryPath;
 				if (this.pvsPath && pvsServerHasToBeRestarted) {
 					const msg: string = `Restarting PVS from ${this.pvsPath}`;
+					const remoteDetails = vscodeUtils.getRemoteDetail(this.context);
 					this.statusBar.showProgress(msg);
 					// window.showInformationMessage(msg);
 					this.client.sendRequest(serverRequest.startPvsServer, {
 						pvsPath: this.pvsPath, 
 						pvsLibraryPath: this.pvsLibraryPath, 
 						externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
-						webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber")
+						webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber"),
+						remote: remoteDetails
 					}); // the server will use the last context folder it was using	
 				}
 			}
@@ -483,12 +485,14 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.pvsPath = vscodeUtils.getConfiguration("pvs.path");
 			this.alreadySuggestedNASALib = this.alreadySuggestedNASALib && !(this.pvsPath === undefined || this.pvsPath === '');
 			this.pvsLibraryPath = vscodeUtils.getPvsLibraryPath();
+			const remoteDetails = vscodeUtils.getRemoteDetail(context);
 			this.client.sendRequest(serverRequest.startPvsServer, {
 				pvsPath: this.pvsPath,
 				pvsLibraryPath: this.pvsLibraryPath,
 				contextFolder,
 				externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
 				webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber"),
+				remote: remoteDetails
 			});
 			// set vscode context variable pvs-server-active to true -- this will create the PVS icon on the activity bar
 			commands.executeCommand('setContext', 'pvs-server-active', true);
@@ -528,6 +532,9 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 						this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder: folder });
 					}
 				}
+			});
+			this.client.onRequest("update-token", (token: string) => {
+				context.globalState.update('sessionTokenPVS', token);
 			});
 		});
 	}

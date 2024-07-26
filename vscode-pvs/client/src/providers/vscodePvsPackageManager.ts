@@ -149,7 +149,9 @@ export class VSCodePvsPackageManager {
             const req = { 
                 pvsPath: pvsPath, 
                 externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
-                webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber") };
+                webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber"),
+                remote: vscodeUtils.getRemoteDetail(this.context)
+             };
             this.client.sendRequest(serverRequest.rebootPvsServer, req);
             window.showInformationMessage(`PVS path is ${pvsPath}`);
         }
@@ -274,7 +276,9 @@ export class VSCodePvsPackageManager {
 
             const req = { 
                 externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
-                webSocketPort: webSocketPort };
+                webSocketPort: webSocketPort,
+                remote: vscodeUtils.getRemoteDetail(this.context)
+             };
             this.client.sendRequest(serverRequest.rebootPvsServer, req);
         }
 

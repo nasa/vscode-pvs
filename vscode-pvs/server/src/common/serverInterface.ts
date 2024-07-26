@@ -1216,3 +1216,19 @@ export interface PvsDocDescriptor {
     outputFolder: string,
     mainFile: string
 };
+
+interface remoteDetails {
+	port: number;
+	ip: string;
+	ssh_path: string;
+	token: string
+}
+
+export type remoteDetailsDesc = remoteDetails | {};
+
+export interface ClientMessage  {
+	type: 'connect';
+  	token?: string;
+  	workspacePaths?: string[];
+  	libPaths?: string[];
+}
