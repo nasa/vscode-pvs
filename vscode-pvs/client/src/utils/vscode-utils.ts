@@ -1530,10 +1530,14 @@ export const getRemoteDetail = (context: vscode.ExtensionContext): {[key: string
         } else {
             vscode.window.showWarningMessage("Remote Server setting on, but no ssh key path provided.")
         }
+        if (getConfiguration('pvs.remoteHostname')){
+            ans['hostname']=getConfiguration('pvs.remoteHostname');
+        } else {
+            vscode.window.showWarningMessage('Remote Server setting on , but no remote hostname provided.');
+        }
         ans['token'] = context.globalState.get('sessionTokenPVS', '');
-
     }
-    if ('ip' in ans && 'port' in ans && 'ssh_path' in ans){
+    if ('ip' in ans && 'port' in ans && 'ssh_path' in ans && 'hostname' in ans){
         return ans;
     } else {
         return {};

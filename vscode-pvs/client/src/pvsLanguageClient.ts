@@ -272,7 +272,11 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				pvsLibraryPath = fsUtils.prunePvsLibraryPath(vscodeUtils.getPvsLibraryPath());
 				pvsLibraryPathChanged = (this.pvsLibraryPath !== pvsLibraryPath);
 			}
-			if(pvsPathChanged || pvsLibraryPathChanged){
+			let remoteDetailsChanged: boolean = false;
+			if (event.affectsConfiguration("pvs.activateRemote")||event.affectsConfiguration("pvs.remoteServerIP")||event.affectsConfiguration("pvs.remoteServerPort")||event.affectsConfiguration("pvs.privateSSHKeyPath")||event.affectsConfiguration("pvs.remoteHostname")){
+				remoteDetailsChanged = true;
+			}
+			if(pvsPathChanged || pvsLibraryPathChanged || remoteDetailsChanged){
 				let pvsServerHasToBeRestarted: boolean = true;
 				if (this.pvsPath === '' && pvsPath !== ''){
 					// If pvsPath was set, and pvsLibraryPath was empty and NASALib is not in the pvsLibraryPath, we suggest the user to get it
@@ -286,7 +290,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				} else {
 					// if the pvs path was cleared, we'll suggest NASALib again when a new PVS is selected
 					this.alreadySuggestedNASALib = this.alreadySuggestedNASALib && !(pvsPath === undefined || pvsPath === '');
-				}	
+				}
 				this.pvsPath = pvsPath || this.pvsPath; // #TODO this prevents removing the PVS folder... is this what we want?
 				this.pvsLibraryPath = pvsLibraryPath;
 				if (this.pvsPath && pvsServerHasToBeRestarted) {
@@ -301,6 +305,18 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 						webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber"),
 						remote: remoteDetails
 					}); // the server will use the last context folder it was using	
+				} else if (remoteDetailsChanged) {
+					const msg: string = `Restarting PVS from ${this.pvsPath}`;
+					const remoteDetails = vscodeUtils.getRemoteDetail(this.context);
+					this.statusBar.showProgress(msg);
+					// window.showInformationMessage(msg);
+					this.client.sendRequest(serverRequest.startPvsServer, {
+						pvsPath: this.pvsPath, 
+						pvsLibraryPath: this.pvsLibraryPath, 
+						externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
+						webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber"),
+						remote: remoteDetails
+					});
 				}
 			}
 

@@ -1221,13 +1221,14 @@ interface remoteDetails {
 	port: number;
 	ip: string;
 	ssh_path: string;
-	token: string
+	token: string;
+	hostname: string;
 }
 
 export type remoteDetailsDesc = remoteDetails | {};
 
 export interface ClientMessage  {
-	type: 'connect';
+	type: string;
   	token?: string;
   	workspacePaths?: string[];
   	libPaths?: string[];

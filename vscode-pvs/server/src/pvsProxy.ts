@@ -156,6 +156,7 @@ export class PvsProxy {
 	pathCache: PathCacheDesc;
 	pendingPathSyncs: Map<any, any>;
 	SYNC_TIMEOUT = 5000;
+	functionResolveMap: Map<string, any>;
 
 	/** The constructor simply sets various properties in the PvsProxy class. */
 	constructor(pvsPath: string,
@@ -194,14 +195,21 @@ export class PvsProxy {
 		this.remoteActive = false;
 		this.pathCache = { workspacePaths: {}, libPaths: {} };
 		this.pendingPathSyncs = new Map();
-		if ('port' in opt.remote && 'ip' in opt.remote) {
+		if (this.validRemoteDetails(this.remoteDetails)) {
 			this.remoteActive = true;
 		}
+		this.functionResolveMap = new Map();
 	}
 
 	async getMode(): Promise<ServerMode> {
 		// return await this.getServerMode(); // pvs is not always able to return the prover status -- the workaround is to use this.mode to keep track of the prover status, and ask pvs the status only when stricly necessary
 		return this.mode;
+	}
+
+	validRemoteDetails(remote: remoteDetailsDesc): boolean {
+		if (remote['port'] && remote['ip'] && remote['ssh_path'] && remote['hostname']) {
+			return true;
+		} return false;
 	}
 
 	async enableExternalServer(opt?: { enabled?: boolean }): Promise<void> {
@@ -231,12 +239,10 @@ export class PvsProxy {
 		}
 	}
 
-
-
 	//--------------------------------------------------
 	//         json-rpc methods
 	//--------------------------------------------------
-	async pvsRequest(method: string, params?: string[], progressReporter?: (msg: string) => void, context?: string): Promise<PvsResponse> {
+	async pvsRequest(method: string, params?: string[], progressReporter?: (msg: string) => void): Promise<PvsResponse> {
 		params = params || [];
 		if (this.pvsServerProcessStatus === ProcessCode.SUCCESS && this.webSocket) {
 			return new Promise(async (resolve, reject) => {
@@ -302,56 +308,65 @@ export class PvsProxy {
 		}
 	}
 
-	async pvsRequestRemote(method: string, params?: string[], progressReporter?: (msg: string) => void, contextPath?: string): Promise<PvsResponse> {
-		if (this.pvsServerProcessStatus === ProcessCode.SUCCESS && this.webSocket && contextPath) {
-			let remotePath = this.searchPathCache(contextPath || '');
-			params = params || [];
+	async syncPaths(contextPath: string, lib?: boolean) {
+		let rsyncCode = -1;
+		if ('hostname' in this.remoteDetails && this.remoteActive) {
+			let remotePath = this.searchPathCache(contextPath);
 			if (!remotePath) {
-				await this.syncMapping(contextPath);
-				remotePath = this.searchPathCache(contextPath || '');
+				if (lib) {
+					await this.syncMapping(contextPath, true);
+				} else {
+					await this.syncMapping(contextPath);
+				}
+				remotePath = this.searchPathCache(contextPath);
 			}
-			const rsyncCode = await fsUtils.runRsync(contextPath, remotePath, '', '', '');
-			if (rsyncCode === 0) {
-				return new Promise(async (resolve, reject) => {
-					const id = this.get_fresh_id();
-					let token = '';
-					if ('token' in this.remoteDetails){
-						token = this.remoteDetails.token;
-					}
-					const req = { method, params, jsonrpc: "2.0", id, token , type:'call-pvs'};
-					const jsonReq: string = JSON.stringify(req, null, " ");
-					// console.log('pvsRequest send: ', jsonReq);
-					this.webSocket.send(jsonReq);
-					// This is the function called when a response comes through the
-					// message handler of activate.
-					const me = this;
-					this.activeProgressReporters[id] = progressReporter;
-					this.pendingRequests[id] = function (obj: PvsResponse) {
-						// console.log("pvsRequest response: ", obj);
-						if ("result" in obj) {
-							resolve(obj);
-						} else if ("error" in obj) {
-							//reject(obj);
-							resolve(obj);
-						} else if ("method" in obj) {
-							switch (obj.method) {
-								case 'pvsMessage':
-									if (me.activeProgressReporters[id])
-										me.activeProgressReporters[id](obj.message);
-									else
-										console.log(`[pvsProxy.pvsRequest pendingRequest] message received from PVS but cliListener not set. msg: ${obj.message}`);
-									break;
-								default:
-									console.log('[pvsProxy.pvsRequest pendingRequest] unknown');
-									console.dir(obj, { depth: null });
-							}
-						} else {
-							console.log('Bad obj:');
-							console.dir(obj);
+			rsyncCode = await fsUtils.runRsync(contextPath, remotePath, this.remoteDetails.ssh_path, this.remoteDetails.hostname, this.remoteDetails.ip);
+			return rsyncCode;
+		}
+		return rsyncCode;
+	}
+
+	async pvsRequestRemote(method: string, params?: string[], progressReporter?: (msg: string) => void): Promise<PvsResponse> {
+		if (this.pvsServerProcessStatus === ProcessCode.SUCCESS && this.webSocket) {
+			return new Promise(async (resolve, reject) => {
+				const id = this.get_fresh_id();
+				let token = '';
+				if ('token' in this.remoteDetails) {
+					token = this.remoteDetails.token;
+				}
+				const req = { method, params, jsonrpc: "2.0", id, token, type: 'call-pvs' };
+				const jsonReq: string = JSON.stringify(req, null, " ");
+				// console.log('pvsRequest send: ', jsonReq);
+				this.webSocket.send(jsonReq);
+				// This is the function called when a response comes through the
+				// message handler of activate.
+				const me = this;
+				this.activeProgressReporters[id] = progressReporter;
+				this.pendingRequests[id] = function (obj: PvsResponse) {
+					// console.log("pvsRequest response: ", obj);
+					if ("result" in obj) {
+						resolve(obj);
+					} else if ("error" in obj) {
+						//reject(obj);
+						resolve(obj);
+					} else if ("method" in obj) {
+						switch (obj.method) {
+							case 'pvsMessage':
+								if (me.activeProgressReporters[id])
+									me.activeProgressReporters[id](obj.message);
+								else
+									console.log(`[pvsProxy.pvsRequest pendingRequest] message received from PVS but cliListener not set. msg: ${obj.message}`);
+								break;
+							default:
+								console.log('[pvsProxy.pvsRequest pendingRequest] unknown');
+								console.dir(obj, { depth: null });
 						}
-					};
-				});
-			}
+					} else {
+						console.log('Bad obj:');
+						console.dir(obj);
+					}
+				};
+			});
 		}
 		else {
 			let errorMsg: string = `[pvs-proxy] Warning: could not invoke method ${method} ` +
@@ -380,13 +395,18 @@ export class PvsProxy {
 			})
 		}
 	}
-	syncMapping(path: string): Promise<void> {
+	syncMapping(path: string, lib?: boolean): Promise<void> {
 		return new Promise((resolve, reject) => {
 			let token = '';
 			if ('token' in this.remoteDetails) {
 				token = this.remoteDetails.token;
 			}
-			const syncMessage = JSON.stringify({ type: 'path-sync', token: token, workspacePaths: [path] });
+			let syncMessage: string;
+			if (lib) {
+				syncMessage = JSON.stringify({ type: 'path-sync', token: token, libPaths: [path] });
+			} else {
+				syncMessage = JSON.stringify({ type: 'path-sync', token: token, workspacePaths: [path] });
+			}
 			this.webSocket.send(syncMessage);
 			const timeoutId = setTimeout(() => {
 				this.pendingPathSyncs.delete(path);
@@ -400,9 +420,9 @@ export class PvsProxy {
 		});
 	}
 
-	async pvsInterrupt(proofId: string): Promise<PvsResponse> {
-		return this.sendRequestOnSecondaryConn("interrupt-proof", [proofId]);
-	}
+	// async pvsInterrupt(proofId: string): Promise<PvsResponse> {
+	// 	return this.sendRequestOnSecondaryConn("interrupt-proof", [proofId]);
+	// }
 
 	public secondaryConnReady(): boolean {
 		return this.interruptConn && this.interruptConn.readyState === WebSocket.OPEN;
@@ -416,7 +436,16 @@ export class PvsProxy {
 		if (this.interruptConn) {
 			return new Promise(async (resolve, reject) => {
 				const id = this.get_fresh_id();
-				const req = { method: method, params: params, jsonrpc: "2.0", id: id };
+				let req: Object;
+				if (this.remoteActive) {
+					let token = '';
+					if ('token' in this.remoteDetails) {
+						token = this.remoteDetails.token;
+					}
+					req = { method: method, params: params, jsonrpc: "2.0", id: id, type: "call-pvs-interupt", token }
+				} else {
+					req = { method: method, params: params, jsonrpc: "2.0", id: id };
+				}
 				const jsonReq: string = JSON.stringify(req, null, " ");
 				this.interruptConn.send(jsonReq);
 				this.pendingRequests[id] = function (obj: PvsResponse) {
@@ -488,7 +517,7 @@ export class PvsProxy {
 		});
 		this.webSocket.on('close', () => {
 			console.log("[pvsProxy.startWebSocket] CLOSE");
-			if (!this.externalServer) {
+			if (!this.externalServer && !this.remoteActive) {
 				setTimeout(() => {
 					if (this.pvsServerProcessStatus === ProcessCode.SUCCESS) this.startWebSocket();
 				}, 5000);
@@ -502,13 +531,21 @@ export class PvsProxy {
 			if (obj.type === "token") {
 				console.log("Received new session token from remove server");
 				this.connection.sendRequest("update-token", obj.token || '');
-				if ('token' in this.remoteDetails){
+				if ('token' in this.remoteDetails) {
 					this.remoteDetails.token = obj.token;
 				}
 			}
 			if (obj.type === "port-active") {
 				const processCode = obj.portActiveResponse.code;
 				resolveRemoteActivate(processCode);
+			}
+			if (obj.type === "function-response") {
+				const resolveFunc = this.functionResolveMap.get(obj.id);
+				if (resolveFunc) {
+					resolveFunc(obj.output);
+					this.functionResolveMap.delete(obj.id);
+				}
+
 			}
 			if (obj.type === "return-path-sync") {
 				for (const key in obj.workspacePaths) {
@@ -578,16 +615,36 @@ export class PvsProxy {
 
 		});
 		this.interruptConn.on('open', () => {
+			if (this.remoteActive) {
+				let token = '';
+				if ('token' in this.remoteDetails) {
+					token = this.remoteDetails.token;
+				}
+				const message: ClientMessage = {
+					type: 'connect-interupt',
+					token
+				};
+				this.webSocket.send(JSON.stringify(message));
+			}
 			console.log("[pvsProxy.startInterruptionWebSocket]  OPEN");
 		});
 		this.interruptConn.on('close', () => {
 			console.log("[pvsProxy.startInterruptionWebSocket]  CLOSE");
-			setTimeout(() => {
-				if (this.pvsServerProcessStatus === ProcessCode.SUCCESS) this.startInterruptionWebSocket();
-			}, 5000);
+			if (!this.externalServer && !this.remoteActive) {
+				setTimeout(() => {
+					if (this.pvsServerProcessStatus === ProcessCode.SUCCESS) this.startInterruptionWebSocket();
+				}, 5000);
+			}
 		});
 		this.interruptConn.on('message', (msg: string) => {
 			const obj = JSON.parse(msg);
+			if (obj.type === "token") {
+				console.log("Received new session token from remove server");
+				this.connection.sendRequest("update-token", obj.token || '');
+				if ('token' in this.remoteDetails) {
+					this.remoteDetails.token = obj.token;
+				}
+			}
 			if (obj.id) {
 				if ("result" in obj || "error" in obj) {
 					if (this.pendingRequests[obj.id]) {
@@ -638,6 +695,19 @@ export class PvsProxy {
 				let currentConnectionAttempt: number = 0;
 
 				const attemptConnection = async () => {
+					if (currentConnectionAttempt < this.SOCKET_CLIENT_ATTEMPTS && this.interruptConn == undefined) {
+						do {
+							currentConnectionAttempt++;
+							try {
+								await this.startInterruptionWebSocket();
+								console.log("[pvsProxy.activate] Waiting for interruptConn to be operational");
+								await this.waitForOpenConnection(this.interruptConn);
+							} catch (jsonError) {
+								// Start up PVS 
+								console.log("[pvsProxy.activate] Error creating interruptConn", jsonError.message);
+							}
+						} while (!this.abortingActivation && (currentConnectionAttempt < this.SOCKET_CLIENT_ATTEMPTS) && !this.isOperational(this.interruptConn));
+					}
 					if (this.webSocket == undefined) {
 						do {
 							currentConnectionAttempt++;
@@ -663,7 +733,7 @@ export class PvsProxy {
 	async activate(opt?: { debugMode?: boolean, showBanner?: boolean, verbose?: boolean, pvsErrorManager?: PvsErrorManager }): Promise<ProcessCode> {
 		opt = opt || {};
 		console.log(`[pvs-proxy.activate] Starting pvs-proxy...`);
-		if ('port' in this.remoteDetails && 'ip' in this.remoteDetails) {
+		if (this.remoteActive) {
 			this.pvsServerProcessStatus = await this.activateRemote();
 			if (this.isOperational(this.webSocket))
 				console.log(`[pvs-proxy.activate] Restart PVS Server done. PvsProxy is Ready ✅`);
@@ -797,12 +867,29 @@ export class PvsProxy {
 		return path.join(desc.contextFolder, desc.fileName + ".pvs");
 	}
 
+	fileRefRemote(desc: PvsFile): string {
+		if (desc.contextFolder in this.pathCache.workspacePaths) {
+			return path.join(this.pathCache.workspacePaths[desc.contextFolder], desc.fileName + ".pvs");
+		}
+		if (desc.contextFolder in this.pathCache.libPaths) {
+			return path.join(this.pathCache.libPaths[desc.contextFolder], desc.fileName + ".pvs");
+		}
+	}
+
 	theoryRef(desc: PvsTheory): string {
 		return this.fileRef(desc) + "#" + desc.theoryName;
 	}
 
+	theoryRefRemote(desc: PvsTheory): string {
+		return this.fileRefRemote(desc) + "#" + desc.theoryName;
+	}
+
 	formulaRef(fm: PvsFormula): string {
 		return this.theoryRef(fm) + "#" + fm.formulaName;
+	}
+
+	formulaRefRemote(fm: PvsFormula): string {
+		return this.theoryRefRemote(fm) + "#" + fm.formulaName;
 	}
 
 	/**
@@ -843,7 +930,16 @@ export class PvsProxy {
 						}
 						const startTime: number = Date.now();
 						// const externalServer: boolean = opt.externalServer === undefined ? this.externalServer : !!opt.externalServer;
-						const res: PvsResponse = await this.pvsRequest('parse', [fname], undefined, desc.contextFolder);
+						let res: PvsResponse;
+						if (this.remoteActive) {
+							const rsyncCode = await this.syncPaths(desc.contextFolder);
+							if (rsyncCode === 0) {
+								const fnameRemote: string = this.fileRefRemote(desc);
+								res = await this.pvsRequestRemote('parse', [fnameRemote]);
+							}
+						} else {
+							res = await this.pvsRequest('parse', [fname]);
+						}
 						if (opt.test) { return res; }
 
 						// testing antlr parser
@@ -1039,7 +1135,7 @@ export class PvsProxy {
 	(lib-datatype-or-theory? th)))
 	(collect-theory-usings theoryname nil))))
 	(mapcar (lambda (theory) (cons (format nil "|~a|" (id theory)) (shortname (make-specpath (filename theory))))) (reverse usings))))
-	`);
+	`, desc.contextFolder);
 			// console.log(res.result);
 			if (res && res.result) {
 				const regex: RegExp = /\"\|(\w+)\|\"\s*\.\s*\"([^\|]+)\"\)/g;
@@ -1225,7 +1321,14 @@ export class PvsProxy {
 			// typecheck file
 			await this.changeContext(desc);
 			// console.log('Typechecking ', fname);
-			const res: PvsResponse = await this.pvsRequest('typecheck', [fname, desc.fileContent], opt.progressReporter, desc.contextFolder);
+			let res: PvsResponse;
+			if (this.remoteActive) {
+				const fnameRemote = this.fileRefRemote(desc);
+				res = await this.pvsRequestRemote('typecheck', [fnameRemote, desc.fileContent], opt.progressReporter);
+
+			} else {
+				res = await this.pvsRequest('typecheck', [fname, desc.fileContent], opt.progressReporter);
+			}
 			if (res && (res.error && res.error.data) || res.result) {
 				if (res.error) {
 					// the typecheck error might be generated from an imported file --- we need to check res.error.file_name
@@ -1271,18 +1374,18 @@ export class PvsProxy {
 	 * @param desc 
 	 * @deprecated
 	 */
-	protected async proveFile(desc: { contextFolder: string, fileName: string, fileExtension: string, }): Promise<PvsResponse> {
-		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
-			if (this.isProtectedFolder(desc.contextFolder)) {
-				this.info(`${desc.contextFolder} is already proved`);
-				return null;
-			}
-			const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
-			const res: PvsResponse = await this.lisp(`(prove-pvs-file "${fname}" nil)`);
-			return res;
-		}
-		return null;
-	}
+	// protected async proveFile(desc: { contextFolder: string, fileName: string, fileExtension: string, }): Promise<PvsResponse> {
+	// 	if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
+	// 		if (this.isProtectedFolder(desc.contextFolder)) {
+	// 			this.info(`${desc.contextFolder} is already proved`);
+	// 			return null;
+	// 		}
+	// 		const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
+	// 		const res: PvsResponse = await this.lisp(`(prove-pvs-file "${fname}" nil)`);
+	// 		return res;
+	// 	}
+	// 	return null;
+	// }
 	/**
 	 * The status-proofchain command provides a proof chain analysis of the
 	 * formula at the cursor and displays it in the PVS Status buffer.  The
@@ -1293,9 +1396,9 @@ export class PvsProxy {
 	 * Example invocation: (proofchain-status-at "/test/helloworld/helloworld.pvs" nil 12 "pvs")
 	 */
 	async statusProofChain(desc: PvsFormula): Promise<PvsResponse> {
-		const formref: string = this.formulaRef(desc);
+		const formref: string = this.remoteActive ? this.formulaRefRemote(desc) : this.formulaRef(desc);
 		const cmd: string = `(proofchain-status "${formref}")`;
-		const res: PvsResponse = await this.lisp(cmd);
+		const res: PvsResponse = await this.lisp(cmd,desc.contextFolder);
 		return res;
 	}
 	/**
@@ -1306,7 +1409,13 @@ export class PvsProxy {
 		if (formula && formula.fileName && formula.fileExtension && formula.contextFolder && formula.theoryName && formula.formulaName) {
 			await this.changeContext(formula.contextFolder);
 			const fullName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName); // file extension is always .pvs, regardless of whether this is a pvs file or a tcc file
-			const ans: PvsResponse = await this.pvsRequest("proof-status", [fullName, formula.formulaName], undefined, formula.contextFolder);
+			let ans: PvsResponse;
+			if (this.remoteActive) {
+				const remoteFullName = this.theoryRefRemote(formula);
+				ans = await this.pvsRequestRemote("proof-status", [remoteFullName, formula.formulaName]);
+			} else {
+				ans = await this.pvsRequest("proof-status", [fullName, formula.formulaName]);
+			}
 			return ans;
 		}
 		return null;
@@ -1353,7 +1462,16 @@ export class PvsProxy {
 			const formRef: string = formula.contextFolder + '/' + formula.fileName + '#' + formula.theoryName + '#' + formula.formulaName;
 			// const jsonRef: string = JSON.stringify(formRef, null, " ");
 			// const jsonRef: string = `${formRef}`;
-			let ans: PvsResponse = await this.pvsRequest("prove-formula", [formRef], undefined, formula.contextFolder);
+			let ans: PvsResponse;
+			if (this.remoteActive) {
+				const rsyncCode = await this.syncPaths(formula.contextFolder);
+				if (rsyncCode === 0) {
+					const remoteFormRef = this.formulaRefRemote(formula);
+					ans = await this.pvsRequestRemote("prove-formula", [remoteFormRef]);
+				}
+			} else {
+				ans = await this.pvsRequest("prove-formula", [formRef]);
+			}
 			// let ans: PvsResponse = await this.pvsRequest("prove-formula", [ jsonRef ]);
 			// if pvs reports that the prover was still open, try to force exit and retry prove-formula
 			// if (ans?.error?.data?.error_string === "Must exit the prover first") {
@@ -1455,7 +1573,12 @@ export class PvsProxy {
 	async statusProofTheory(desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string }): Promise<PvsResponse> {
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder && desc.theoryName) {
 			await this.changeContext(desc.contextFolder);
-			const res: PvsResponse = await this.pvsRequest('lisp', [`(status-proof-theory "${desc.theoryName}")`], undefined, desc.contextFolder);
+			let res: PvsResponse;
+			if (this.remoteActive) {
+				res = await this.pvsRequestRemote('lisp', [`(status-proof-theory "${desc.theoryName}")`]);
+			} else {
+				await this.pvsRequest('lisp', [`(status-proof-theory "${desc.theoryName}")`]);
+			}
 			return res;
 		}
 		return null;
@@ -1468,7 +1591,14 @@ export class PvsProxy {
 	async changeContext(desc: string | { contextFolder: string }): Promise<PvsResponse> {
 		if (desc) {
 			const ctx: string = (typeof desc === "string") ? desc : desc.contextFolder;
-			return await this.pvsRequest('change-context', [ctx], undefined, ctx);
+			if (this.remoteActive) {
+				const rsyncCode = await this.syncPaths(ctx);
+				if (rsyncCode === 0) {
+					return await this.pvsRequestRemote('change-context', [ctx]);
+				}
+			} else {
+				return await this.pvsRequest('change-context', [ctx]);
+			}
 		}
 		return null;
 	}
@@ -1488,8 +1618,20 @@ export class PvsProxy {
 	 * Executes a lisp command in pvs
 	 * @param cmd 
 	 */
-	async lisp(cmd: string): Promise<PvsResponse> {
-		return await this.pvsRequest('lisp', [cmd]);
+	async lisp(cmd: string, contextPath?: string): Promise<PvsResponse> {
+		if (this.remoteActive) {
+			if (contextPath) {
+				const rsyncCode = await this.syncPaths(contextPath);
+				if (rsyncCode === 0) {
+					return await this.pvsRequestRemote('lisp', [cmd]);
+				}
+			} else {
+				return await this.pvsRequestRemote('lisp', [cmd]);
+			}
+
+		} else {
+			return await this.pvsRequest('lisp', [cmd]);
+		}
 	}
 
 	async getServerMode(): Promise<ServerMode> {
@@ -1551,12 +1693,19 @@ export class PvsProxy {
 	* @param symbolName Symbol name 
 	*/
 	// protected findDeclarationQueue: Promise<PvsResponse> = null; // we are using this queue to reduce the strain on the server --- pvs-server tends to crash on MacOS if too many requests are sent in a short time frame
-	async findDeclaration(symbolName: string, opt?: { externalServer?: boolean }): Promise<PvsResponse> {
+	async findDeclaration(symbolName: string, ctxPath?: string, opt?: { externalServer?: boolean }): Promise<PvsResponse> {
 		opt = opt || {};
 		// find-declaration breaks the server, we need to use the lisp interface for now
 		// const externalServer: boolean = opt.externalServer === undefined ? this.externalServer : !!opt.externalServer;
 		// if (externalServer) {
-		return await this.pvsRequest('find-declaration', [symbolName]);
+		if (this.remoteActive) {
+			const rsyncCode = await this.syncPaths(ctxPath);
+			if (rsyncCode === 0) {
+				return await this.pvsRequestRemote('find-declaration', [symbolName]);
+			}
+		} else {
+			return await this.pvsRequest('find-declaration', [symbolName]);
+		}
 		// }
 	}
 
@@ -1567,15 +1716,33 @@ export class PvsProxy {
 		return ans;
 	}
 
+	callRemoteFunction(functionName: string, output: boolean): Promise<string | void> {
+		return new Promise((resolve, reject) => {
+			let token = '';
+			if ('token' in this.remoteDetails) {
+				token = this.remoteDetails.token;
+			}
+			const id = this.get_fresh_id();
+			const req = { type: 'invoke-pvs-process-method', token, function: functionName, id };
+			const jsonReq = JSON.stringify(req, null, " ");
+			this.webSocket.send(jsonReq);
+			if (!output) {
+				resolve();
+			} else {
+				this.functionResolveMap.set(id, resolve);
+			}
+		});
+	}
+
 	/**
 	 * @SAM: FIXME: this function should not automatically invoke the typechecker
 	 * @param desc 
 	 */
-	async termAt(desc: { fileName: string, fileExtension: string, contextFolder: string, line: number, character: number }): Promise<PvsResponse> {
-		const fname: string = fsUtils.desc2fname(desc);
-		const ans: PvsResponse = await this.pvsRequest("term-at", [fname, `(${desc.line} ${desc.character})`, 't']);
-		return ans;
-	}
+	// async termAt(desc: { fileName: string, fileExtension: string, contextFolder: string, line: number, character: number }): Promise<PvsResponse> {
+	// 	const fname: string = fsUtils.desc2fname(desc);
+	// 	const ans: PvsResponse = await this.pvsRequest("term-at", [fname, `(${desc.line} ${desc.character})`, 't']);
+	// 	return ans;
+	// }
 
 	/**
 	 * Returns the help message for a given command
@@ -1583,12 +1750,28 @@ export class PvsProxy {
 	async showHelpBang(desc: { cmd: string }): Promise<PvsResponse> {
 		const match: RegExpMatchArray = new RegExp(languageUtils.helpBangCommandRegexp).exec(desc.cmd);
 		if (match && match.length > 1 && match[1]) {
-			this.pvsServer.clearLispInterfaceOutput();
-			const helpCmd: string = `(help ${match[1]})`;
-			const ans: PvsResponse = await this.pvsRequest('proof-help', [helpCmd]);
-			if (ans && ans.result && ans.result.length) {
-				let help: string = this.pvsServer.getLispInterfaceOutput();
+			if (this.remoteActive) {
+				await this.callRemoteFunction("clearLispInterfaceOutput", false);
+			} else {
 				this.pvsServer.clearLispInterfaceOutput();
+			}
+			const helpCmd: string = `(help ${match[1]})`;
+			let ans: PvsResponse;
+			if (this.remoteActive) {
+				ans = await this.pvsRequestRemote('proof-help', [helpCmd]);
+			}
+			else {
+				ans = await this.pvsRequest('proof-help', [helpCmd]);
+			}
+			if (ans && ans.result && ans.result.length) {
+				let help: string;
+				if (this.remoteActive) {
+					help = await this.callRemoteFunction("getLispInterfaceOutput", true) || '';
+					await this.callRemoteFunction("clearLispInterfaceOutput", false);
+				} else {
+					help = this.pvsServer.getLispInterfaceOutput();
+					this.pvsServer.clearLispInterfaceOutput();
+				}
 				if (languageUtils.isInvalidCommand({ commentary: help })) {
 					// check if there's some help string we can provide
 					const metaHelp: string = languageUtils.PROOF_COMMANDS[match[1]] ?
@@ -1629,7 +1812,7 @@ export class PvsProxy {
 				const pid: string = desc.proofId;
 				res = languageUtils.isHelpBangCommand(cmd)
 					? await this.showHelpBang({ cmd: cmd })
-					: await this.pvsRequest('proof-command', [pid, cmd]);
+					: (this.remoteActive ? await this.pvsRequestRemote('proof-command', [pid, cmd]) : await this.pvsRequest('proof-command', [pid, cmd]));
 				if (res && res.result) {
 					const proofStates: PvsProofState[] = res.result;
 					if (showHidden) {
@@ -1687,7 +1870,12 @@ export class PvsProxy {
 	 */
 	async getProverStatus(proofId?: string): Promise<PvsResponse> {
 		let prfid: string = (typeof proofId == 'undefined') ? "" : proofId;
-		const ans: PvsResponse = await this.pvsRequest('prover-status', [prfid]);
+		let ans: PvsResponse;
+		if (this.remoteActive) {
+			ans = await this.pvsRequestRemote('prover-status', [prfid]);
+		} else {
+			ans = await this.pvsRequest('prover-status', [prfid]);
+		}
 		return ans;
 	}
 
@@ -1699,9 +1887,17 @@ export class PvsProxy {
 			opt = opt || {};
 			formula = fsUtils.decodeURIComponents(formula);
 			// extension is forced to .pvs, this is necessary as the request may come for a .tccs file
-			const fname: string = fsUtils.desc2fname({ contextFolder: formula.contextFolder, fileName: formula.fileName, fileExtension: ".pvs" });
-			const formName: string = fname + "#" + formula.formulaName;
-			return await this.pvsRequest('proof-script', [formName]);
+			if (this.remoteActive) {
+				const rsyncCode = await this.syncPaths(formula.contextFolder);
+				if (rsyncCode === 0) {
+					const remoteForname = this.fileRefRemote(formula) + "#" + formula.formulaName;
+					return await this.pvsRequestRemote('proof-script', [remoteForname]);
+				}
+			} else {
+				const fname: string = fsUtils.desc2fname({ contextFolder: formula.contextFolder, fileName: formula.fileName, fileExtension: ".pvs" });
+				const formName: string = fname + "#" + formula.formulaName;
+				return await this.pvsRequest('proof-script', [formName]);
+			}
 		}
 		return null;
 	}
@@ -1710,17 +1906,17 @@ export class PvsProxy {
 	 * Returns all the proofs associated with the given formula.
 	 * @author M3
 	 */
-	async getAllProofScripts(formula: PvsFormula, opt?: { externalServer?: boolean }): Promise<PvsResponse> {
-		if (formula) {
-			opt = opt || {};
-			formula = fsUtils.decodeURIComponents(formula);
-			// extension is forced to .pvs, this is necessary as the request may come for a .tccs file
-			const fname: string = fsUtils.desc2fname({ contextFolder: formula.contextFolder, fileName: formula.fileName, fileExtension: ".pvs" });
-			const formName: string = fname + "#" + formula.formulaName;
-			return await this.pvsRequest('all-proofs-of-formula', [formName]);
-		}
-		return null;
-	}
+	// async getAllProofScripts(formula: PvsFormula, opt?: { externalServer?: boolean }): Promise<PvsResponse> {
+	// 	if (formula) {
+	// 		opt = opt || {};
+	// 		formula = fsUtils.decodeURIComponents(formula);
+	// 		// extension is forced to .pvs, this is necessary as the request may come for a .tccs file
+	// 		const fname: string = fsUtils.desc2fname({ contextFolder: formula.contextFolder, fileName: formula.fileName, fileExtension: ".pvs" });
+	// 		const formName: string = fname + "#" + formula.formulaName;
+	// 		return await this.pvsRequest('all-proofs-of-formula', [formName]);
+	// 	}
+	// 	return null;
+	// }
 
 	/**
 	 * 
@@ -1729,10 +1925,10 @@ export class PvsProxy {
 	 * @returns the proof scripts extracted from the .prf file associated with the given filename.
 	 * @author M3
 	 */
-	async getProofScriptsInPrfFile(pvsFileName: string): Promise<PvsResponse> {
-		const ans: PvsResponse = await this.pvsRequest("get-proof-scripts", [pvsFileName]);
-		return ans;
-	}
+	// async getProofScriptsInPrfFile(pvsFileName: string): Promise<PvsResponse> {
+	// 	const ans: PvsResponse = await this.pvsRequest("get-proof-scripts", [pvsFileName]);
+	// 	return ans;
+	// }
 
 
 	/**
@@ -1917,27 +2113,27 @@ export class PvsProxy {
 	 * NOTE: this function can be used only after quitting the current proof
 	 * @param formula Proof descriptor
 	 */
-	async storeLastAttemptedProof(formula: PvsFormula): Promise<PvsResponse> {
-		if (formula && formula.fileName && formula.contextFolder && formula.formulaName && formula.theoryName) {
-			// desc = fsUtils.decodeURIComponents(desc);
-			// const fname: string = path.join(desc.contextFolder, `${desc.fileName}.jprf`);
-			// let proofFile: ProofFile = await utils.readProofFile(fname);
-			// proofFile = proofFile || {};
-			// const key: string = `${desc.theoryName}.${desc.formulaName}`;
-			// // update date in proof descriptor
-			// desc.proofDescriptor.info.date = new Date().toISOString();
-			// // TODO: implement mechanism to save a specific proof?
-			// proofFile[key] = [ desc.proofDescriptor ];
-			// const success: boolean = await fsUtils.writeFile(fname, JSON.stringify(proofFile, null, " "));
-			// await this.proofCommand({ cmd: "(quit)" });
-			const fullTheoryName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName);
-			const response: PvsResponse = await this.pvsRequest("save-all-proofs", [fullTheoryName]);
-			return response;
-		}
-		// else
-		console.error("[pvs-language-server] Warning: save-proof invoked with null or incomplete descriptor", formula);
-		return null;
-	}
+	// async storeLastAttemptedProof(formula: PvsFormula): Promise<PvsResponse> {
+	// 	if (formula && formula.fileName && formula.contextFolder && formula.formulaName && formula.theoryName) {
+	// 		// desc = fsUtils.decodeURIComponents(desc);
+	// 		// const fname: string = path.join(desc.contextFolder, `${desc.fileName}.jprf`);
+	// 		// let proofFile: ProofFile = await utils.readProofFile(fname);
+	// 		// proofFile = proofFile || {};
+	// 		// const key: string = `${desc.theoryName}.${desc.formulaName}`;
+	// 		// // update date in proof descriptor
+	// 		// desc.proofDescriptor.info.date = new Date().toISOString();
+	// 		// // TODO: implement mechanism to save a specific proof?
+	// 		// proofFile[key] = [ desc.proofDescriptor ];
+	// 		// const success: boolean = await fsUtils.writeFile(fname, JSON.stringify(proofFile, null, " "));
+	// 		// await this.proofCommand({ cmd: "(quit)" });
+	// 		const fullTheoryName: string = path.join(formula.contextFolder, formula.fileName + ".pvs" + "#" + formula.theoryName);
+	// 		const response: PvsResponse = await this.pvsRequest("save-all-proofs", [fullTheoryName]);
+	// 		return response;
+	// 	}
+	// 	// else
+	// 	console.error("[pvs-language-server] Warning: save-proof invoked with null or incomplete descriptor", formula);
+	// 	return null;
+	// }
 	/**
 	 * Instructs the server to save to a prf file all the modified proofs in the theory theoryRef.
 	 * @param theoryRef a URI of the form [pvsfile '#'] thname
@@ -1956,8 +2152,14 @@ export class PvsProxy {
 	 */
 	async markProofAsDefault(formula: PvsFormula, proofId: string): Promise<PvsResponse> {
 		if (formula) {
-			const formRef: string = formula.contextFolder + '/' + formula.fileName + '#' + formula.theoryName + '#' + formula.formulaName;
-			let ans: PvsResponse = await this.pvsRequest("mark-proof-as-default", [formRef, proofId]);
+			let ans: PvsResponse;
+			if (this.remoteActive) {
+				const remoteFormulaRef = this.formulaRefRemote(formula);
+				ans = await this.pvsRequestRemote("mark-proof-as-default", [remoteFormulaRef, proofId]);
+			} else {
+				const formRef: string = formula.contextFolder + '/' + formula.fileName + '#' + formula.theoryName + '#' + formula.formulaName;
+				ans = await this.pvsRequest("mark-proof-as-default", [formRef, proofId]);
+			}
 			return ans;
 		} else
 			return null;
@@ -1971,8 +2173,16 @@ export class PvsProxy {
 	 */
 	async discardProofFromFormula(formula: PvsFormula, proofId: string): Promise<PvsResponse> {
 		if (formula) {
-			const formRef: string = this.formulaRef(formula); // formula.contextFolder + '/' + formula.fileName + '#' + formula.theoryName + '#' + formula.formulaName;
-			let ans: PvsResponse = await this.pvsRequest("delete-proof-of-formula", [formRef, proofId]);
+			let ans: PvsResponse;
+			if (this.remoteActive) {
+				const rsyncCode = await this.syncPaths(formula.contextFolder);
+				if (rsyncCode === 0) {
+					ans = await this.pvsRequest("delete-proof-of-formula", [this.formulaRefRemote(formula), proofId]);
+				}
+			} else {
+				const formRef: string = this.formulaRef(formula); // formula.contextFolder + '/' + formula.fileName + '#' + formula.theoryName + '#' + formula.formulaName;
+				ans = await this.pvsRequest("delete-proof-of-formula", [formRef, proofId]);
+			}
 			return ans;
 		} else
 			return null;
@@ -2055,15 +2265,15 @@ export class PvsProxy {
 	/**
 	 * Returns the prooflite script for the given formula -- FIXME: display-prooflite-script is not working, we need to use languageUtils.proofTree2ProofLite()
 	 */
-	async proofLiteScript(desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, formulaName: string }): Promise<PvsResponse> {
-		if (desc) {
-			// extension is forced to .pvs, this is necessary as the request may come for a .tccs file
-			const fname: string = fsUtils.desc2fname({ contextFolder: desc.contextFolder, fileName: desc.fileName, fileExtension: ".pvs" });
-			const res: PvsResponse = await this.lisp(`(display-prooflite-script "${fname}#${desc.theoryName}" "${desc.formulaName}")`);
-			return res;
-		}
-		return null;
-	}
+	// async proofLiteScript(desc: { contextFolder: string, fileName: string, fileExtension: string, theoryName: string, formulaName: string }): Promise<PvsResponse> {
+	// 	if (desc) {
+	// 		// extension is forced to .pvs, this is necessary as the request may come for a .tccs file
+	// 		const fname: string = fsUtils.desc2fname({ contextFolder: desc.contextFolder, fileName: desc.fileName, fileExtension: ".pvs" });
+	// 		const res: PvsResponse = await this.lisp(`(display-prooflite-script "${fname}#${desc.theoryName}" "${desc.formulaName}")`);
+	// 		return res;
+	// 	}
+	// 	return null;
+	// }
 
 	/**
 	 * Generate a .tccs file for the given theory
@@ -2125,13 +2335,18 @@ export class PvsProxy {
 	}
 	protected async showTccs(desc: PvsTheory, opt?: { externalServer?: boolean }): Promise<PvsResponse> {
 		if (desc) {
-
 			// await this.changeContext(desc.contextFolder);
-
-			const fullName: string = path.join(desc.contextFolder, desc.fileName + "#" + desc.theoryName);
-			// file extension is not needed, command will figure it out.
-			const response: PvsResponse = await this.pvsRequest('show-tccs', [fullName]);
-			return response;
+			if (this.remoteActive) {
+				const rsyncCode = await this.syncPaths(desc.contextFolder);
+				if (rsyncCode === 0) {
+					return await this.pvsRequestRemote('show-tccs', [this.theoryRefRemote(desc)]);
+				}
+			} else {
+				const fullName: string = path.join(desc.contextFolder, desc.fileName + "#" + desc.theoryName);
+				// file extension is not needed, command will figure it out.
+				const response: PvsResponse = await this.pvsRequest('show-tccs', [fullName]);
+				return response;
+			}
 		}
 		return null;
 	}
@@ -2156,11 +2371,11 @@ export class PvsProxy {
 		return this.pvsVersionInfo;
 	}
 
-	async loadPvsLibraryPathAndPatches(): Promise<void> {
-		await this.setNasalibPath();
-		await this.pushPvsLibraryPath({ useLisp: true });
-		await this.loadPvsPatches();
-	}
+	// async loadPvsLibraryPathAndPatches(): Promise<void> {
+	// 	await this.setNasalibPath();
+	// 	await this.pushPvsLibraryPath({ useLisp: true });
+	// 	await this.loadPvsPatches();
+	// }
 
 	/**
 	 * Loads pvs version information
@@ -2434,73 +2649,75 @@ export class PvsProxy {
 			this.interruptConn.removeAllListeners();
 			this.interruptConn = null;
 		}
-		const serverKilled: boolean = (this.pvsServer ? await this.pvsServer.kill() : true);
-		if (serverKilled) {
-			this.pvsServerProcessStatus = ProcessCode.TERMINATED;
-			console.log("[pvs-proxy] Killed pvs-server");
+		if (!this.remoteActive) {
+			const serverKilled: boolean = (this.pvsServer ? await this.pvsServer.kill() : true);
+			if (serverKilled) {
+				this.pvsServerProcessStatus = ProcessCode.TERMINATED;
+				console.log("[pvs-proxy] Killed pvs-server");
+			}
+			else
+				console.log("[pvs-proxy] Couldn't kill pvs-server");
 		}
-		else
-			console.log("[pvs-proxy] Couldn't kill pvs-server");
 	}
 	/**
 	 * Kill pvs-gui server
 	 */
-	async killPvsProxy(): Promise<void> {
-		return new Promise((resolve, reject) => {
-			if (this.webSocket) {
-				// console.dir(this.guiServer, { depth: null });
-				this.webSocket.close();
-				this.interruptConn.close();
-				if (this.debugMode) {
-					console.log("[pvs-proxy] Closed pvs-proxy");
-				}
-				this.webSocket = null;
-				this.interruptConn = null;
-				resolve();
-			} else {
-				resolve();
-			}
-		});
-	}
+	// async killPvsProxy(): Promise<void> {
+	// 	return new Promise((resolve, reject) => {
+	// 		if (this.webSocket) {
+	// 			// console.dir(this.guiServer, { depth: null });
+	// 			this.webSocket.close();
+	// 			this.interruptConn.close();
+	// 			if (this.debugMode) {
+	// 				console.log("[pvs-proxy] Closed pvs-proxy");
+	// 			}
+	// 			this.webSocket = null;
+	// 			this.interruptConn = null;
+	// 			resolve();
+	// 		} else {
+	// 			resolve();
+	// 		}
+	// 	});
+	// }
 
-	async listSystemMethods(): Promise<string[]> {
-		return new Promise((resolve, reject) => {
-			if (this.webSocket) {
-				const id = 'test1'
-				const req = { method: 'list-methods', params: [], jsonrpc: "2.0", id: id };
-				const jsonReq = JSON.stringify(req, null, " ");
+	// async listSystemMethods(): Promise<string[]> {
+	// 	return new Promise((resolve, reject) => {
+	// 		if (this.webSocket) {
+	// 			const id = 'test1'
+	// 			const req = { method: 'list-methods', params: [], jsonrpc: "2.0", id: id };
+	// 			const jsonReq = JSON.stringify(req, null, " ");
 
-				this.webSocket.send(jsonReq)
-				this.webSocket.once('message', (value: string[]) => {
-					console.log('[listSystemMethods]: have value = %s: %s', value, typeof (value));
-					resolve(value);
-				});
-			} else {
-				console.log('[pvs-proxy] Warning: socket is null :/');
-				reject();
-			}
-		});
-	}
+	// 			this.webSocket.send(jsonReq)
+	// 			this.webSocket.once('message', (value: string[]) => {
+	// 				console.log('[listSystemMethods]: have value = %s: %s', value, typeof (value));
+	// 				resolve(value);
+	// 			});
+	// 		} else {
+	// 			console.log('[pvs-proxy] Warning: socket is null :/');
+	// 			reject();
+	// 		}
+	// 	});
+	// }
 
-	async rebootPvsServer(desc: { pvsPath?: string }): Promise<boolean> {
-		this.pvsPath = desc?.pvsPath || "";
-		console.log(`[pvs-proxy] New PVS path: ${this.pvsPath}`);
-		await this.killPvsServer();
-		const processStatus: ProcessCode = await this.restartPvsServer();
-		const result: boolean = (processStatus === ProcessCode.SUCCESS);
-		return result;
+	// async rebootPvsServer(desc: { pvsPath?: string }): Promise<boolean> {
+	// 	this.pvsPath = desc?.pvsPath || "";
+	// 	console.log(`[pvs-proxy] New PVS path: ${this.pvsPath}`);
+	// 	await this.killPvsServer();
+	// 	const processStatus: ProcessCode = await this.restartPvsServer();
+	// 	const result: boolean = (processStatus === ProcessCode.SUCCESS);
+	// 	return result;
 
-	}
+	// }
 
-	protected async sendWorkspaceInfo(): Promise<void> {
-		const res: PvsResponse = await this.currentContext();
-		if (res && res.result) {
-			const contextFolder: string = res.result;
-			const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
-			const nfiles: number = contextFiles.fileNames.length;
-			this.connection.sendRequest(serverEvent.workspaceStats, { contextFolder, files: nfiles });
-		}
-	}
+	// protected async sendWorkspaceInfo(): Promise<void> {
+	// 	const res: PvsResponse = await this.currentContext();
+	// 	if (res && res.result) {
+	// 		const contextFolder: string = res.result;
+	// 		const contextFiles: FileList = await fsUtils.listPvsFiles(contextFolder);
+	// 		const nfiles: number = contextFiles.fileNames.length;
+	// 		this.connection.sendRequest(serverEvent.workspaceStats, { contextFolder, files: nfiles });
+	// 	}
+	// }
 
 	/**
 	 * Utility function, sets the current mode to 'lisp'
@@ -2559,15 +2776,15 @@ export class PvsProxy {
 	/**
 	 * Other internal methods
 	 */
-	protected async disableGcPrintout(): Promise<PvsResponse> {
-		return await this.pvsRequest('lisp', ['(setq *disable-gc-printout* t)']);
-	}
-	protected async namesInfo(fileName: string): Promise<PvsResponse> {
-		return await this.pvsRequest('names-info', [fileName]);
-	}
-	protected async xmlrcpReset(): Promise<PvsResponse> {
-		return await this.pvsRequest('reset');
-	}
+	// protected async disableGcPrintout(): Promise<PvsResponse> {
+	// 	return await this.pvsRequest('lisp', ['(setq *disable-gc-printout* t)']);
+	// }
+	// protected async namesInfo(fileName: string): Promise<PvsResponse> {
+	// 	return await this.pvsRequest('names-info', [fileName]);
+	// }
+	// protected async xmlrcpReset(): Promise<PvsResponse> {
+	// 	return await this.pvsRequest('reset');
+	// }
 
 	async getPvsTemporaryFolder(opt?: { externalServer?: boolean }): Promise<string[]> {
 		const ans: string[] = [];
@@ -2611,7 +2828,7 @@ export class PvsProxy {
 	async installProofliteScript(desc: PvsFormula, proofLiteScript: string): Promise<PvsResponse> {
 		const escaped: string = proofLiteScript.replace(/"/g, "\\\"");
 		const cmd: string = `(install-script "${desc.theoryName}" "${escaped}" (list "${desc.formulaName}") t)`;
-		const data: PvsResponse = await this.pvsRequest('lisp', [cmd]);
+		const data: PvsResponse = await this.lisp(cmd, desc.contextFolder);
 		if (data && data.error) {
 			console.error(data.error);
 		} else if (data && data.result && typeof data.result === "string" && data.result.startsWith("Error:")) {
@@ -2638,6 +2855,18 @@ export class PvsProxy {
 				let path: string = libs[i].endsWith("/") ? libs[i] : `${libs[i]}/`;
 				path = fsUtils.tildeExpansion(path);
 				if (!pvsLibraries.includes(path)) {
+					if (this.remoteActive) {
+						const rsyncCode = await this.syncPaths(path, true);
+						if (rsyncCode === 0) {
+							let remotePath = '';
+							if (path in this.pathCache.libPaths) {
+								remotePath = this.pathCache.libPaths[path];
+							} else if (path in this.pathCache.workspacePaths) {
+								remotePath = this.pathCache.workspacePaths[path];
+							}
+							return await this.pvsRequestRemote('add-pvs-library', [remotePath]);
+						}
+					}
 					return await this.pvsRequest('add-pvs-library', [path]);
 				}
 			}
@@ -2715,7 +2944,11 @@ export class PvsProxy {
 	 * interrupts the prover
 	 */
 	async interruptProver(proofId: string): Promise<PvsResponse | null> {
-		return await this.pvsRequest('interrupt-proof', [proofId]);
+		if (this.remoteActive) {
+			return await this.pvsRequestRemote('interrupt-proof', [proofId]);
+		} else {
+			return await this.pvsRequest('interrupt-proof', [proofId]);
+		}
 	}
 
 }

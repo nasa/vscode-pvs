@@ -2465,6 +2465,7 @@ export class PvsProofExplorer {
 			fileExtension: ".prf",
 			contextFolder: this.formula.contextFolder,
 		}
+		await this.pvsProxy.syncPaths(this.formula.contextFolder);
 		// update proof descriptor so it reflects the current proof structure
 		this.proofDescriptor = this.makeProofDescriptor(this.origin);
 		await saveProofDescriptor(this.formula, this.proofDescriptor, { saveProofTree: true });
@@ -2486,7 +2487,12 @@ export class PvsProofExplorer {
 			} else {
 				// save proof to prf file
 				const theoryRef : string = this.formula.fileName + this.formula.fileExtension + "#" + this.formula.theoryName;
-				const response: PvsResponse = await this.pvsProxy?.saveAllModifiedProofsIntoPrfFile(theoryRef);
+				let response: PvsResponse;
+				if (this.pvsProxy.remoteActive){
+					response = await this.pvsProxy.pvsRequestRemote("save-all-proofs", [theoryRef]);
+					
+				}
+				response= await this.pvsProxy?.saveAllModifiedProofsIntoPrfFile(theoryRef);
 				success = !!(response?.result);
 				if (!success) {
 					msg = response?.error?.data?.error_string;

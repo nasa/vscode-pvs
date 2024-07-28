@@ -163,7 +163,7 @@ export class PvsDefinitionProvider {
 		}
 
 		// else
-		const ans: PvsResponse = await this.pvsProxy.findDeclaration(symbolName); //await this.pvsProcess.findDeclaration(symbolName);
+		const ans: PvsResponse = await this.pvsProxy.findDeclaration(symbolName,theory.contextFolder); //await this.pvsProcess.findDeclaration(symbolName);
 
 		// find-declaration may return more than one result -- e.g., because the file is not typechecked
 		// we can narrow down the results by traversing the importchain

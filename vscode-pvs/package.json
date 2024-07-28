@@ -186,20 +186,21 @@
 					},
 					"pvs.remoteServerIP": {
 						"type":"string",
-						"default": "0.0.0.0",
 						"description": "Enter the IP Address of your Remote Server",
 						"when": "pvs.activateRemote === true"
 					},
 					"pvs.remoteServerPort": {
 						"type": "number",
-						"default": 8080,
-						"description": "Enter the port number where remote server is listening",
+						"description": "Enter the port number where remote pvs server is listening",
 						"when": "pvs.activateRemote === true"
 					},
 					"pvs.privateSSHKeyPath": {
 						"type": "string",
-						"default": "",
 						"description": "Absolute path of private key which will be used in RSYNC operations with remote servers"
+					},
+					"pvs.remoteHostname": {
+						"type": "string",
+						"description": "Hostname on remote server which gives you ssh access to it"
 					}
 				}
 			}
