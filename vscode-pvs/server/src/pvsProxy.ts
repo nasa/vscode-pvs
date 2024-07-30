@@ -154,7 +154,7 @@ export class PvsProxy {
 	remoteDetails: remoteDetailsDesc;
 	remoteActive: boolean;
 	pathCache: PathCacheDesc;
-	pendingPathSyncs: Map<any, any>;
+	pendingPathSyncs: Map<string, Function>;
 	SYNC_TIMEOUT = 5000;
 	functionResolveMap: Map<string, any>;
 
@@ -308,16 +308,12 @@ export class PvsProxy {
 		}
 	}
 
-	async syncPaths(contextPath: string, lib?: boolean) {
+	async syncPaths(contextPath: string) {
 		let rsyncCode = -1;
 		if ('hostname' in this.remoteDetails && this.remoteActive) {
 			let remotePath = this.searchPathCache(contextPath);
 			if (!remotePath) {
-				if (lib) {
-					await this.syncMapping(contextPath, true);
-				} else {
-					await this.syncMapping(contextPath);
-				}
+				await this.syncMapping(contextPath);
 				remotePath = this.searchPathCache(contextPath);
 			}
 			rsyncCode = await fsUtils.runRsync(contextPath, remotePath, this.remoteDetails.ssh_path, this.remoteDetails.hostname, this.remoteDetails.ip);
@@ -334,7 +330,7 @@ export class PvsProxy {
 				if ('token' in this.remoteDetails) {
 					token = this.remoteDetails.token;
 				}
-				const req = { method, params, jsonrpc: "2.0", id, token, type: 'call-pvs' };
+				const req = { method, params, jsonrpc: "2.0", id, token_str: token, type: 'call-pvs' };
 				const jsonReq: string = JSON.stringify(req, null, " ");
 				// console.log('pvsRequest send: ', jsonReq);
 				this.webSocket.send(jsonReq);
@@ -395,25 +391,23 @@ export class PvsProxy {
 			})
 		}
 	}
-	syncMapping(path: string, lib?: boolean): Promise<void> {
+	syncMapping(path: string): Promise<void> {
+		console.log(`Running path sync for ${path}`);
 		return new Promise((resolve, reject) => {
 			let token = '';
 			if ('token' in this.remoteDetails) {
 				token = this.remoteDetails.token;
 			}
 			let syncMessage: string;
-			if (lib) {
-				syncMessage = JSON.stringify({ type: 'path-sync', token: token, libPaths: [path] });
-			} else {
-				syncMessage = JSON.stringify({ type: 'path-sync', token: token, workspacePaths: [path] });
-			}
+			const id = this.get_fresh_id();
+			syncMessage = JSON.stringify({ type: 'path-sync', token_str: token, workspacePaths: [path], id });
 			this.webSocket.send(syncMessage);
 			const timeoutId = setTimeout(() => {
-				this.pendingPathSyncs.delete(path);
+				this.pendingPathSyncs.delete(id);
 				reject(new Error(`Sync timeout when sycing path : ${path}`));
 			}, this.SYNC_TIMEOUT);
 
-			this.pendingPathSyncs.set(path, () => {
+			this.pendingPathSyncs.set(id, () => {
 				clearTimeout(timeoutId);
 				resolve();
 			});
@@ -442,7 +436,7 @@ export class PvsProxy {
 					if ('token' in this.remoteDetails) {
 						token = this.remoteDetails.token;
 					}
-					req = { method: method, params: params, jsonrpc: "2.0", id: id, type: "call-pvs-interupt", token }
+					req = { method: method, params: params, jsonrpc: "2.0", id: id, type: "call-pvs-interrupt", token_str:token }
 				} else {
 					req = { method: method, params: params, jsonrpc: "2.0", id: id };
 				}
@@ -506,10 +500,15 @@ export class PvsProxy {
 				if ('token' in this.remoteDetails) {
 					token = this.remoteDetails.token;
 				}
+				if (token){
+					console.log("Old token retrieved");
+				} else {
+					console.log("No token found, Requesting new.");
+				}
 
 				const message: ClientMessage = {
 					type: 'connect',
-					token,
+					token_str: token,
 					libPaths: [this.pvsLibPath, this.pvsLibraryPath]
 				};
 				this.webSocket.send(JSON.stringify(message));
@@ -517,22 +516,26 @@ export class PvsProxy {
 		});
 		this.webSocket.on('close', () => {
 			console.log("[pvsProxy.startWebSocket] CLOSE");
-			if (!this.externalServer && !this.remoteActive) {
+			if (!this.externalServer) {
 				setTimeout(() => {
 					if (this.pvsServerProcessStatus === ProcessCode.SUCCESS) this.startWebSocket();
 				}, 5000);
 			}
 		});
-		this.webSocket.on('message', (msg: string) => {
+		this.webSocket.on('message', async (msg: string) => {
 			const obj = JSON.parse(msg);
 			// Should check for valid JSON-RPC,
 			//console.log('webSocket.on: ', this.pendingRequests);
 			//console.log('  obj = ', obj);
-			if (obj.type === "token") {
+			if (obj.type === "send-token") {
 				console.log("Received new session token from remove server");
-				this.connection.sendRequest("update-token", obj.token || '');
-				if ('token' in this.remoteDetails) {
-					this.remoteDetails.token = obj.token;
+				if (obj.token_str) {
+					this.connection.sendRequest("update-token", obj.token_str);
+					console.log("Resetting token");
+					if ('token' in this.remoteDetails) {
+						console.log("Resetting token in Details");
+						this.remoteDetails.token = obj.token_str;
+					}
 				}
 			}
 			if (obj.type === "port-active") {
@@ -548,29 +551,32 @@ export class PvsProxy {
 
 			}
 			if (obj.type === "return-path-sync") {
-				for (const key in obj.workspacePaths) {
-					this.pathCache.workspacePaths[key] = obj.workspacePaths[key];
-					if (this.pendingPathSyncs.has(key)) {
-						const resolvePendingSync = this.pendingPathSyncs.get(key);
+				const id: string = obj.syncPathsResponse ? obj.syncPathsResponse.id : '';
+				for (const key in obj.syncPathsResponse.workspacePaths) {
+					this.pathCache.workspacePaths[key] = obj.syncPathsResponse.workspacePaths[key];
+					if (id) {
+						const resolvePendingSync = this.pendingPathSyncs.get(id);
 						if (resolvePendingSync) {
 							resolvePendingSync();
-							this.pendingPathSyncs.delete(key);
+							this.pendingPathSyncs.delete(id);
 						}
 					}
 				}
-				for (const key in obj.libPaths) {
-					this.pathCache.libPaths[key] = obj.libPaths[key];
-					if (this.pendingPathSyncs.has(key)) {
-						const resolvePendingSync = this.pendingPathSyncs.get(key);
-						if (resolvePendingSync) {
-							resolvePendingSync();
-							this.pendingPathSyncs.delete(key);
-						}
+				for (const key in obj.syncPathsResponse.libPaths) {
+					if (!(key in this.pathCache.libPaths) && 'ssh_path' in this.remoteDetails && 'hostname' in this.remoteDetails) {
+						await fsUtils.runRsync(key, obj.syncPathsResponse.libPaths[key], this.remoteDetails.ssh_path, this.remoteDetails.hostname, this.remoteDetails.ip);
 					}
+					this.pathCache.libPaths[key] = obj.syncPathsResponse.libPaths[key];
 				}
 
 			}
+			if (obj.type === "server-call") {
+				if (obj.method === "pvsErrorManager.notifyPvsFailure") {
+					this.pvsErrorManager.notifyPvsFailure({ msg: obj.msg, src: obj.src });
+				}
+			}
 			if (obj.id) {
+				console.log(obj);
 				if ("result" in obj || "error" in obj || "method" in obj) {
 					if (this.pendingRequests[obj.id]) {
 						// console.log(`[pvsRequest] msg = ${msg}`)
@@ -591,7 +597,7 @@ export class PvsProxy {
 		});
 	}
 
-	async startInterruptionWebSocket(): Promise<void> {
+	async startInterruptionWebSocket(resolveInterupptConn?: Function): Promise<void> {
 		console.log("[pvsProxy.startInterruptionWebSocket] Creating web socket client connection...");
 		this.interruptConn = new WebSocket(`ws://${this.webSocketAddress}:${this.webSocketPort}`);
 		this.interruptConn.on('redirect', () => {
@@ -620,17 +626,22 @@ export class PvsProxy {
 				if ('token' in this.remoteDetails) {
 					token = this.remoteDetails.token;
 				}
+				if (token){
+					console.log("Old token retrieved");
+				} else {
+					console.log("No token found, Requesting new.");
+				}
 				const message: ClientMessage = {
-					type: 'connect-interupt',
-					token
+					type: 'connect-interrupt',
+					token_str: token
 				};
-				this.webSocket.send(JSON.stringify(message));
+				this.interruptConn.send(JSON.stringify(message));
 			}
 			console.log("[pvsProxy.startInterruptionWebSocket]  OPEN");
 		});
 		this.interruptConn.on('close', () => {
 			console.log("[pvsProxy.startInterruptionWebSocket]  CLOSE");
-			if (!this.externalServer && !this.remoteActive) {
+			if (!this.externalServer) {
 				setTimeout(() => {
 					if (this.pvsServerProcessStatus === ProcessCode.SUCCESS) this.startInterruptionWebSocket();
 				}, 5000);
@@ -638,11 +649,26 @@ export class PvsProxy {
 		});
 		this.interruptConn.on('message', (msg: string) => {
 			const obj = JSON.parse(msg);
-			if (obj.type === "token") {
+			if (obj.type === "send-token") {
 				console.log("Received new session token from remove server");
-				this.connection.sendRequest("update-token", obj.token || '');
-				if ('token' in this.remoteDetails) {
-					this.remoteDetails.token = obj.token;
+				if (obj.token_str) {
+					this.connection.sendRequest("update-token", obj.token_str);
+					console.log("Resetting token");
+					if ('token' in this.remoteDetails) {
+						console.log("Resetting token in Details");
+						this.remoteDetails.token = obj.token_str;
+					}
+				}
+			}
+			if (obj.type === "port-active-interrupt") {
+				console.log(obj);
+				if (obj.portActiveResponse.code === 0 && resolveInterupptConn) {
+					resolveInterupptConn();
+				}
+			}
+			if (obj.type === "server-call") {
+				if (obj.method === "pvsErrorManager.notifyPvsFailure") {
+					this.pvsErrorManager.notifyPvsFailure({ msg: obj.msg, src: obj.src });
 				}
 			}
 			if (obj.id) {
@@ -686,6 +712,27 @@ export class PvsProxy {
 	protected set pvsServerProcessStatus(value: ProcessCode) {
 		this._pvsServerProcessStatus = value;
 	}
+	activateInteruptConnRemote(): Promise<void> {
+		return new Promise((resolve, reject) => {
+			const attemptInterupptConn = async () => {
+				let currentConnectionAttempt: number = 0;
+				if (currentConnectionAttempt < this.SOCKET_CLIENT_ATTEMPTS && this.interruptConn == undefined) {
+					do {
+						currentConnectionAttempt++;
+						try {
+							await this.startInterruptionWebSocket(resolve);
+							console.log("[pvsProxy.activate] Waiting for interruptConn to be operational");
+							await this.waitForOpenConnection(this.interruptConn);
+						} catch (jsonError) {
+							// Start up PVS 
+							console.log("[pvsProxy.activate] Error creating interruptConn", jsonError.message);
+						}
+					} while (!this.abortingActivation && (currentConnectionAttempt < this.SOCKET_CLIENT_ATTEMPTS) && !this.isOperational(this.interruptConn));
+				}
+			}
+			attemptInterupptConn();
+		});
+	}
 	async activateRemote(): Promise<ProcessCode> {
 		return new Promise<ProcessCode>((resolve, reject) => {
 			if ('port' in this.remoteDetails && 'ip' in this.remoteDetails) {
@@ -695,19 +742,7 @@ export class PvsProxy {
 				let currentConnectionAttempt: number = 0;
 
 				const attemptConnection = async () => {
-					if (currentConnectionAttempt < this.SOCKET_CLIENT_ATTEMPTS && this.interruptConn == undefined) {
-						do {
-							currentConnectionAttempt++;
-							try {
-								await this.startInterruptionWebSocket();
-								console.log("[pvsProxy.activate] Waiting for interruptConn to be operational");
-								await this.waitForOpenConnection(this.interruptConn);
-							} catch (jsonError) {
-								// Start up PVS 
-								console.log("[pvsProxy.activate] Error creating interruptConn", jsonError.message);
-							}
-						} while (!this.abortingActivation && (currentConnectionAttempt < this.SOCKET_CLIENT_ATTEMPTS) && !this.isOperational(this.interruptConn));
-					}
+					await this.activateInteruptConnRemote();
 					if (this.webSocket == undefined) {
 						do {
 							currentConnectionAttempt++;
@@ -1398,7 +1433,7 @@ export class PvsProxy {
 	async statusProofChain(desc: PvsFormula): Promise<PvsResponse> {
 		const formref: string = this.remoteActive ? this.formulaRefRemote(desc) : this.formulaRef(desc);
 		const cmd: string = `(proofchain-status "${formref}")`;
-		const res: PvsResponse = await this.lisp(cmd,desc.contextFolder);
+		const res: PvsResponse = await this.lisp(cmd, desc.contextFolder);
 		return res;
 	}
 	/**
@@ -1723,7 +1758,7 @@ export class PvsProxy {
 				token = this.remoteDetails.token;
 			}
 			const id = this.get_fresh_id();
-			const req = { type: 'invoke-pvs-process-method', token, function: functionName, id };
+			const req = { type: 'invoke-pvs-process-method', token_str:token, function: functionName, id };
 			const jsonReq = JSON.stringify(req, null, " ");
 			this.webSocket.send(jsonReq);
 			if (!output) {
@@ -2177,7 +2212,7 @@ export class PvsProxy {
 			if (this.remoteActive) {
 				const rsyncCode = await this.syncPaths(formula.contextFolder);
 				if (rsyncCode === 0) {
-					ans = await this.pvsRequest("delete-proof-of-formula", [this.formulaRefRemote(formula), proofId]);
+					ans = await this.pvsRequestRemote("delete-proof-of-formula", [this.formulaRefRemote(formula), proofId]);
 				}
 			} else {
 				const formRef: string = this.formulaRef(formula); // formula.contextFolder + '/' + formula.fileName + '#' + formula.theoryName + '#' + formula.formulaName;
@@ -2481,28 +2516,28 @@ export class PvsProxy {
 	/**
 	 * Checks if pvs-server accepts connection
 	 */
-	async testServerConnectivity(): Promise<boolean> {
-		//console.log(`opening ws://${this.webSocketAddress}:${this.webSocketPort}`);
-		//const ws = new WebSocket(`ws://${this.webSocketAddress}:${this.webSocketPort}`);
-		return new Promise((resolve, reject) => {
-			const id = 'test1'
-			const req = { method: 'list-methods', params: [], jsonrpc: "2.0", id: id };
-			const jsonReq = JSON.stringify(req, null, " ");
-			this.webSocket.send(jsonReq);
-			this.webSocket.once('message', (msg: string) => {
-				//console.log("on %s", msg);
-				const resp = JSON.parse(msg);
-				//console.log("got %s", resp);
-				if (resp.result) {
-					console.log("server-test value:", resp.result);
-					resolve(true);
-				} else {
-					console.log("[pvs-proxy] server-test error:", resp.error);
-					reject(resp.error)
-				}
-			});
-		});
-	}
+	// async testServerConnectivity(): Promise<boolean> {
+	// 	//console.log(`opening ws://${this.webSocketAddress}:${this.webSocketPort}`);
+	// 	//const ws = new WebSocket(`ws://${this.webSocketAddress}:${this.webSocketPort}`);
+	// 	return new Promise((resolve, reject) => {
+	// 		const id = 'test1'
+	// 		const req = { method: 'list-methods', params: [], jsonrpc: "2.0", id: id };
+	// 		const jsonReq = JSON.stringify(req, null, " ");
+	// 		this.webSocket.send(jsonReq);
+	// 		this.webSocket.once('message', (msg: string) => {
+	// 			//console.log("on %s", msg);
+	// 			const resp = JSON.parse(msg);
+	// 			//console.log("got %s", resp);
+	// 			if (resp.result) {
+	// 				console.log("server-test value:", resp.result);
+	// 				resolve(true);
+	// 			} else {
+	// 				console.log("[pvs-proxy] server-test error:", resp.error);
+	// 				reject(resp.error)
+	// 			}
+	// 		});
+	// 	});
+	// }
 	/**
 	 * Internal function, returns a unique ID
 	 */
@@ -2812,18 +2847,18 @@ export class PvsProxy {
 		return this.nasalibPath;
 	}
 
-	async setNasalibPath(opt?: { externalServer?: boolean }): Promise<PvsResponse | null> {
-		if (!(this.nasalibPath && this.nasalibPath !== '')) {
-			const pvsLibraries: string[] = await this.getPvsLibraryPath(opt);
-			const nasalibPath: string = this.getNasalibPath();
-			if (!pvsLibraries.includes(nasalibPath) && fsUtils.folderExists(nasalibPath)) {
-				console.log(`[pvs-proxy] Setting nasalib path to ${nasalibPath}`);
-				// return await this.lisp(`(push "${nasalibPath}" *pvs-library-path*)`, opt);
-				return await this.pushPvsLibraryPath({ pvsLibraryPath: nasalibPath, useLisp: true });
-			}
-		}
-		return null;
-	}
+	// async setNasalibPath(opt?: { externalServer?: boolean }): Promise<PvsResponse | null> {
+	// 	if (!(this.nasalibPath && this.nasalibPath !== '')) {
+	// 		const pvsLibraries: string[] = await this.getPvsLibraryPath(opt);
+	// 		const nasalibPath: string = this.getNasalibPath();
+	// 		if (!pvsLibraries.includes(nasalibPath) && fsUtils.folderExists(nasalibPath)) {
+	// 			console.log(`[pvs-proxy] Setting nasalib path to ${nasalibPath}`);
+	// 			// return await this.lisp(`(push "${nasalibPath}" *pvs-library-path*)`, opt);
+	// 			return await this.pushPvsLibraryPath({ pvsLibraryPath: nasalibPath, useLisp: true });
+	// 		}
+	// 	}
+	// 	return null;
+	// }
 
 	async installProofliteScript(desc: PvsFormula, proofLiteScript: string): Promise<PvsResponse> {
 		const escaped: string = proofLiteScript.replace(/"/g, "\\\"");
@@ -2841,38 +2876,38 @@ export class PvsProxy {
 	 * Updates pvs library path
 	 * @param pvsLibraryPath colon-separated list of folders
 	 */
-	async pushPvsLibraryPath(opt?: { pvsLibraryPath?: string, useLisp?: boolean, externalServer?: boolean }): Promise<PvsResponse | null> {
-		opt = opt || {};
-		const lp: string = opt.pvsLibraryPath || this.pvsLibraryPath;
-		const libs: string[] = (lp) ? lp.split(":").map((elem: string) => {
-			elem = elem.trim();
-			elem = fsUtils.tildeExpansion(elem);
-			return elem.endsWith("/") ? elem : `${elem}/`
-		}) : [];
-		if (libs && libs.length) {
-			const pvsLibraries: string[] = await this.getPvsLibraryPath(opt);
-			for (let i = 0; i < libs.length; i++) {
-				let path: string = libs[i].endsWith("/") ? libs[i] : `${libs[i]}/`;
-				path = fsUtils.tildeExpansion(path);
-				if (!pvsLibraries.includes(path)) {
-					if (this.remoteActive) {
-						const rsyncCode = await this.syncPaths(path, true);
-						if (rsyncCode === 0) {
-							let remotePath = '';
-							if (path in this.pathCache.libPaths) {
-								remotePath = this.pathCache.libPaths[path];
-							} else if (path in this.pathCache.workspacePaths) {
-								remotePath = this.pathCache.workspacePaths[path];
-							}
-							return await this.pvsRequestRemote('add-pvs-library', [remotePath]);
-						}
-					}
-					return await this.pvsRequest('add-pvs-library', [path]);
-				}
-			}
-		}
-		return null;
-	}
+	// async pushPvsLibraryPath(opt?: { pvsLibraryPath?: string, useLisp?: boolean, externalServer?: boolean }): Promise<PvsResponse | null> {
+	// 	opt = opt || {};
+	// 	const lp: string = opt.pvsLibraryPath || this.pvsLibraryPath;
+	// 	const libs: string[] = (lp) ? lp.split(":").map((elem: string) => {
+	// 		elem = elem.trim();
+	// 		elem = fsUtils.tildeExpansion(elem);
+	// 		return elem.endsWith("/") ? elem : `${elem}/`
+	// 	}) : [];
+	// 	if (libs && libs.length) {
+	// 		const pvsLibraries: string[] = await this.getPvsLibraryPath(opt);
+	// 		for (let i = 0; i < libs.length; i++) {
+	// 			let path: string = libs[i].endsWith("/") ? libs[i] : `${libs[i]}/`;
+	// 			path = fsUtils.tildeExpansion(path);
+	// 			if (!pvsLibraries.includes(path)) {
+	// 				if (this.remoteActive) {
+	// 					const rsyncCode = await this.syncPaths(path, true);
+	// 					if (rsyncCode === 0) {
+	// 						let remotePath = '';
+	// 						if (path in this.pathCache.libPaths) {
+	// 							remotePath = this.pathCache.libPaths[path];
+	// 						} else if (path in this.pathCache.workspacePaths) {
+	// 							remotePath = this.pathCache.workspacePaths[path];
+	// 						}
+	// 						return await this.pvsRequestRemote('add-pvs-library', [remotePath]);
+	// 					}
+	// 				}
+	// 				return await this.pvsRequest('add-pvs-library', [path]);
+	// 			}
+	// 		}
+	// 	}
+	// 	return null;
+	// }
 
 	async patchesLoaded(): Promise<boolean> {
 		const response: PvsResponse = await this.lisp(`(boundp '*pvs-patches*)`);

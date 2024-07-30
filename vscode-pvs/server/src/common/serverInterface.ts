@@ -1229,7 +1229,7 @@ export type remoteDetailsDesc = remoteDetails | {};
 
 export interface ClientMessage  {
 	type: string;
-  	token?: string;
+	token_str?: string;
   	workspacePaths?: string[];
   	libPaths?: string[];
 }

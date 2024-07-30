@@ -482,7 +482,7 @@ export class PvsProofExplorer {
 				// else -- keep processing the response as usual
 			}
 			if (response?.result) {
-				let affectedProofStates: PvsProofState[] = response.result.length ? response.result : [ response.result.length ];
+				let affectedProofStates: PvsProofState[] = response.result.length ? response.result : [response.result.length];
 				// @M3 PVS 8.0 returns the full list of proof states tried by the application of 
 				//     the proof command provided. This could include states describing unsuccessful
 				//     proof attempts, which are not meant to be displayed to the user at this moment.				
@@ -572,10 +572,10 @@ export class PvsProofExplorer {
 	async onStepExecutedNew(desc: { proofState: PvsProofState, args?: PvsProofCommand, lastSequent: boolean }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
 		if (desc && desc.proofState) {
 			function pvsProofStateFinishedOnPreviousApplication(ps: PvsProofState): boolean {
-				return ps.status === "!" &&  (!ps.children || (ps.children.length && ps.children.length === 0)) && ps['curr-cmd'] === undefined;
+				return ps.status === "!" && (!ps.children || (ps.children.length && ps.children.length === 0)) && ps['curr-cmd'] === undefined;
 			}
 			function pvsProofStateFinishedOnCurrentApplication(ps: PvsProofState): boolean {
-				return ps.status === "!" &&  (!ps.children || (ps.children.length && ps.children.length === 0)) && ps['curr-cmd'] !== undefined;
+				return ps.status === "!" && (!ps.children || (ps.children.length && ps.children.length === 0)) && ps['curr-cmd'] !== undefined;
 			}
 			// identify active node in the proof tree
 			let activeNode: ProofItem = this.ghostNode.isActive() ? this.ghostNode.realNode : this.activeNode;
@@ -596,10 +596,10 @@ export class PvsProofExplorer {
 			this.mrpProofState = desc.proofState;
 
 			const commandAppliedBeforeCurrentPS: string = this.mrpProofState['prev-cmd'];
-			const commandAppliedAfterCurrentPS : string = this.mrpProofState['curr-cmd'];
+			const commandAppliedAfterCurrentPS: string = this.mrpProofState['curr-cmd'];
 
 			// Command entered by the user
-			let userCmd: string = desc.args ? desc.args.cmd : null; 
+			let userCmd: string = desc.args ? desc.args.cmd : null;
 
 			// if command is quit, stop execution
 			if (isQuitCommand(commandAppliedBeforeCurrentPS)) {// @M3 should use commandAfter #TODO fix me
@@ -618,7 +618,7 @@ export class PvsProofExplorer {
 
 			// show sequent in the terminal, if feedback was requested
 			if (opt.feedbackToTerminal && !this.autoRunFlag
-				  && (activeNode.proofState['display-id'] !== this.mrpProofState['display-id'] || !activeNode.proofState['sequent'] )) {
+				&& (activeNode.proofState['display-id'] !== this.mrpProofState['display-id'] || !activeNode.proofState['sequent'])) {
 				const ans: ProofCommandResponse = {
 					res: this.mrpProofState,
 					req: desc?.args
@@ -677,14 +677,14 @@ export class PvsProofExplorer {
 					this.restoreTreeAttributes();
 					this.markAsActive({ selected: target });
 					this.undoUndoTarget = null;
-				} 
+				}
 				return;
 			}
 			// handle (show-hidden) and (comment "xxx")
 			if (isShowHiddenFormulas(userCmd)) {
 				// nothing to do, the prover will simply show the hidden formulas
 				return;
-			} 
+			}
 
 			let branchFocusHasChanged = false;
 
@@ -732,11 +732,10 @@ export class PvsProofExplorer {
 				// entered a command that's not the one in the stored proof for this 
 				// formula. The effects on the proofItem tree is the same than if 
 				// the user would have applied this command on an active ghost node.
-				if(commandAppliedAfterCurrentPS && activeNode.proofState['display-id'] === this.mrpProofState['display-id']){
-					if ((!isSameCommand(activeNode.name, commandAppliedAfterCurrentPS) 
-								&& !isSameCommand(activeNode.name, userCmd)) 
-							&& !this.ghostNode.isActive()) 
-					{
+				if (commandAppliedAfterCurrentPS && activeNode.proofState['display-id'] === this.mrpProofState['display-id']) {
+					if ((!isSameCommand(activeNode.name, commandAppliedAfterCurrentPS)
+						&& !isSameCommand(activeNode.name, userCmd))
+						&& !this.ghostNode.isActive()) {
 						// Update and activate ghostNode
 						this.ghostNode.realNode = this.activeNode.parent;
 						this.ghostNode.parent = this.activeNode.parent.parent; // root is its own parent
@@ -756,10 +755,9 @@ export class PvsProofExplorer {
 						}
 						activeNode = this.ghostNode.realNode;
 					}
-				} 
-				
-				if (activeNode.proofState['display-id'] !== this.mrpProofState['display-id'])
-				{ 
+				}
+
+				if (activeNode.proofState['display-id'] !== this.mrpProofState['display-id']) {
 					// @M3 If PROPAX was applied by pvs in the reported proof-state (curr-cmd), this
 					// application was triggered because the command applied on the parent of the 
 					// reported proof state produced a trivial sequent.
@@ -768,9 +766,9 @@ export class PvsProofExplorer {
 					// parent proof-state. In such case, we need to update the proof state in the
 					// active node (since the information there, besides the display-id, needs to be
 					// updated). 
-					if(commandAppliedAfterCurrentPS === "(PROPAX)" 
-							&& languageUtils.successivePSDisplayIds(activeNode.proofState['display-id'],this.mrpProofState['display-id'])
-							&& languageUtils.sameBranchPSDisplayIds(activeNode.proofState['display-id'],this.mrpProofState['display-id'])){
+					if (commandAppliedAfterCurrentPS === "(PROPAX)"
+						&& languageUtils.successivePSDisplayIds(activeNode.proofState['display-id'], this.mrpProofState['display-id'])
+						&& languageUtils.sameBranchPSDisplayIds(activeNode.proofState['display-id'], this.mrpProofState['display-id'])) {
 						activeNode.name = this.mrpProofState['prev-cmd'];
 						// @M3 We have to reconstruct the information from the current proof-state
 						//     to update the information in the active node, since pvs is not currently
@@ -794,8 +792,8 @@ export class PvsProofExplorer {
 						}
 					} else {
 						// find target branch or create a new one, if needed...
-						const targetBranch: ProofItem = 
-							this.findProofBranch(currentBranchId) 
+						const targetBranch: ProofItem =
+							this.findProofBranch(currentBranchId)
 							|| this.createBranchRecursive({ id: currentBranchId }, { internalAction: this.autoRunFlag });
 
 						if (targetBranch) {
@@ -809,8 +807,8 @@ export class PvsProofExplorer {
 							});
 
 							let targetNode: ProofItem;
-							
-							if(visitedChildren.length){ // @M3 can length be 0? #TODO check
+
+							if (visitedChildren.length) { // @M3 can length be 0? #TODO check
 								targetNode = visitedChildren[visitedChildren.length - 1];
 							} else {
 								targetNode = targetBranch;
@@ -820,7 +818,7 @@ export class PvsProofExplorer {
 							// @M3 #TODO what if targetNode.proofState["prev-cmd"] !== this.mrpProofState['prev-cmd']
 
 							// esto no va después?
-							if(this.mrpProofState["curr-cmd"])
+							if (this.mrpProofState["curr-cmd"])
 								targetNode.visited();
 							else
 								targetNode.pending();
@@ -830,18 +828,18 @@ export class PvsProofExplorer {
 							doNotMoveForward = false;
 						} else {
 							// This should never happen, because targetBranch is created if it doesn't exist already
-							console.error(`[pvsProofExplorer] Error: could not find branch nor create ${targetBranch} in the proof tree`); 
+							console.error(`[pvsProofExplorer] Error: could not find branch nor create ${targetBranch} in the proof tree`);
 							if (this.connection) {
-								const evt: ProofExecDidStopRunning = { 
+								const evt: ProofExecDidStopRunning = {
 									action: "did-stop-running",
-									sequent: this.mrpProofState 
+									sequent: this.mrpProofState
 								};
 								this.connection.sendNotification(serverEvent.proverEvent, evt);
 							}
 						}
 					}
 
-				} 
+				}
 
 				// @M3 At this point, if activeNode is a BranchNode, the indicator is at the top of a branch
 				if (activeNode.contextValue === "proof-branch" && commandAppliedAfterCurrentPS) {
@@ -855,15 +853,15 @@ export class PvsProofExplorer {
 
 				// @M3 If there's no commandAppliedAfterCurrentPS, PVS was just informing
 				// the current goal.
-				if(commandAppliedAfterCurrentPS){
+				if (commandAppliedAfterCurrentPS) {
 					// At this point, activeNode is a ProofCommandApplication and 
 					// active.proofState["display-id"] !== this.mrpProofState['display-id']
 
 					// The user has entered a command manually and it does not match the one already
 					// stored in the proof tree: we need to append a new node to reflect this evolution
-					if ((!isSameCommand(activeNode.name, commandAppliedAfterCurrentPS) 
-								&& !isSameCommand(activeNode.name, userCmd)) 
-							|| this.ghostNode.isActive()) {
+					if ((!isSameCommand(activeNode.name, commandAppliedAfterCurrentPS)
+						&& !isSameCommand(activeNode.name, userCmd))
+						|| this.ghostNode.isActive()) {
 						// concatenate new command
 						const newProofCommand: ProofCommandApplication = new ProofCommandApplication(commandAppliedAfterCurrentPS, activeNode.branchId, activeNode.parent, this.connection);
 						// append before selected node (the active not has not been executed yet)
@@ -885,27 +883,27 @@ export class PvsProofExplorer {
 						if (branchFocusHasChanged) {
 							this.trimNode({ selected: activeNode });
 						}
-					} 
-					
+					}
+
 					// @M3 if PVS reported that the branch was closed with the application of the last command,
 					//     we need to reflect that in the ProofItem tree.
 					const pvsPSFinishedOnCurrentApplication: boolean = pvsProofStateFinishedOnCurrentApplication(this.mrpProofState);
 					const pvsPSFinishedOnPreviousApplication: boolean = pvsProofStateFinishedOnPreviousApplication(this.mrpProofState);
-					if(this.activeNode && (pvsPSFinishedOnCurrentApplication || pvsPSFinishedOnPreviousApplication)){
+					if (this.activeNode && (pvsPSFinishedOnCurrentApplication || pvsPSFinishedOnPreviousApplication)) {
 						branchCompleted = true;
 						doNotMoveForward = true;
 
-						if(pvsPSFinishedOnCurrentApplication){
+						if (pvsPSFinishedOnCurrentApplication) {
 							const commandThatClosedTheBranch: string = this.mrpProofState["curr-cmd"];
 
-							if(commandThatClosedTheBranch !== this.activeNode.name){ // @M3 can this happen now? #TODO Check
-								const newProofCommand: ProofCommandApplication = 
-								new ProofCommandApplication(commandThatClosedTheBranch, this.activeNode.branchId, this.activeNode, this.connection);
+							if (commandThatClosedTheBranch !== this.activeNode.name) { // @M3 can this happen now? #TODO Check
+								const newProofCommand: ProofCommandApplication =
+									new ProofCommandApplication(commandThatClosedTheBranch, this.activeNode.branchId, this.activeNode, this.connection);
 								// append before selected node (the active not has not been executed yet)
 								const sequent: PvsProofState = this.activeNode.proofState;
 								activeNode = this.appendNode({ selected: this.activeNode, elem: newProofCommand, sequent });
-							} 
-						} 
+							}
+						}
 
 						// Mark as completed
 						const branchToClose: ProofBranch = this.findProofBranch(activeNode.branchId);
@@ -918,21 +916,21 @@ export class PvsProofExplorer {
 						// since the current branch is closed, but PVS will report the 
 						// proof state we need to move to, so let's leave the calculation
 						// to PVS for now.
-					} 
+					}
 				} else {
 					// If the active node is a BranchProof node, we need to advance the indicator 
 					// anyway
-					if(doNotMoveForward===undefined)
+					if (doNotMoveForward === undefined)
 						doNotMoveForward = activeNode.contextValue !== "proof-branch";
 				}
 
 				// Finally, move indicator forward and propagate tooltip to the new active node
 				// unless the provided proof state do not incorporate any information into
 				// the proof explorer.
-				if(doNotMoveForward===undefined || !doNotMoveForward){
+				if (doNotMoveForward === undefined || !doNotMoveForward) {
 					const targetPSDisplayId: string = this.mrpProofState['curr-cmd'] ? this.mrpProofState.children[0] : this.mrpProofState['display-id'];
 					const destinationNode: ProofItem = this.moveIndicatorForward({ keepSameBranch: true, targetPSDisplayId: targetPSDisplayId, branchComplete: branchCompleted });
-					if(!this.mrpProofState['curr-cmd']){
+					if (!this.mrpProofState['curr-cmd']) {
 						destinationNode.updateSequent(this.mrpProofState, { internalAction: false });
 					}
 				}
@@ -967,9 +965,9 @@ export class PvsProofExplorer {
 					await this.quitProofAndSave({ jprfOnly: true });
 				} else {
 					if (this.connection) {
-						const evt: ProofExecDidStopRunning = { 
+						const evt: ProofExecDidStopRunning = {
 							action: "did-stop-running",
-							sequent: this.mrpProofState 
+							sequent: this.mrpProofState
 						};
 						this.connection.sendNotification(serverEvent.proverEvent, evt);
 					}
@@ -979,9 +977,9 @@ export class PvsProofExplorer {
 			this.runningFlag = false;
 			console.error("[proof-explorer] Error: could not read proof state information returned by pvs-server.");
 			if (this.connection) {
-				const evt: ProofExecDidStopRunning = { 
+				const evt: ProofExecDidStopRunning = {
 					action: "did-stop-running",
-					sequent: this.mrpProofState 
+					sequent: this.mrpProofState
 				};
 				this.connection.sendNotification(serverEvent.proverEvent, evt);
 			}
@@ -2447,7 +2445,7 @@ export class PvsProofExplorer {
 	async quitProofAndDiscardScript(opt?: { proofId?: string, notifyClient?: boolean }): Promise<void> {
 		opt = opt || {};
 		this.quitProof(opt);
-		const discardResponse : PvsResponse = await this.pvsProxy?.discardProofFromFormula(this.formula, this.proofId);
+		const discardResponse: PvsResponse = await this.pvsProxy?.discardProofFromFormula(this.formula, this.proofId);
 		let msg: string = null;
 		const success: boolean = !!(discardResponse?.result);
 		if (!success) {
@@ -2479,20 +2477,21 @@ export class PvsProofExplorer {
 		this.updateDirtyFlag(false);
 		if (!opt.jprfOnly) {
 			// mark the current proof as the default proof (vscode-pvs does not support multiple proof versions at this time)
-			const defaultProofResponse : PvsResponse = await this.pvsProxy?.markProofAsDefault(this.formula, this.proofId);
+			const defaultProofResponse: PvsResponse = await this.pvsProxy?.markProofAsDefault(this.formula, this.proofId);
 			success = !!(defaultProofResponse?.result);
 			if (!success) {
 				msg = defaultProofResponse?.error?.data?.error_string;
 				console.error(msg);
 			} else {
 				// save proof to prf file
-				const theoryRef : string = this.formula.fileName + this.formula.fileExtension + "#" + this.formula.theoryName;
+				const theoryRef: string = this.formula.fileName + this.formula.fileExtension + "#" + this.formula.theoryName;
 				let response: PvsResponse;
-				if (this.pvsProxy.remoteActive){
+				if (this.pvsProxy.remoteActive) {
 					response = await this.pvsProxy.pvsRequestRemote("save-all-proofs", [theoryRef]);
-					
+
+				} else {
+					response = await this.pvsProxy?.saveAllModifiedProofsIntoPrfFile(theoryRef);
 				}
-				response= await this.pvsProxy?.saveAllModifiedProofsIntoPrfFile(theoryRef);
 				success = !!(response?.result);
 				if (!success) {
 					msg = response?.error?.data?.error_string;
@@ -2697,55 +2696,55 @@ export class PvsProofExplorer {
 				if (response) {
 					if (response.result) {
 						// const channelID: string = languageUtils.desc2id(req);
-						const sequent: PvsProofState = 
-							response.result.length ? 
-								response.result[response.result.length - 1] : 
-								response.result;							
-							if (sequent["prover-session-status"]) {
-								// FIXME: this field is provided only by json-output patch, not by the xmlrpc server -- either use it or don't, adopt a standard solution!
-								// branch closed, or proof completed
-								console.dir(sequent);
-							} else {
-								// FIXME: pvs-server needs to provide a string representation of the command, not its structure!
-								const command: string =
-									(sequent && sequent["prev-cmd"]
-										&& !isUndoCommand(cmd)
-										&& !isUndoUndoCommand(cmd)
-										&& !isPostponeCommand(cmd)) ? sequent["prev-cmd"] as string : cmd;
-								// if (this.connection) {
-								// 	this.connection.sendRequest(serverEvent.proofCommandResponse, { 
-								// 		response: { result: sequent }, 
-								// 		args: { 
-								// 			fileName: req.fileName,
-								// 			fileExtension: req.fileExtension,
-								// 			contextFolder: req.contextFolder,
-								// 			theoryName: req.theoryName,
-								// 			formulaName: req.formulaName,
-								// 			cmd: command
-								// 		}
-								// 	});
-								// }
-								// check if the proof is complete
-								if (languageUtils.QED(sequent)) {
-									if (this.connection) {
-										this.connection.sendRequest(serverEvent.QED, { response: { result: sequent }, args: req });
-										// this.connection.sendRequest(serverEvent.proofCommandResponse, { res: null, req: request });
-										// trigger a context update, so proof status will be updated on the front-end
-										const cdesc: PvsContextDescriptor = await this.pvsLanguageServer.getContextDescriptor({ contextFolder: req.contextFolder });
-										this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
-									}
-									// re-generate tccs
-									await this.pvsLanguageServer.generateTccsRequest(req, { quiet: true });
-									// stop the loop & don't send proof-state to cli gateway
-									return;
+						const sequent: PvsProofState =
+							response.result.length ?
+								response.result[response.result.length - 1] :
+								response.result;
+						if (sequent["prover-session-status"]) {
+							// FIXME: this field is provided only by json-output patch, not by the xmlrpc server -- either use it or don't, adopt a standard solution!
+							// branch closed, or proof completed
+							console.dir(sequent);
+						} else {
+							// FIXME: pvs-server needs to provide a string representation of the command, not its structure!
+							const command: string =
+								(sequent && sequent["prev-cmd"]
+									&& !isUndoCommand(cmd)
+									&& !isUndoUndoCommand(cmd)
+									&& !isPostponeCommand(cmd)) ? sequent["prev-cmd"] as string : cmd;
+							// if (this.connection) {
+							// 	this.connection.sendRequest(serverEvent.proofCommandResponse, { 
+							// 		response: { result: sequent }, 
+							// 		args: { 
+							// 			fileName: req.fileName,
+							// 			fileExtension: req.fileExtension,
+							// 			contextFolder: req.contextFolder,
+							// 			theoryName: req.theoryName,
+							// 			formulaName: req.formulaName,
+							// 			cmd: command
+							// 		}
+							// 	});
+							// }
+							// check if the proof is complete
+							if (languageUtils.QED(sequent)) {
+								if (this.connection) {
+									this.connection.sendRequest(serverEvent.QED, { response: { result: sequent }, args: req });
+									// this.connection.sendRequest(serverEvent.proofCommandResponse, { res: null, req: request });
+									// trigger a context update, so proof status will be updated on the front-end
+									const cdesc: PvsContextDescriptor = await this.pvsLanguageServer.getContextDescriptor({ contextFolder: req.contextFolder });
+									this.connection.sendRequest(serverEvent.contextUpdate, cdesc);
 								}
-								// show feedback in CLI only after executing the last command in the sequence
-								if (i === cmdArray.length - 1) {
-									// this.pvsLanguageServer.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: sequent, cmd });
-									this.connection?.sendRequest(serverEvent.proofCommandResponse, { res: sequent, req: request });
-								}
+								// re-generate tccs
+								await this.pvsLanguageServer.generateTccsRequest(req, { quiet: true });
+								// stop the loop & don't send proof-state to cli gateway
+								return;
 							}
-						
+							// show feedback in CLI only after executing the last command in the sequence
+							if (i === cmdArray.length - 1) {
+								// this.pvsLanguageServer.cliGateway.publish({ type: "pvs.event.proof-state", channelID, data: sequent, cmd });
+								this.connection?.sendRequest(serverEvent.proofCommandResponse, { res: sequent, req: request });
+							}
+						}
+
 					} else {
 						console.warn(`[proof-explorer] Warning: Unable to execute proof command ${cmd}`, response);
 					}
@@ -3231,7 +3230,7 @@ export abstract class ProofItem extends TreeItem {
 	 */
 	moveIndicatorForward(opt?: { lastVisitedChild?: ProofItem, keepSameBranch?: boolean, targetPSDisplayId?: string }): ProofItem | null {
 		opt = opt || {};
-		const	targetPSLabel = opt.targetPSDisplayId ? languageUtils.getLabelFromPSDisplayId(opt.targetPSDisplayId) : undefined;
+		const targetPSLabel = opt.targetPSDisplayId ? languageUtils.getLabelFromPSDisplayId(opt.targetPSDisplayId) : undefined;
 		if (this.contextValue === "proof-command") {
 			this.visited();
 		} else {
@@ -3245,7 +3244,7 @@ export abstract class ProofItem extends TreeItem {
 			if (opt.targetPSDisplayId) {
 				const activeBranchId = languageUtils.getBranchIdFromPSDisplayId(opt.targetPSDisplayId);
 				if (opt.keepSameBranch && !this.children[0].branchNameEquals(activeBranchId)) {
-						return null;
+					return null;
 				}
 			}
 			if (opt.lastVisitedChild) {
@@ -3256,13 +3255,13 @@ export abstract class ProofItem extends TreeItem {
 					let targetNode: ProofItem = null;
 					targetNode = this.children[next];
 					// Dummy proof-state, containing the available information
-					targetNode.proofState = { "commentary": "", "label" : targetPSLabel, "display-id" : opt.targetPSDisplayId };
+					targetNode.proofState = { "commentary": "", "label": targetPSLabel, "display-id": opt.targetPSDisplayId };
 					return targetNode;
 				}
 			} else {
 				let targetNode: ProofItem = this.children[0];
 				// Dummy proof-state, containing the available information
-				targetNode.proofState = { "commentary": "", "label" : targetPSLabel, "display-id" : opt.targetPSDisplayId };
+				targetNode.proofState = { "commentary": "", "label": targetPSLabel, "display-id": opt.targetPSDisplayId };
 				return targetNode;
 			}
 		}
