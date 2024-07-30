@@ -2619,6 +2619,7 @@ export function runRsync(localPath: string, remotePath: string, ssh_key_path: st
             '--prune-empty-dirs',
             '--include', '*/',
             '--include', '**/*.pvs',
+			'--include', '**/*.prf',
             '--exclude', '*',
             '-e', `ssh -i ${ssh_key_path}`,
             path.join(localPath, '/'),
