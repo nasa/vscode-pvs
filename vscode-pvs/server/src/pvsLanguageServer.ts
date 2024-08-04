@@ -1923,10 +1923,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			// start pvs
 			const success: boolean = await this.startPvsServer(desc);
 			return success;
-		} 
-		else if (desc.remote['port'] && desc.remote['ip'] && desc.remote['ssh_path'] && desc.remote['hostname']){
-			const success: boolean = await this.startPvsServer(desc);
-			return success;
 		}
 		return false;
 	}

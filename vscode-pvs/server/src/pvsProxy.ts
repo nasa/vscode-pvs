@@ -176,7 +176,6 @@ export class PvsProxy {
 		if (this.pvsLibraryPath) {
 			this.nasalibPath = fsUtils.getNasalibPath(this.pvsLibraryPath);
 		}
-
 		this.webSocketPort = (!!opt.webSocketPort) ? opt.webSocketPort : 23456; // 22334; // 23456;
 		this.client_methods.forEach(mth => {
 			this.handlers[mth] = (params: string[]): string[] => {
@@ -436,7 +435,7 @@ export class PvsProxy {
 					if ('token' in this.remoteDetails) {
 						token = this.remoteDetails.token;
 					}
-					req = { method: method, params: params, jsonrpc: "2.0", id: id, type: "call-pvs-interrupt", token_str:token }
+					req = { method: method, params: params, jsonrpc: "2.0", id: id, type: "call-pvs-interrupt", token_str: token }
 				} else {
 					req = { method: method, params: params, jsonrpc: "2.0", id: id };
 				}
@@ -500,16 +499,23 @@ export class PvsProxy {
 				if ('token' in this.remoteDetails) {
 					token = this.remoteDetails.token;
 				}
-				if (token){
+				if (token) {
 					console.log("Old token retrieved");
 				} else {
 					console.log("No token found, Requesting new.");
 				}
+				let libraries = new Array<string>;
+				if (this.pvsLibPath) {
+					libraries.push(this.pvsLibPath);
+				}
+				this.pvsLibraryPath.split(':').forEach(path => {
+					libraries.push(path);
+				});
 
 				const message: ClientMessage = {
 					type: 'connect',
 					token_str: token,
-					libPaths: [this.pvsLibPath, this.pvsLibraryPath]
+					libPaths: libraries
 				};
 				this.webSocket.send(JSON.stringify(message));
 			}
@@ -522,6 +528,8 @@ export class PvsProxy {
 				}, 5000);
 			}
 		});
+		let lib_path_returned = false;
+		let process_code_returned: number;
 		this.webSocket.on('message', async (msg: string) => {
 			const obj = JSON.parse(msg);
 			// Should check for valid JSON-RPC,
@@ -539,8 +547,9 @@ export class PvsProxy {
 				}
 			}
 			if (obj.type === "port-active") {
-				const processCode = obj.portActiveResponse.code;
-				resolveRemoteActivate(processCode);
+				// const processCode = obj.portActiveResponse.code;
+				// resolveRemoteActivate(processCode);
+				process_code_returned = obj.portActiveResponse.code;
 			}
 			if (obj.type === "function-response") {
 				const resolveFunc = this.functionResolveMap.get(obj.id);
@@ -562,13 +571,20 @@ export class PvsProxy {
 						}
 					}
 				}
-				for (const key in obj.syncPathsResponse.libPaths) {
-					if (!(key in this.pathCache.libPaths) && 'ssh_path' in this.remoteDetails && 'hostname' in this.remoteDetails) {
-						await fsUtils.runRsync(key, obj.syncPathsResponse.libPaths[key], this.remoteDetails.ssh_path, this.remoteDetails.hostname, this.remoteDetails.ip);
+				if (!lib_path_returned) {
+					let lib_promises = new Array<Promise<number>>;
+					for (const key in obj.syncPathsResponse.libPaths) {
+						if (!(key in this.pathCache.libPaths) && 'ssh_path' in this.remoteDetails && 'hostname' in this.remoteDetails) {
+							lib_promises.push(fsUtils.runRsync(key, obj.syncPathsResponse.libPaths[key], this.remoteDetails.ssh_path, this.remoteDetails.hostname, this.remoteDetails.ip));
+						}
+						this.pathCache.libPaths[key] = obj.syncPathsResponse.libPaths[key];
 					}
-					this.pathCache.libPaths[key] = obj.syncPathsResponse.libPaths[key];
+					await Promise.allSettled(lib_promises);
+					lib_path_returned = !lib_path_returned;
+					if (process_code_returned!==undefined){
+						resolveRemoteActivate(process_code_returned);
+					}
 				}
-
 			}
 			if (obj.type === "server-call") {
 				if (obj.method === "pvsErrorManager.notifyPvsFailure") {
@@ -626,7 +642,7 @@ export class PvsProxy {
 				if ('token' in this.remoteDetails) {
 					token = this.remoteDetails.token;
 				}
-				if (token){
+				if (token) {
 					console.log("Old token retrieved");
 				} else {
 					console.log("No token found, Requesting new.");
@@ -770,8 +786,10 @@ export class PvsProxy {
 		console.log(`[pvs-proxy.activate] Starting pvs-proxy...`);
 		if (this.remoteActive) {
 			this.pvsServerProcessStatus = await this.activateRemote();
-			if (this.isOperational(this.webSocket))
+			if (this.isOperational(this.webSocket)) {
 				console.log(`[pvs-proxy.activate] Restart PVS Server done. PvsProxy is Ready ✅`);
+
+			}
 			else {
 				console.error(`[pvs-proxy.activate] Failed to open socket client at ${this.webSocketAddress}:${this.webSocketPort} ❌`);
 				this.pvsServerProcessStatus = ProcessCode.COMM_FAILURE;
@@ -1758,7 +1776,7 @@ export class PvsProxy {
 				token = this.remoteDetails.token;
 			}
 			const id = this.get_fresh_id();
-			const req = { type: 'invoke-pvs-process-method', token_str:token, function: functionName, id };
+			const req = { type: 'invoke-pvs-process-method', token_str: token, function: functionName, id };
 			const jsonReq = JSON.stringify(req, null, " ");
 			this.webSocket.send(jsonReq);
 			if (!output) {
