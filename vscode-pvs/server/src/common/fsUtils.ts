@@ -54,6 +54,8 @@ import {
 import { execFileSync } from 'child_process';
 import { PrettyPrinter } from './xtermInterface';
 import { colorText, getColor, PvsColor, XTermColorTheme } from './colorUtils';
+import * as net from 'net';
+
 
 
 // home dir of the current installation
@@ -2655,3 +2657,29 @@ export function runRsync(localPath: string, remotePath: string, ssh_key_path: st
 		});
 	});
 }
+
+export function findAvailablePort(startPort: number = 23456): Promise<number> {
+	return new Promise((resolve, reject) => {
+	  function tryPort(port: number): void {
+		const server: net.Server = net.createServer();
+  
+		server.once('error', (err: NodeJS.ErrnoException) => {
+		  if (err.code === 'EADDRINUSE') {
+			tryPort(port + 1);
+		  } else {
+			reject(err);
+		  }
+		});
+  
+		server.once('listening', () => {
+		  server.close(() => {
+			resolve(port);
+		  });
+		});
+  
+		server.listen(port);
+	  }
+  
+	  tryPort(startPort);
+	});
+  }

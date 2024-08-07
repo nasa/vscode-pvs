@@ -69,6 +69,7 @@ import * as languageUtils from './common/languageUtils';
 // import { PvsProxyLegacy } from './legacy/pvsProxyLegacy';
 import { PvsErrorManager } from './pvsErrorManager';
 import { execSync } from 'child_process';
+import { SSHTunnel } from './SSHTunnel';
 
 export class PvsProgressInfo {
 	protected progressLevel: number = 0;
@@ -157,6 +158,9 @@ export class PvsProxy {
 	pendingPathSyncs: Map<string, Function>;
 	SYNC_TIMEOUT = 5000;
 	functionResolveMap: Map<string, any>;
+	activeWorkspace: string;
+	tunnel: SSHTunnel;
+
 
 	/** The constructor simply sets various properties in the PvsProxy class. */
 	constructor(pvsPath: string,
@@ -197,6 +201,14 @@ export class PvsProxy {
 		if (this.validRemoteDetails(this.remoteDetails)) {
 			this.remoteActive = true;
 		}
+		if ('workspace' in this.remoteDetails) {
+			this.activeWorkspace = this.remoteDetails['workspace'] || '';
+		} else {
+			this.activeWorkspace = '';
+		}
+		if (this.activeWorkspace === '') {
+			this.remoteActive = false;
+		}
 		this.functionResolveMap = new Map();
 	}
 
@@ -235,6 +247,20 @@ export class PvsProxy {
 			return this.pathCache.libPaths[path];
 		} else {
 			return undefined;
+		}
+	}
+
+	async createSshTunnel() {
+		if ('ip' in this.remoteDetails && 'hostname' in this.remoteDetails && 'ssh_path' in this.remoteDetails && 'port' in this.remoteDetails) {
+			this.webSocketPort = await fsUtils.findAvailablePort();
+			this.tunnel = new SSHTunnel(
+				this.webSocketPort,   // local port
+				this.remoteDetails.port,     // remote port
+				this.remoteDetails.hostname,      // SSH user
+				this.remoteDetails.ip,          // SSH host
+				this.remoteDetails.ssh_path    // path to private key file
+			);
+			console.log(await this.tunnel.create());
 		}
 	}
 
@@ -515,7 +541,8 @@ export class PvsProxy {
 				const message: ClientMessage = {
 					type: 'connect',
 					token_str: token,
-					libPaths: libraries
+					libPaths: libraries,
+					workspace: this.activeWorkspace
 				};
 				this.webSocket.send(JSON.stringify(message));
 			}
@@ -581,7 +608,7 @@ export class PvsProxy {
 					}
 					await Promise.allSettled(lib_promises);
 					lib_path_returned = !lib_path_returned;
-					if (process_code_returned!==undefined){
+					if (process_code_returned !== undefined) {
 						resolveRemoteActivate(process_code_returned);
 					}
 				}
@@ -649,7 +676,8 @@ export class PvsProxy {
 				}
 				const message: ClientMessage = {
 					type: 'connect-interrupt',
-					token_str: token
+					token_str: token,
+					workspace: this.activeWorkspace
 				};
 				this.interruptConn.send(JSON.stringify(message));
 			}
@@ -753,10 +781,9 @@ export class PvsProxy {
 		return new Promise<ProcessCode>((resolve, reject) => {
 			if ('port' in this.remoteDetails && 'ip' in this.remoteDetails) {
 				console.log(`Connecting with remote PVS server at ${this.remoteDetails.ip}:${this.remoteDetails.port}`);
-				this.webSocketAddress = this.remoteDetails.ip;
-				this.webSocketPort = this.remoteDetails.port;
+				// this.webSocketAddress = this.remoteDetails.ip;
+				// this.webSocketPort = this.remoteDetails.port;
 				let currentConnectionAttempt: number = 0;
-
 				const attemptConnection = async () => {
 					await this.activateInteruptConnRemote();
 					if (this.webSocket == undefined) {
@@ -785,6 +812,7 @@ export class PvsProxy {
 		opt = opt || {};
 		console.log(`[pvs-proxy.activate] Starting pvs-proxy...`);
 		if (this.remoteActive) {
+			await this.createSshTunnel();
 			this.pvsServerProcessStatus = await this.activateRemote();
 			if (this.isOperational(this.webSocket)) {
 				console.log(`[pvs-proxy.activate] Restart PVS Server done. PvsProxy is Ready ✅`);
@@ -2710,6 +2738,9 @@ export class PvsProxy {
 			}
 			else
 				console.log("[pvs-proxy] Couldn't kill pvs-server");
+		}
+		if (this.tunnel){
+			console.log(await this.tunnel.destroy());
 		}
 	}
 	/**

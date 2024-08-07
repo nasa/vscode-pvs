@@ -1536,6 +1536,7 @@ export const getRemoteDetail = (context: vscode.ExtensionContext): {[key: string
             vscode.window.showWarningMessage('Remote Server setting on , but no remote hostname provided.');
         }
         ans['token'] = context.globalState.get('sessionTokenPVS', '');
+        ans['workspace']=vscode.workspace.workspaceFolders[0]?vscode.workspace.workspaceFolders[0]:'';
     }
     if ('ip' in ans && 'port' in ans && 'ssh_path' in ans && 'hostname' in ans){
         return ans;

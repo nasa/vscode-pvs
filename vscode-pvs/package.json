@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.66-eta-202406251539",
+	"version": "1.0.67",
 	"author": "Paolo Masci",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -180,12 +180,12 @@
 						"description": "Port number to use to communicate with the PVS server (default: 23456). If you change this value, the new port number will be used the next time the PVS server is restarted. Tip: you can restart the server using 'M-x reboot-server'"
 					},
 					"pvs.activateRemote": {
-						"type":"boolean",
+						"type": "boolean",
 						"default": false,
 						"description": "Enables running PVS Server on a remote machine. All requests sent to PVS Server will be processed on a remote server instead of local machine."
 					},
 					"pvs.remoteServerIP": {
-						"type":"string",
+						"type": "string",
 						"description": "Enter the IP Address of your Remote Server",
 						"when": "pvs.activateRemote === true"
 					},
@@ -2050,7 +2050,7 @@
 		"@types/vscode": "^1.76.0",
 		"@typescript-eslint/eslint-plugin": "^5.10.0",
 		"@typescript-eslint/parser": "^5.10.0",
-		"@vscode/vsce": "^2.31.0",
+		"@vscode/vsce": "^2.31.1",
 		"assert": "^2.0.0",
 		"chai": "^4.3.4",
 		"eslint": "^8.7.0",
