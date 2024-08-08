@@ -252,7 +252,7 @@ export class PvsProxy {
 
 	async createSshTunnel() {
 		if ('ip' in this.remoteDetails && 'hostname' in this.remoteDetails && 'ssh_path' in this.remoteDetails && 'port' in this.remoteDetails) {
-			this.webSocketPort = fsUtils.findAvailablePort();
+			this.webSocketPort = await fsUtils.findAvailablePort();
 			this.tunnel = new SSHTunnel(
 				this.webSocketPort,   // local port
 				this.remoteDetails.port,     // remote port

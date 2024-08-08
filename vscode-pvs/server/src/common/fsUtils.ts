@@ -2658,33 +2658,29 @@ export function runRsync(localPath: string, remotePath: string, ssh_key_path: st
 	});
 }
 
-// export function findAvailablePort(startPort: number = 23456): Promise<number> {
-// 	return new Promise((resolve, reject) => {
-// 	  function tryPort(port: number): void {
-// 		const server: net.Server = net.createServer();
+function AvailablePort(port: number): Promise<boolean> {
+	return new Promise((resolve, reject) => {
+		function tryPort(port: number): void {
+			const server: net.Server = net.createServer();
 
-// 		server.once('error', (err: NodeJS.ErrnoException) => {
-// 		  if (err.code === 'EADDRINUSE') {
-// 			tryPort(port + 1);
-// 		  } else {
-// 			reject(err);
-// 		  }
-// 		});
+			server.once('error', (err: NodeJS.ErrnoException) => {
+				resolve(false);
+			});
 
-// 		server.once('listening', () => {
-// 		  server.close(() => {
-// 			resolve(port);
-// 		  });
-// 		});
+			server.once('listening', () => {
+				server.close(() => {
+					resolve(true);
+				});
+			});
 
-// 		server.listen(port);
-// 	  }
+			server.listen(port);
+		}
 
-// 	  tryPort(startPort);
-// 	});
-//   }
+		tryPort(port);
+	});
+}
 
-export function findAvailablePort(startPort: number = 23456) {
+export async function findAvailablePort(startPort: number = 23456) {
 	try {
 		const ports = new Set<number>();
 		let port = startPort;
@@ -2695,11 +2691,16 @@ export function findAvailablePort(startPort: number = 23456) {
 		while ((match = tunnelRegex.exec(out)) !== null) {
 			ports.add(parseInt(match[1], 10));
 		}
-		while (!found){
-			if (ports.has(port)){
-				port=port+1;
-			} else{
-				found=true;
+		while (!found) {
+			if (ports.has(port)) {
+				port = port + 1;
+			} else {
+				const portAvl = await AvailablePort(port);
+				if (portAvl) {
+					found = true;
+				} else {
+					port = port + 1;
+				}
 			}
 		}
 		return port;
