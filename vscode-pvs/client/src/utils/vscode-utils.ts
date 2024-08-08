@@ -1515,10 +1515,10 @@ export const setRuntimeEnvContext = (env: string) => {
 export const getRemoteDetail = (context: vscode.ExtensionContext): {[key: string]: unknown} => {
     let ans = {};
     if (getConfigurationFlag('pvs.activateRemote')){
-        if (getConfiguration('pvs.remoteServerIP')){
-            ans['ip']=getConfiguration('pvs.remoteServerIP');
+        if (getConfiguration("pvs.remoteServerHostName")){
+            ans['ip']=getConfiguration("pvs.remoteServerHostName");
         } else {
-            vscode.window.showWarningMessage("Remote Server setting on , but no IP address provided.");
+            vscode.window.showWarningMessage("Remote Server setting on , but no IP address/hostname provided.");
         }
         if (getConfigurationValue('pvs.remoteServerPort')){
             ans['port']=getConfigurationValue('pvs.remoteServerPort');
@@ -1530,10 +1530,10 @@ export const getRemoteDetail = (context: vscode.ExtensionContext): {[key: string
         } else {
             vscode.window.showWarningMessage("Remote Server setting on, but no ssh key path provided.")
         }
-        if (getConfiguration('pvs.remoteHostname')){
-            ans['hostname']=getConfiguration('pvs.remoteHostname');
+        if (getConfiguration('pvs.remoteHostUsername')){
+            ans['hostname']=getConfiguration('pvs.remoteHostUsername');
         } else {
-            vscode.window.showWarningMessage('Remote Server setting on , but no remote hostname provided.');
+            vscode.window.showWarningMessage('Remote Server setting on , but no remote username provided.');
         }
         ans['token'] = context.globalState.get('sessionTokenPVS', '');
         ans['workspace']=vscode.workspace.workspaceFolders[0]?vscode.workspace.workspaceFolders[0]:'';

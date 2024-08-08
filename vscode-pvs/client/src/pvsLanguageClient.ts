@@ -137,6 +137,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		return vscodeUtils.getConfiguration("pvs.path");
 	}
 
+	tunnelPidList: number[];
+
 	/**
 	 * Internal function, autosaves pvs files with frequency AUTOSAVE_INTERVAL
 	 * @param document 
@@ -552,6 +554,12 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.client.onRequest("update-token", (token: string) => {
 				context.globalState.update('sessionTokenPVS', token);
 			});
+			this.client.onRequest("pvs.tunnelPid", (pid) => {
+				if (this.tunnelPidList===undefined){
+					this.tunnelPidList= new Array<number>;
+				}
+				this.tunnelPidList.push(parseInt(pid));
+			});
 		});
 	}
 	/**
@@ -584,6 +592,13 @@ export function activate(context: ExtensionContext) {
 
 export function deactivate(): Thenable<void> {
 	return new Promise((resolve, reject) => {
+		pvsLanguageClient.tunnelPidList.forEach(pid => {
+			try{
+			process.kill(pid,"SIGKILL");
+			} catch (err){
+				console.log("Error while deleting pid: ",pid);
+			}
+		});
 		pvsLanguageClient.stop().then(() => {
 			resolve();
 		});

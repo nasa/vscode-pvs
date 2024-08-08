@@ -184,9 +184,9 @@
 						"default": false,
 						"description": "Enables running PVS Server on a remote machine. All requests sent to PVS Server will be processed on a remote server instead of local machine."
 					},
-					"pvs.remoteServerIP": {
+					"pvs.remoteServerHostName": {
 						"type": "string",
-						"description": "Enter the IP Address of your Remote Server",
+						"description": "Enter the IP Address/Hostname of your Remote Server",
 						"when": "pvs.activateRemote === true"
 					},
 					"pvs.remoteServerPort": {
@@ -198,9 +198,9 @@
 						"type": "string",
 						"description": "Absolute path of private key which will be used in RSYNC operations with remote servers"
 					},
-					"pvs.remoteHostname": {
+					"pvs.remoteHostUsername": {
 						"type": "string",
-						"description": "Hostname on remote server which gives you ssh access to it"
+						"description": "Enter username for remote server"
 					}
 				}
 			}

@@ -252,7 +252,7 @@ export class PvsProxy {
 
 	async createSshTunnel() {
 		if ('ip' in this.remoteDetails && 'hostname' in this.remoteDetails && 'ssh_path' in this.remoteDetails && 'port' in this.remoteDetails) {
-			this.webSocketPort = await fsUtils.findAvailablePort();
+			this.webSocketPort = fsUtils.findAvailablePort();
 			this.tunnel = new SSHTunnel(
 				this.webSocketPort,   // local port
 				this.remoteDetails.port,     // remote port
@@ -261,6 +261,14 @@ export class PvsProxy {
 				this.remoteDetails.ssh_path    // path to private key file
 			);
 			console.log(await this.tunnel.create());
+			try{
+				const pid = this.tunnel.tunnelProcess.pid;
+				if (pid!==undefined && !isNaN(pid)){
+					this.connection.sendRequest("pvs.tunnelPid", pid);
+				}
+			} catch(err){
+				console.log(err);
+			}	
 		}
 	}
 
@@ -547,9 +555,9 @@ export class PvsProxy {
 				this.webSocket.send(JSON.stringify(message));
 			}
 		});
-		this.webSocket.on('close', () => {
+		this.webSocket.on('close', async () => {
 			console.log("[pvsProxy.startWebSocket] CLOSE");
-			if (!this.externalServer) {
+			if (!(this.externalServer || this.remoteActive)) {
 				setTimeout(() => {
 					if (this.pvsServerProcessStatus === ProcessCode.SUCCESS) this.startWebSocket();
 				}, 5000);
@@ -683,9 +691,9 @@ export class PvsProxy {
 			}
 			console.log("[pvsProxy.startInterruptionWebSocket]  OPEN");
 		});
-		this.interruptConn.on('close', () => {
+		this.interruptConn.on('close', async () => {
 			console.log("[pvsProxy.startInterruptionWebSocket]  CLOSE");
-			if (!this.externalServer) {
+			if (!(this.externalServer || this.remoteActive)) {
 				setTimeout(() => {
 					if (this.pvsServerProcessStatus === ProcessCode.SUCCESS) this.startInterruptionWebSocket();
 				}, 5000);
@@ -780,7 +788,7 @@ export class PvsProxy {
 	async activateRemote(): Promise<ProcessCode> {
 		return new Promise<ProcessCode>((resolve, reject) => {
 			if ('port' in this.remoteDetails && 'ip' in this.remoteDetails) {
-				console.log(`Connecting with remote PVS server at ${this.remoteDetails.ip}:${this.remoteDetails.port}`);
+				console.log(`Connecting with remote PVS server at ${this.remoteDetails.ip}:${this.remoteDetails.port} using tunnel from port ${this.webSocketPort}`);
 				// this.webSocketAddress = this.remoteDetails.ip;
 				// this.webSocketPort = this.remoteDetails.port;
 				let currentConnectionAttempt: number = 0;
@@ -813,7 +821,9 @@ export class PvsProxy {
 		console.log(`[pvs-proxy.activate] Starting pvs-proxy...`);
 		if (this.remoteActive) {
 			await this.createSshTunnel();
-			this.pvsServerProcessStatus = await this.activateRemote();
+			if (this.tunnel.tunnelProcess.pid) {
+				this.pvsServerProcessStatus = await this.activateRemote();
+			}
 			if (this.isOperational(this.webSocket)) {
 				console.log(`[pvs-proxy.activate] Restart PVS Server done. PvsProxy is Ready ✅`);
 
@@ -2716,7 +2726,12 @@ export class PvsProxy {
 	 * Kill pvs process
 	 */
 	async killPvsServer(): Promise<void> {
-		if (this.secondaryConnReady())
+		if (this.tunnel) {
+			console.log("Attempting to destroy SSH tunnel");
+			console.log(await this.tunnel.destroy());
+			this.tunnel = null;
+		}
+		if (!this.remoteActive && this.secondaryConnReady())
 			await this.sendRequestOnSecondaryConn('quit-all-proof-sessions');
 		if (this.webSocket) {
 			await this.webSocket.close();
@@ -2738,9 +2753,6 @@ export class PvsProxy {
 			}
 			else
 				console.log("[pvs-proxy] Couldn't kill pvs-server");
-		}
-		if (this.tunnel){
-			console.log(await this.tunnel.destroy());
 		}
 	}
 	/**
