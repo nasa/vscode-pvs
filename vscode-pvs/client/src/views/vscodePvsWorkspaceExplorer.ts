@@ -1089,6 +1089,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 									formulaName
 								});
 								this.client.onRequest(serverEvent.autorunFormulaResponse, (desc: { status: ProofStatus, error?: string }) => {
+								  console.log(`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.autorunFormulaResponse} - param: ${desc} `); // #DEBUG
 									if (desc && desc.error) {
 										vscodeUtils.showErrorMessage(desc.error);
 									}
@@ -1217,6 +1218,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 												formulaName
 											});
 											this.client.onRequest(serverEvent.autorunFormulaResponse, (desc: { status: ProofStatus, error?: string }) => {
+											  console.log(`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.autorunFormulaResponse} - param: ${desc} `); // #DEBUG
 												if (desc && desc.error) {
 													vscodeUtils.showErrorMessage(desc.error);
 												}
@@ -1292,6 +1294,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 		return new Promise((resolve, reject) => {
 			this.client.sendRequest(serverRequest.getTheorems, desc);
 			this.client.onRequest(serverEvent.getTheoremsResponse, (response: { theorems: PvsFormula[], error?: string }) => {
+			  console.log(`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.getTheoremsResponse} - param: ${response} `); // #DEBUG
 				if (response && response.error) {
 					vscodeUtils.showErrorMessage(response.error);
 					vscodeUtils.showProblemsPanel();
@@ -1308,6 +1311,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 		return new Promise((resolve, reject) => {
 			this.client.sendRequest(serverRequest.getTccs, desc);
 			this.client.onRequest(serverEvent.getTccsResponse, (response: { theorems: PvsFormula[], error?: string }) => {
+			  console.log(`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.getTccsResponse} - param: ${response} `); // #DEBUG
 				if (response && response.error) {
 					vscodeUtils.showErrorMessage(response.error);
 					vscodeUtils.showProblemsPanel();
@@ -1324,6 +1328,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 		return new Promise((resolve, reject) => {
 			this.client.sendRequest(serverRequest.typecheckWorkspace, desc);
 			this.client.onRequest(serverEvent.typecheckWorkspaceResponse, (response: { args: ContextFolder, success: boolean }) => {
+			  console.log(`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.typecheckWorkspaceResponse} - param: ${response} `); // #DEBUG
 				return resolve(response?.success);
 			});
 		});
@@ -1336,6 +1341,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 		return new Promise((resolve, reject) => {
 			this.client.sendRequest(serverRequest.getImportChainTheorems, desc);
 			this.client.onRequest(serverEvent.getImportChainTheoremsResponse, (response: { theorems: PvsFormula[] }) => {
+			  console.log(`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.getImportChainTheoremsResponse} - param: ${response} `); // #DEBUG
 				return response ? resolve(response.theorems) : resolve(null);
 			});
 		});
@@ -1402,6 +1408,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 									formulaName
 								});
 								this.client.onRequest(serverEvent.autorunFormulaResponse, (desc: { status: ProofStatus, error?: string }) => {
+								  console.log(`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.autorunFormulaResponse} - param: ${desc} `); // #DEBUG
 									if (desc && desc.error) {
 										vscodeUtils.showErrorMessage(desc.error);
 									}

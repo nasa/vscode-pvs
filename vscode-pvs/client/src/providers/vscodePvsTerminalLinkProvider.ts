@@ -113,6 +113,7 @@ export class VSCodePvsTerminalLinkProvider implements TerminalLinkProvider {
             };
             this.client.sendRequest(serverRequest.findSymbolDeclaration, req);
             this.client.onRequest(serverEvent.findSymbolDeclarationResponse, (res: FindSymbolDeclarationResponse) => {
+                console.log(`[vscodePvsTerminalLinkProvider] responding request ${serverEvent.findSymbolDeclarationResponse} - param: ${res}`); // #DEBUG
                 if (res.ans && res.ans.length === 1) {
                     const fname: string = res.ans[0].symbolDeclarationFile;
                     if (fname) {

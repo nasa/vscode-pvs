@@ -73,7 +73,7 @@ export class PvsProxyLegacy {
         if (!this.pvsProcess) {
             console.log(`[pvs-proxy-legacy] Activating stand-alone pvs process`);
             this.pvsProcess = new PvsProcess(this.pvsPath, opt);
-            await this.pvsProcess.activate({ externalServer: true });
+            // await this.pvsProcess.activate({ externalServer: true });
         }
     }
     async lisp (cmd: string, opt?: { quiet?: boolean }): Promise<PvsResponse> {

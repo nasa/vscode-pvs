@@ -167,6 +167,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			hasDiagnosticRelatedInformationCapability: false
 		};
 
+		
+		console.log(`[pvsLanguageServer./constructor/] vscode-pvs version: 2024-10-16`); // #DEBUG
+
 		try {
 			// Create a connection channel to allow clients to connect.
 			// The connection uses Node's IPC as a transport. Includes all proposed LSP features.
@@ -2037,6 +2040,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			// 	});
 			// }
 			this.connection?.onRequest(serverRequest.openFileWithExternalApp, (desc: FileDescriptor) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.openFileWithExternalApp} - param: ${desc} `); // #DEBUG
 				if (desc?.fileName) {
 					const cmd: string = fsUtils.getCommandOpenWithExternalApp(desc);
 					console.log(`[pvs-server] ${cmd}`);
@@ -2050,6 +2054,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				// which pvs-server command should I invoke to stop the operation??
 			});
 			this.connection?.onRequest(serverRequest.getContextDescriptor, async (request: { contextFolder: string, force?: boolean }) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.getContextDescriptor} - param: ${JSON.stringify(request)} `); // #DEBUG
 				if (request && request.contextFolder) {
 					const theoriesFromSelectedFile: boolean = !!(await this.connection?.workspace.getConfiguration("pvs.pvsWorkspaceTheoriesFromActiveFile"));
 					if (!this.isSameWorkspace(request.contextFolder) || theoriesFromSelectedFile || request.force) {
@@ -2063,6 +2068,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				}
 			});
 			this.connection?.onRequest(serverRequest.getFileDescriptor, (request: { contextFolder: string, fileName: string, fileExtension: string }) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.getFileDescriptor} - param: ${JSON.stringify(request)} `); // #DEBUG
 				if (request && request.contextFolder) {
 					// send information to the client, to populate theory explorer on the front-end
 					this.getFileDescriptor(request).then((fdesc: PvsFileDescriptor) => {
@@ -2071,6 +2077,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				}
 			});
 			this.connection?.onRequest(serverRequest.stopPvsServer, async () => {
+				console.log(`[pvsLanguageServer] responding request ${serverRequest.stopPvsServer}`); // #DEBUG
 				if (this.pvsProxy) {
 					await this.pvsProxy?.killPvsServer();
 				}
@@ -2082,6 +2089,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				externalServer?: boolean, 
 				webSocketPort: number
 			}) => {
+				console.log(`[pvsLanguageServer] responding request ${serverRequest.startPvsServer} - param: ${JSON.stringify(request)} `); // #DEBUG
 				// setting the error manager here so I can report errors on starting-up
 				if (!this.pvsErrorManager)
 					this.pvsErrorManager = new PvsErrorManager(this.connection);
@@ -2111,145 +2119,188 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				externalServer?: boolean,
 				webSocketPort: number
 			}) => {
+				console.log(`[pvsLanguageServer] responding request ${serverRequest.rebootPvsServer} ${(req? `- param: ${req}`: "")} `); // #DEBUG
 				this.connection?.sendNotification("server.status.restart-server");
 				await this.startPvsServer(req, { forceKill: true});
 			});
 			this.connection?.onRequest(serverRequest.clearWorkspace, async () => {
+				console.log(`[pvsLanguageServer] responding request ${serverRequest.clearWorkspace}`); // #DEBUG
 				this.clearWorkspace(); // async call
 			});
 			this.connection?.onRequest(serverRequest.parseFile, async (request: { fileName: string, fileExtension: string, contextFolder: string }) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.parseFile} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.parseFileRequest(request); // async call
 			});
 			this.connection?.onRequest(serverRequest.parseFileWithFeedback, async (request: { fileName: string, fileExtension: string, contextFolder: string }) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.parseFileWithFeedback} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.parseFileRequest(request, { withFeedback: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.parseWorkspace, async (request:{ contextFolder: string }) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.parseWorkspace} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.parseWorkspaceRequest(request); // async call
 			});
 			this.connection?.onRequest(serverRequest.parseWorkspaceWithFeedback, async (request: { contextFolder: string }) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.parseWorkspaceWithFeedback} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.parseWorkspaceRequest(request, { withFeedback: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.typecheckWorkspaceWithFeedback, async (request: { contextFolder: string }) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.typecheckWorkspaceWithFeedback} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.typecheckWorkspaceRequest(request, { withFeedback: true, generateTCCs: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.typecheckWorkspace, async (request: { contextFolder: string }) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.typecheckWorkspace} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.typecheckWorkspaceRequest(request, { generateTCCs: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.statusProofChain, async (req: PvsFormula) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.statusProofChain} - param: ${req} `); // #DEBUG
 				this.statusProofChainRequest(req); // async call
 			});
 			this.connection?.onRequest(serverRequest.hp2pvs, async (request: PvsFile) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.hp2pvs} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.hp2pvsRequest(request); // async call
 			});
 			this.connection?.onRequest(serverRequest.typecheckFile, async (request: PvsFile) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.typecheckFile} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.typecheckFileRequest(request); // async call
 			});
 			this.connection?.onRequest(serverRequest.dumpPvsFiles, async (request: DumpPvsFilesRequest) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.dumpPvsFiles} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.dumpPvsFilesRequest(request); // async call
 			});
 			this.connection?.onRequest(serverRequest.undumpPvsFiles, async (request: UndumpPvsFilesRequest) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.undumpPvsFiles} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.undumpPvsFilesRequest(request); // async call
 			});
 			this.connection?.onRequest(serverRequest.showTccs, async (request: { fileName: string, fileExtension: string, contextFolder: string, quiet?: boolean }) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.showTccs} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.generateTccsRequest(request, { quiet: request && request.quiet, showTccsRequest: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.generateTccs, async (request: { fileName: string, fileExtension: string, contextFolder: string, quiet?: boolean }) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.generateTccs} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.generateTccsRequest(request, { quiet: request && request.quiet }); // async call
 			});
 			this.connection?.onRequest(serverRequest.generateTheorySummary, async (request: PvsTheory) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.generateTheorySummary} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.generateTheorySummaryRequest(request); // async call
 			});
 			this.connection?.onRequest(serverRequest.showTheorySummary, async (request: PvsTheory) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.showTheorySummary} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.generateTheorySummaryRequest(request, { showSummaryRequest: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.generateWorkspaceSummary, async (request: FileDescriptor) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.generateWorkspaceSummary} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.generateWorkspaceSummaryRequest(request); // async call
 			});
 			this.connection?.onRequest(serverRequest.showWorkspaceSummary, async (request: FileDescriptor) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.showWorkspaceSummary} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.generateWorkspaceSummaryRequest(request, { showSummaryRequest: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.listContext, async (request: ContextFolder) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.listContext} - param: ${JSON.stringify(request)} `); // #DEBUG
 				await this.listContextFilesRequest(request);
 			});
 			this.connection?.onRequest(serverRequest.proveFormula, async (req: ProveFormulaRequest) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.proveFormula} - param: ${req} `); // #DEBUG
 				await this.proveFormulaRequest(req);
 			});
 			this.connection?.onRequest(serverRequest.getImportChainTheorems, async (args: PvsTheory) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.getImportChainTheorems} - param: ${args} `); // #DEBUG
 				await this.getImportChainTheoremsRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.getTheorems, async (args: PvsTheory) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.getTheorems} - param: ${args} `); // #DEBUG
 				await this.getTheoremsRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.getTccs, async (args: PvsTheory) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.getTccs} - param: ${args} `); // #DEBUG
 				await this.getTccsRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.autorunFormula, async (req: PvsFormula) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.autorunFormula} - param: ${req} `); // #DEBUG
 				await this.proveFormulaRequest(req, { autorun: true, quiet: true });
 			});
 			this.connection?.onRequest(serverRequest.autorunFormulaFromJprf, async (req: PvsFormula) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.autorunFormulaFromJprf} - param: ${req} `); // #DEBUG
 				await this.proveFormulaRequest(req, { autorun: true, useJprf: true, quiet: true });
 			});
 			this.connection?.onRequest(serverRequest.showProofLite, async (args: PvsFormula) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.showProofLite} - param: ${args} `); // #DEBUG
 				await this.showProofLiteRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.proofCommand, async (args: PvsProofCommand) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.proofCommand} - param: ${args} `); // #DEBUG
 				await this.proofExplorer?.proofCommandRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.getGatewayConfig, async () => {
+				console.log(`[pvsLanguageServer] responding request ${serverRequest.getGatewayConfig}`); // #DEBUG
 				// const port: number = this.getGatewayPort();
 				this.connection?.sendRequest(serverEvent.getGatewayConfigResponse, { port: 0 });
 			});
 			this.connection?.onRequest(serverRequest.viewPreludeFile, async () => {
+				console.log(`[pvsLanguageServer] responding request ${serverRequest.viewPreludeFile}`); // #DEBUG
 				this.connection?.sendRequest(serverEvent.viewPreludeFileResponse, this.getPreludeFileName());
 			});
 			this.connection?.onRequest(serverRequest.quitProof, async () => {
+				console.log(`[pvsLanguageServer] responding request ${serverRequest.quitProof}`); // #DEBUG
 				this.quitProofRequest(); // this method will send a quitProofResponse to the client
 			});
 
 			this.connection?.onRequest(serverRequest.getNasalibDownloader, async (req: NASALibDownloaderRequest) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.getNasalibDownloader} - param: ${req} `); // #DEBUG
 				const downloader: NASALibDownloader = await PvsPackageManager.getNasalibDownloader(req);
 				const res: NASALibDownloaderResponse = { downloader };
 				this.connection?.sendNotification(serverRequest.getNasalibDownloader, { req, res });
 			});
 			this.connection?.onRequest(serverRequest.listVersionsWithProgress, async (req: ListVersionsWithProgressRequest) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.listVersionsWithProgress} - param: ${req} `); // #DEBUG
 				const res: ListVersionsWithProgressResponse = await PvsPackageManager.listDownloadableVersionsWithProgress(this.connection, req);
 				this.connection?.sendNotification(serverRequest.listVersionsWithProgress, { req, res });
 			});
 			this.connection?.onRequest(serverRequest.installWithProgress, async (req: InstallWithProgressRequest) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.installWithProgress} - param: ${req} `); // #DEBUG
 				const res: InstallWithProgressResponse = await PvsPackageManager.installWithProgress(this.connection, req);
 				this.connection?.sendNotification(serverRequest.installWithProgress, { req, res });
 			});
 			this.connection?.onRequest(serverRequest.downloadWithProgress, async (req: DownloadWithProgressRequest) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.downloadWithProgress} - param: ${req} `); // #DEBUG
 				const res: DownloadWithProgressResponse = await PvsPackageManager.downloadWithProgress(this.connection, req);
 				this.connection?.sendNotification(serverRequest.downloadWithProgress, { req, res });
 			});
 			// this.connection?.onRequest(serverRequest.downloadPvs, async (desc: PvsDownloadDescriptor) => {
+			//   console.log(`[pvsLanguageServer] responding request ${serverRequest.downloadPvs} - param: ${desc} `); // #DEBUG
 			// 	const fname: string = await PvsPackageManager.downloadPvsExecutable(desc);
 			// 	this.connection?.sendRequest(serverEvent.downloadPvsResponse, { response: fname });
 			// });
 			this.connection?.onRequest(serverRequest.downloadLicensePage, async () => {
+				console.log(`[pvsLanguageServer] responding request ${serverRequest.downloadLicensePage}`); // #DEBUG
 				const licensePage: string = await PvsPackageManager.downloadPvsLicensePage();
 				this.connection?.sendRequest(serverEvent.downloadLicensePageResponse, { response: licensePage });
 			});
 			this.connection?.onRequest(serverRequest.startEvaluator, async (args: PvsioEvaluatorCommand) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.startEvaluator} - param: ${args} `); // #DEBUG
 				await this.startEvaluatorRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.quitEvaluator, async (args: PvsTheory) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.quitEvaluator} - param: ${args} `); // #DEBUG
 				await this.quitEvaluatorRequest(args);
 				this.connection.sendRequest(serverEvent.quitEvaluatorResponse);
 			});
 			this.connection?.onRequest(serverRequest.evaluatorCommand, async (args: PvsioEvaluatorCommand) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.evaluatorCommand} - param: ${args} `); // #DEBUG
 				await this.pvsioEvaluatorCommandRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.evalExpression, async (args: EvalExpressionRequest) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.evalExpression} - param: ${args} `); // #DEBUG
 				await this.evalExpressionRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.pvsDoc, async (req: PvsDocRequest) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.pvsDoc} - param: ${req} `); // #DEBUG
 				await this.pvsDocRequest(req);
 			});
 
 			// search request
 			this.connection?.onRequest(serverRequest.search, async (req: SearchRequest) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.search} - param: ${req} `); // #DEBUG
 				const ans: SearchResult[] = 
 					req?.library === "nasalib" ? await this.searchNasalib(req)
 					: req?.library === "pvslib" ? await this.searchPvsLibraryPath(req)
@@ -2260,6 +2311,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 
 			// find declaration request
 			this.connection?.onRequest(serverRequest.findSymbolDeclaration, async (req: FindSymbolDeclarationRequest) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.findSymbolDeclaration} - param: ${req} `); // #DEBUG
 				const ans: PvsDefinition[] = await this.definitionProvider.findSymbolDefinitionInTheory(req?.theory, req?.symbolName);
 				const res: FindSymbolDeclarationResponse = { req, ans };
 				this.connection?.sendRequest(serverEvent.findSymbolDeclarationResponse, res);
@@ -2267,6 +2319,8 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 
 			// prover commands
 			this.connection?.onRequest(serverRequest.proverCommand, async (desc: ProofExecCommand | ProofEditCommand) => {
+			  console.log(`[pvsLanguageServer] responding request ${serverRequest.proverCommand} - param: ${desc} `); // #DEBUG
+				console.log(`[pvsLanguageServer] responding request ${serverRequest.proverCommand}${(desc && desc.action?`, action: ${desc.action}`:"")} `); // #DEBUG
 				if (desc) {
 					switch (desc.action) {
 						case "forward": { this.proofExplorer?.forward(); break; }

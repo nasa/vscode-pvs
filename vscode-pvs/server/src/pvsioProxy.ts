@@ -137,7 +137,7 @@ class PvsIoProcess {
 
 	/**
 	 * Internal function, loads pvs patches. 
-	 * This command is not exposed in the APIs because it will produce an addional PVSio prompt 
+	 * This command is not exposed in the APIs because it will produce an additional PVSio prompt 
 	 * that can be handled correctly only within the activate method.
 	 */
 	protected async loadPvsPatches (): Promise<void> {

@@ -99,7 +99,7 @@ export class VSCodePvsStatusBar {
     protected pvsStatus: VSCodePvsStatusBarItem;
     protected workspaceStatus: VSCodePvsStatusBarItem;
     protected versionInfo: VSCodePvsStatusBarItem;
-    // protected crashReport: VSCodePvsStatusBarItem;
+    protected crashReport: VSCodePvsStatusBarItem;
     protected restartPvs: VSCodePvsStatusBarItem;
     protected interruptProver: VSCodePvsStatusBarItem;
 
@@ -123,7 +123,7 @@ export class VSCodePvsStatusBar {
         this.versionInfo = new VSCodePvsStatusBarItem(StatusBarAlignment.Right, StatusBarPriority.Medium);
 
         this.restartPvs = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
-        // this.crashReport = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
+        this.crashReport = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
 
         this.interruptProver = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
         this.downloadNasalib = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
@@ -320,15 +320,28 @@ export class VSCodePvsStatusBar {
     hideInterruptButton (): void {
         this.interruptProver.hide();
     }
+
+    toggleVisibilityCrashReportButton (showButton?: boolean): void {
+        if (!!showButton) {
+            this.crashReport.icon("");
+            this.crashReport.text(`$(bug) Report Issue`);
+            this.crashReport.command("vscode-pvs.report-issue");
+            this.crashReport.show();
+        } else {
+            this.crashReport.hide();
+        }
+    }
+    
+
     toggleVisibilityDownloadNasalibButton (showButton?: boolean): void {
-        showButton = showButton === undefined ? true : !!showButton;
+        showButton = !!showButton;
         if (showButton === true) {
             this.downloadNasalib.icon("");
             this.downloadNasalib.text(`$(symbol-function)  Get NASALib`);
             this.downloadNasalib.command("vscode-pvs.download-nasalib");
             this.downloadNasalib.show();
         } else {
-            this.hideDownloadNasalibButton();
+            this.downloadNasalib.hide();
         }
     }
     hideDownloadNasalibButton (): void {

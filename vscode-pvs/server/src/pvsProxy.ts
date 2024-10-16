@@ -70,6 +70,9 @@ import * as languageUtils from './common/languageUtils';
 import { PvsErrorManager } from './pvsErrorManager';
 import { execSync } from 'child_process';
 
+import consoleStamp from 'console-stamp';
+consoleStamp(console, { format: ':date(yyyy/mm/dd HH:MM:ss.l)' });
+
 export class PvsProgressInfo {
 	protected progressLevel: number = 0;
 	showProgress(cmd: string, data?: string): string {
@@ -264,7 +267,7 @@ export class PvsProxy {
 							(this.pvsServerProcessStatus===ProcessCode.PVS_START_FAIL? 'PVS_NOT_RESPONDING' : 
 							(this.pvsServerProcessStatus===ProcessCode.ADDR_IN_USE? 'ADDR_IN_USE' : 
 							(this.pvsServerProcessStatus===ProcessCode.COMM_FAILURE? 'COMM_FAILURE' : 
-							(this.pvsServerProcessStatus===ProcessCode.PVSERROR? 'PVS_ERROR' : 
+							(this.pvsServerProcessStatus===ProcessCode.PVS_ERROR? 'PVS_ERROR' : 
 							(this.pvsServerProcessStatus===ProcessCode.UNSUPPORTED_PLATFORM? 'UNSUPPORTED_PLATFORM' :
 							 'UNKNOWN_ERROR')))))),
 						message: "pvs-proxy failed to initialize PVS server"
@@ -2032,7 +2035,7 @@ export class PvsProxy {
 
 			let currentAttempt = 0
 			const intervalId = setInterval(() => {
-				console.log(`[waitForOpenConnection] waiting for ${ws}`);
+				console.log(`[waitForOpenConnection] waiting for ${JSON.stringify(ws)}`);
 				if (ws.readyState === WebSocket.OPEN) {
 					clearInterval(intervalId);
 					resolve();
@@ -2133,10 +2136,10 @@ export class PvsProxy {
 		opt = opt || {};
 		const externalServer: boolean = opt.externalServer === undefined ? this.externalServer : !!opt.externalServer;
 		if (externalServer) {
-			console.log(`[pvs-proxy.createPvsServer] +-- EXTERNAL SERVER CONFIGURATION --`);
-			console.log(`[pvs-proxy.createPvsServer] |  Address: ${this.webSocketAddress}`);
-			console.log(`[pvs-proxy.createPvsServer] |  Port: ${this.webSocketPort}`);
-			console.log(`[pvs-proxy.createPvsServer] +-----------------------------------`);
+			console.log(`[pvsProxy.createPvsServer] +-- EXTERNAL SERVER CONFIGURATION --`);
+			console.log(`[pvsProxy.createPvsServer] |  Address: ${this.webSocketAddress}`);
+			console.log(`[pvsProxy.createPvsServer] |  Port: ${this.webSocketPort}`);
+			console.log(`[pvsProxy.createPvsServer] +-----------------------------------`);
 
 			this.pvsServerProcessStatus = ProcessCode.SUCCESS;
 		} else {
@@ -2150,7 +2153,7 @@ export class PvsProxy {
 				const success: ProcessCode = await proc.activate({
 					enableNotifications: opt.enableNotifications,
 					webSocketPort: this.webSocketPort,
-					externalServer: opt.externalServer,
+//					externalServer: opt.externalServer, //TODO REMOVE
 					verbose: opt.verbose
 				});
 				console.log(`[pvsProxy] pvs Process activate returned ${success}`);
@@ -2179,17 +2182,17 @@ export class PvsProxy {
 				this.webSocketPort = proc.getReportedServerPort();
 				if (!opt.externalServer) {
 					if (connection) {
-						connection.console.info(`[pvsProxy.createPvsServer] pvs-server active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
+						connection.console.log(`[pvsProxy.createPvsServer] PVS active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
 					} else {
-						console.info(`[pvsProxy.createPvsServer] pvs-server active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
+						console.log(`[pvsProxy.createPvsServer] PVS active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
 					}
 				} else {
-					console.info(`[pvsProxy.createPvsServer] using external pvs-server on port ${this.webSocketPort}`);
+					console.log(`[pvsProxy.createPvsServer] using external PVS on port ${this.webSocketPort}`);
 				}
 				this.pvsServer = proc;
 				this.pvsServerProcessStatus = ProcessCode.SUCCESS;
 			} else if (currentPortAttemptNumber >= this.MAX_PORT_ATTEMPTS) {
-				console.log(`[pvsProxy.createPvsServer] Failed to activate pvs-server at ws://${this.webSocketAddress}:${this.webSocketPort}`);
+				console.log(`[pvsProxy.createPvsServer] Failed to activate PVS at ws://${this.webSocketAddress}:${this.webSocketPort}`);
 				this.pvsServerProcessStatus = ProcessCode.ADDR_IN_USE;
 			} else { // currentPvsStartAttemptNumber >= this.MAX_PVS_START_ATTEMPTS
 				console.log(`[pvsProxy.createPvsServer] Failed to start PVS process`);
