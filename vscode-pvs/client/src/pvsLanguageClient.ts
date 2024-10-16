@@ -464,7 +464,13 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			
 			// start PVS
 			// the server will respond with one of the following events: pvsServerReady, pvsNotPresent, pvsIncorrectVersion
-			const contextFolder = vscodeUtils.getEditorContextFolder();
+			var contextFolder;
+			const workspaceFolders = workspace.workspaceFolders;
+			if (workspaceFolders && workspaceFolders.length > 0) {
+				contextFolder = workspaceFolders[0].uri.fsPath;
+			} else {
+				contextFolder = vscodeUtils.getEditorContextFolder();
+			}
 			// console.log(`Context folder: ${contextFolder}`);
 			this.pvsPath = vscodeUtils.getConfiguration("pvs.path");
 			this.alreadySuggestedNASALib = this.alreadySuggestedNASALib && !(this.pvsPath === undefined || this.pvsPath === '');
@@ -480,6 +486,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			commands.executeCommand('setContext', 'pvs-server-active', true);
 			// create handler for pvsServerReady event
 			this.client.onRequest(serverEvent.pvsServerReady, async (info: PvsVersionDescriptor) => {
+			  console.log(`[pvsLanguageClient] responding request ${serverEvent.pvsServerReady} - param: ${info} `); // #DEBUG
 				// reset other globals
 				vscodeUtils.resetGlobals();
 
@@ -497,6 +504,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				this.statusBar.ready();
 
 				this.statusBar.toggleVisibilityDownloadNasalibButton(!info["nasalib-version"]);
+
+				this.statusBar.toggleVisibilityCrashReportButton(true);
 
 				const activeEditor: TextEditor = getActivePvsEditor();
 				if (activeEditor?.document) {
