@@ -279,6 +279,7 @@ export class PvsPackageManager {
     /**
      * Utility function, installs required pvs patches
      */
+    // TODO REMOVE deprecated. Use generateLoadOwnPatchesCode instead
     static async installPvsPatches (desc: { pvsPath: string }): Promise<boolean> {
         if (desc?.pvsPath && fsUtils.folderExists(desc?.pvsPath)) {
             const targetFolder: string = path.join(desc.pvsPath, "pvs-patches");
@@ -310,6 +311,24 @@ export class PvsPackageManager {
             return successSummary;
         }
         return false;
+    }
+    /**
+     * @returns lisp code to load the PVS patches for VSCode-PVS 
+     */
+    static generateLoadOwnPatchesCode(): string {
+        var result: string = "";
+        for (let i = 0; i < PvsPackageManager.approvedPatches.length; i++) {
+            const patchFileName: string = PvsPackageManager.approvedPatches[i].fname;
+            const src: string = path.join(__dirname, "..", "..", "..", "pvs-patches", patchFileName);
+            if (!fsUtils.fileExists(src)) {
+                console.warn(`[pvsPackageManager] Warning: expected patch not found ${src}`);
+            } else {
+                result += `(load \"{$patchFileName}\")`;
+            }
+        }
+        if (result.length > 0)
+            result = `(progn ${result})`;
+        return result;
     }
 
     /**

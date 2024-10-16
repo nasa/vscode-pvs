@@ -44,11 +44,16 @@ import * as fsUtils from './common/fsUtils';
 import { PvsErrorManager } from './pvsErrorManager';
 import { forceLocale } from './common/languageUtils';
 
+import { PvsPackageManager } from './providers/pvsPackageManager';
+
+import consoleStamp from 'console-stamp';
+consoleStamp(console, { format: ':date(yyyy/mm/dd HH:MM:ss.l)' });
+
 const MAX_LOG_CHUNK: number = 600;
 
 
 export enum ProcessCode {
-	SUCCESS = 0, PVS_NOT_FOUND = -1, ADDR_IN_USE = -2, COMM_FAILURE = -3, PVS_START_FAIL = -4, PVSERROR = -5, UNSUPPORTED_PLATFORM = -6,
+	SUCCESS = 0, PVS_NOT_FOUND = -1, ADDR_IN_USE = -2, COMM_FAILURE = -3, PVS_START_FAIL = -4, PVS_ERROR = -5, UNSUPPORTED_PLATFORM = -6,
 	TERMINATED = -7
 };
 /**
@@ -75,7 +80,6 @@ export class PvsProcess {
 	protected pvsErrorManager: PvsErrorManager;
 
 	protected serverPort: number = 23456;
-	protected externalServer: boolean = false;
 	protected verbose: boolean = false;
 	
 	protected progressInfoEnabled: boolean = false;
@@ -192,7 +196,6 @@ export class PvsProcess {
 		enableNotifications?: boolean, 
 		webSocketPort?: number,
 		serverPort?: number,
-		externalServer?: boolean,
 		verbose?: boolean
 	}): Promise<ProcessCode> {
 		console.info("[pvsProcess.activate] start... ");
@@ -207,7 +210,6 @@ export class PvsProcess {
 		console.info("[pvsProcess.activate] pvs is not already running, path seems right ");
 		opt = opt || {};
 		this.enableNotifications = !!opt.enableNotifications;
-		this.externalServer = !!opt.externalServer;
 		this.verbose = !!opt.verbose;
 		this.serverPort = opt.serverPort || this.serverPort;
 		// force locale settings
@@ -215,8 +217,15 @@ export class PvsProcess {
 		console.log(`[PvsProcess.activate] ACL_LOCALE=${process.env["ACL_LOCALE"]}, LC_ALL=${process.env["LC_ALL"]}, LANG=${process.env["LANG"]}`);
 		// pvs args
 		const pvs: string = path.join(this.pvsPath, "pvs");
-		const args: string[] = opt.externalServer ?  [ "-raw" ] : [ "-raw" , "-port", `${this.serverPort}`];
-		console.info(`[PvsProcess.activate] shell command ${this.pvsPath}/pvs ${args.join(" ")}`);
+		
+		// Manually loads PVS patches for VSCode-PVS
+		var loadAdditionalPatchesCode: string = PvsPackageManager.generateLoadOwnPatchesCode();
+		if (loadAdditionalPatchesCode.length > 0)
+			loadAdditionalPatchesCode = `-E '${loadAdditionalPatchesCode}'`;
+
+		const args: string[] = [ "-raw" , "-port", `${this.serverPort}`, loadAdditionalPatchesCode];
+
+		console.info(`[PvsProcess.activate] shell command  ${pvs} ${args.join(" ")}`);
 		console.info(`[PvsProcess.activate] pvsLibraryPath ${this.pvsLibraryPath}`);
 		const fileExists: boolean = fsUtils.fileExists(pvs);
 		if (fileExists) {
