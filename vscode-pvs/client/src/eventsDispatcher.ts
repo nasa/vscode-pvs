@@ -152,11 +152,11 @@ export class EventsDispatcher {
             res: string,
             state: string
         }) => {
-            console.log(`[eventsDispatcher] responding request ${serverEvent.evaluatorCommandResponse} - param: ${data}`); //DEBUG
+            console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.evaluatorCommandResponse} - param: ${data}`); //DEBUG
             // do nothing -- this is just a placeholder, the actual handler is in vscoePvsioWeb.ts
         });
 		this.client.onRequest(serverEvent.pvsVersionInfo, async (version: PvsVersionDescriptor) => {
-		  console.log(`[eventsDispatcher] responding request ${serverEvent.pvsVersionInfo} - param: ${version} `); // #DEBUG
+		  console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.pvsVersionInfo} - param: ${version} `); // #DEBUG
 			if (version) {
                 this.statusBar.pvsReady(version);
                 vscode.commands.executeCommand('setContext', 'nasalib-present', !!version["nasalib-version"]);
@@ -210,7 +210,7 @@ export class EventsDispatcher {
 			}
 		});
 		this.client.onRequest(serverEvent.contextUpdate, (desc: PvsContextDescriptor) => {
-		  console.log(`[eventsDispatcher] responding request ${serverEvent.contextUpdate} - param: ${JSON.stringify(desc)} `); // #DEBUG
+		  console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.contextUpdate} - param: ${JSON.stringify(desc)} `); // #DEBUG
 			if (this.workspaceExplorer) {
 				this.workspaceExplorer.updateContextFolder(desc);
 			}
@@ -223,7 +223,7 @@ export class EventsDispatcher {
                 contextFolder: string 
             }
         }) => {
-            console.log(`[eventsDispatcher] responding request ${serverEvent.typecheckFileResponse} - param: ${desc} `); // #DEBUG            
+            console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.typecheckFileResponse} - param: ${desc} `); // #DEBUG            
             // request tccs for the files that typecheck correctly
             if (desc && desc.response && desc.args) {
                 this.client.sendRequest(serverRequest.generateTccs, {
@@ -254,7 +254,7 @@ export class EventsDispatcher {
                 contextFolder: string 
             }
         }) => {
-            console.log(`[eventsDispatcher] responding request ${serverRequest.showTccs} - param: ${desc} `); // #DEBUG            
+            console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverRequest.showTccs} - param: ${desc} `); // #DEBUG            
             if (this.workspaceExplorer && desc?.response) {
                 this.workspaceExplorer.updateContextFolder(desc.response, { tccDescriptor: true });
             }
@@ -267,7 +267,7 @@ export class EventsDispatcher {
             }
         });
 		this.client.onRequest(serverEvent.parseFileResponse, (res: PvsResponse) => {
-		  console.log(`[eventsDispatcher] responding request ${serverEvent.parseFileResponse} - param: ${res} `); // #DEBUG
+		  console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.parseFileResponse} - param: ${res} `); // #DEBUG
             // show stats
             if (res && res["math-objects"] && res.contextFolder && res.fileName) {
                 // display info in the status bar
@@ -276,7 +276,7 @@ export class EventsDispatcher {
             }
         });
 		this.client.onRequest(serverEvent.workspaceStats, (res: PvsResponse) => {
-		  console.log(`[eventsDispatcher] responding request ${serverEvent.workspaceStats} - param: ${res} `); // #DEBUG
+		  console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.workspaceStats} - param: ${res} `); // #DEBUG
             // show stats
             if (res) {
                 if (res["contextFolder"]) {
@@ -290,7 +290,7 @@ export class EventsDispatcher {
             }
         });
         this.client.onRequest(serverEvent.proofCommandResponse, async (desc: ProofCommandResponse) => {
-          console.log(`[eventsDispatcher] responding request ${serverEvent.proofCommandResponse} - param: ${desc} `); // #DEBUG
+          console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.proofCommandResponse} - param: ${desc} `); // #DEBUG
             // notify proofexplorer
             // await this.proofExplorer.onStepExecuted(desc);
             if (desc?.res && typeof desc.res !== "string") {
@@ -528,8 +528,8 @@ export class EventsDispatcher {
 
 
         this.client.onRequest(serverEvent.proveFormulaResponse, (desc: ProveFormulaResponse) => {
-          console.log(`[eventsDispatcher] responding request ${serverEvent.proveFormulaResponse} - param: ${desc} `); // #DEBUG
-            // console.log(desc);
+          console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.proveFormulaResponse} - param: ${desc} `); // #DEBUG
+            // console.log(`[${fsUtils.generateTimestamp()}] `+desc);
             // if (desc) {
             //     // initialise proof explorer
             //     // this.proofExplorer.setLogFileName(desc);
@@ -549,7 +549,7 @@ export class EventsDispatcher {
         });
 
         this.client.onRequest(serverEvent.pvsServerFail, (desc: { msg?: string }) => {
-          console.log(`[eventsDispatcher] responding request ${serverEvent.pvsServerFail} - param: ${desc} `); // #DEBUG
+          console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.pvsServerFail} - param: ${desc} `); // #DEBUG
             desc = desc || {};
             if (desc.msg) {
                 this.statusBar.failure(desc.msg);
@@ -557,7 +557,7 @@ export class EventsDispatcher {
         });
 
         this.client.onRequest(serverEvent.serverModeUpdateEvent, (desc: { mode: ServerMode }) => {
-          console.log(`[eventsDispatcher] responding request ${serverEvent.serverModeUpdateEvent} - param: ${desc} `); // #DEBUG
+          console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.serverModeUpdateEvent} - param: ${desc} `); // #DEBUG
             if (desc) {
                 switch (desc.mode) {
                     case "in-checker": {
@@ -595,7 +595,7 @@ export class EventsDispatcher {
         });
 
 		// this.client.onRequest(serverEvent.querySaveProof, async (request: {
-		//   console.log(`[eventsDispatcher] responding request ${serverEvent.querySaveProof} - param: ${JSON.stringify(request)} `); // #DEBUG
+		//   console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.querySaveProof} - param: ${JSON.stringify(request)} `); // #DEBUG
         //     args: PvsProofCommand
 		// }) => {
         //     if (request) {
@@ -609,9 +609,9 @@ export class EventsDispatcher {
             response: { result: "Q.E.D." },
             request: PvsProofCommand
 		}) => {
-            console.log(`[eventsDispatcher] responding request ${serverEvent.QED} - param: ${desc} `); // #DEBUG
+            console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.QED} - param: ${desc} `); // #DEBUG
             // annotate pvs file with @QED at the formula location
-            console.log(desc);
+            console.log(`[${fsUtils.generateTimestamp()}] `+desc);
             const flag: boolean = vscodeUtils.getConfigurationFlag("pvs.settings.prover.@QED");
             if (flag) {
                 const formula: PvsFormula = desc?.request;
@@ -629,7 +629,7 @@ export class EventsDispatcher {
             response: FileDescriptor,
             args: PvsTheory
         }) => {
-            console.log(`[eventsDispatcher] responding request ${serverEvent.showTheorySummaryResponse} - param: ${desc} `); // #DEBUG
+            console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.showTheorySummaryResponse} - param: ${desc} `); // #DEBUG
             if (desc && desc.response) {
                 vscodeUtils.showTextDocument(desc.response);
             }
@@ -698,7 +698,7 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.view-prelude-file", () => {
             this.client.sendRequest(serverRequest.viewPreludeFile);
             this.client.onRequest(serverEvent.viewPreludeFileResponse, (desc: PvsFile) => {
-              console.log(`[eventsDispatcher] responding request ${serverEvent.viewPreludeFileResponse} - param: ${desc} `); // #DEBUG
+              console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.viewPreludeFileResponse} - param: ${desc} `); // #DEBUG
                 vscodeUtils.showTextDocument(desc);
             });
         }));
@@ -760,7 +760,7 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.new-pvs-file", async (resource: { path: string }) => {
             const activeFolder: string = fsUtils.getContextFolder(vscodeUtils.getActivePvsFile()?.fileName) || vscodeUtils.getRootPath();
             const contextFolder: string = resource?.path || activeFolder;
-            console.log(contextFolder);
+            console.log(`[${fsUtils.generateTimestamp()}] `+contextFolder);
             this.workspaceExplorer.newPvsFileDialog(contextFolder); // async method
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.new-pvs-theory", async () => {
@@ -895,10 +895,12 @@ export class EventsDispatcher {
             if (item.title === openLogBtnLbl) {
                 const uri: vscode.Uri = vscode.Uri.file(vscodePvsLogFile);
                 const vscodePvsLogDocument: vscode.TextDocument = await vscode.workspace.openTextDocument(uri);
+                await vscode.languages.setTextDocumentLanguage(vscodePvsLogDocument, "log");
                 vscode.window.showTextDocument(vscodePvsLogDocument, { viewColumn: vscode.ViewColumn.Active, preserveFocus: true, preview: false });
 
                 if (pvsLogFile !== undefined) {
                     const pvsLogDocument: vscode.TextDocument = await vscode.workspace.openTextDocument(vscode.Uri.file(pvsLogFile));
+                    await vscode.languages.setTextDocumentLanguage(pvsLogDocument, "log");
                     vscode.window.showTextDocument(pvsLogDocument, { viewColumn: vscode.ViewColumn.Active, preserveFocus: true, preview: false });
                 }
             }

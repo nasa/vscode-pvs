@@ -1395,7 +1395,7 @@ export class VSCodePvsProofMate extends Explorer {
 							seq: res.seq
 						}
 					};
-					console.log(`[proof-mate] Copy tree rooted at ${resource.name} (${resource.nodeId})`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[proof-mate] Copy tree rooted at ${resource.name} (${resource.nodeId})`);
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			} else {
@@ -1414,7 +1414,7 @@ export class VSCodePvsProofMate extends Explorer {
 						seq
 					}
 				};
-				console.log(`[proof-mate] Copy node ${resource.name} (${resource.nodeId})`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[proof-mate] Copy node ${resource.name} (${resource.nodeId})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			} else {
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);

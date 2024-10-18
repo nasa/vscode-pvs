@@ -1367,7 +1367,7 @@ export function getPvsTag (tag: PvsTag, fileContent: string): string {
         const regex: RegExp = new RegExp(`%\\s*${tag}\[\\s+\|:\]\\s*(.*)`, "gi");
         const match: RegExpMatchArray = regex.exec(fileContent);
         const val: string = match?.length > 1 ? match[1].trim() : "";
-        // console.log(`[language-utils] getPvsTag`, { tag, val, regex: regex.source });
+        // console.log(`[${fsUtils.generateTimestamp()}] `+`[language-utils] getPvsTag`, { tag, val, regex: regex.source });
         return val;
     }
     return null;
@@ -3380,10 +3380,10 @@ export function balancePar (cmd: string): string {
 		if (par > 0) {
 			// missing closed brackets
 			cmd = cmd.trimRight() + ')'.repeat(par);
-			// console.log(`Mismatching parentheses automatically fixed: ${par} open round brackets without corresponding closed bracket.`)
+			// console.log(`[${fsUtils.generateTimestamp()}] `+`Mismatching parentheses automatically fixed: ${par} open round brackets without corresponding closed bracket.`)
 		} else if (par < 0) {
 			cmd = '('.repeat(-par) + cmd;
-			// console.log(`Mismatching parentheses automatically fixed: ${-par} closed brackets did not match any other open bracket.`)
+			// console.log(`[${fsUtils.generateTimestamp()}] `+`Mismatching parentheses automatically fixed: ${-par} closed brackets did not match any other open bracket.`)
 		}
 		return cmd.startsWith('(') ? cmd : `(${cmd})`; // add outer parentheses if they are missing
 	}

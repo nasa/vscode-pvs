@@ -45,6 +45,7 @@ import { symbolRegexp } from '../common/languageUtils';
 import { FindSymbolDeclarationRequest, FindSymbolDeclarationResponse, PvsTheory, serverEvent, serverRequest } from "../common/serverInterface";
 import * as vscodeUtils from '../utils/vscode-utils';
 import * as serverInterface from '../common/serverInterface';
+import * as fsUtils from '../common/fsUtils'
 
 /**
  * Provides tooltip and go-to definition functionalities for the pseudo terminal 
@@ -113,7 +114,7 @@ export class VSCodePvsTerminalLinkProvider implements TerminalLinkProvider {
             };
             this.client.sendRequest(serverRequest.findSymbolDeclaration, req);
             this.client.onRequest(serverEvent.findSymbolDeclarationResponse, (res: FindSymbolDeclarationResponse) => {
-                console.log(`[vscodePvsTerminalLinkProvider] responding request ${serverEvent.findSymbolDeclarationResponse} - param: ${res}`); // #DEBUG
+                console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsTerminalLinkProvider] responding request ${serverEvent.findSymbolDeclarationResponse} - param: ${res}`); // #DEBUG
                 if (res.ans && res.ans.length === 1) {
                     const fname: string = res.ans[0].symbolDeclarationFile;
                     if (fname) {

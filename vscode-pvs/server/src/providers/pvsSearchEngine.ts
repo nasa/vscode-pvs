@@ -69,7 +69,7 @@ export class PvsSearchEngine {
 			const nasalibPath: string = this.pvsLanguageServer.getNasalibPath();
 			const normalizedSearchString: string = searchString.replace(/\|/g, "\\\|");
 			const findAll: string = `cd ${nasalibPath} && ./find-all "${normalizedSearchString}"`;
-			if (!opt?.quiet) { console.log(`[pvs-search-engine] ${findAll}`); }
+			if (!opt?.quiet) { console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-search-engine] ${findAll}`); }
 			process.env["PVS_DIR"] = fsUtils.tildeExpansion(this.pvsLanguageServer.getPvsPath());
 			process.env["PVS_LIBRARY_PATH"] = fsUtils.tildeExpansion(nasalibPath);
 			const search: Buffer = execSync(findAll);
@@ -166,7 +166,7 @@ export class PvsSearchEngine {
 					}
 				}
 
-				// console.log(res);
+				// console.log(`[${fsUtils.generateTimestamp()}] `+res);
 				return res;
 			}
 		}
@@ -197,7 +197,7 @@ export class PvsSearchEngine {
 			}).join(" ");
 			// by default grep is case sensitive
 			const cmd: string = `grep --include '*.pvs' -HRn ${opt?.caseSensitive ? "" : "-i"} ${normalizedSearchString}`;
-			if (!opt?.quiet) { console.log(`[searchExternalLib] ${cmd}`); }
+			if (!opt?.quiet) { console.log(`[${fsUtils.generateTimestamp()}] `+`[searchExternalLib] ${cmd}`); }
 			try {
 				const search: Buffer = execSync(cmd);
 				if (search) {

@@ -70,8 +70,8 @@ import * as languageUtils from './common/languageUtils';
 import { PvsErrorManager } from './pvsErrorManager';
 import { execSync } from 'child_process';
 
-import consoleStamp from 'console-stamp';
-consoleStamp(console, { format: ':date(yyyy/mm/dd HH:MM:ss.l)' });
+// import consoleStamp from 'console-stamp';
+// consoleStamp(console, { format: ':date(yyyy/mm/dd HH:MM:ss.l)' });
 
 export class PvsProgressInfo {
 	protected progressLevel: number = 0;
@@ -173,7 +173,7 @@ export class PvsProxy {
 		this.webSocketPort = (!!opt.webSocketPort) ? opt.webSocketPort : 23456; // 22334; // 23456;
 		this.client_methods.forEach(mth => {
 			this.handlers[mth] = (params: string[]): string[] => {
-				// console.info("info", params);
+				// console.info(`[${fsUtils.generateTimestamp()}] `+"info", params);
 				return params;
 			};
 		});
@@ -196,14 +196,14 @@ export class PvsProxy {
 		if (opt.enabled === false) {
 			await this.disableExternalServer();
 		} else {
-			console.info("[pvs-proxy] Enabling external server...");
+			console.info(`[${fsUtils.generateTimestamp()}] `+"[pvs-proxy] Enabling external server...");
 			await this.killPvsServer();
 			this.externalServer = true;
 		}
 	}
 
 	async disableExternalServer(): Promise<void> {
-		console.info("[pvs-proxy] External server disabled");
+		console.info(`[${fsUtils.generateTimestamp()}] `+"[pvs-proxy] External server disabled");
 		this.externalServer = false;
 		// await this.restartPvsServer();
 	}
@@ -218,14 +218,14 @@ export class PvsProxy {
 				const id = this.get_fresh_id();
 				const req = { method: method, params: params, jsonrpc: "2.0", id: id };
 				const jsonReq: string = JSON.stringify(req, null, " ");
-				// console.log('pvsRequest send: ', jsonReq);
+				// console.log(`[${fsUtils.generateTimestamp()}] `+'pvsRequest send: ', jsonReq);
 				this.webSocket.send(jsonReq)
 				// This is the function called when a response comes through the
 				// message handler of activate.
 				const me = this;
 				this.activeProgressReporters[id] = progressReporter;				
 				this.pendingRequests[id] = function (obj: PvsResponse) {
-					// console.log("pvsRequest response: ", obj);
+					// console.log(`[${fsUtils.generateTimestamp()}] `+"pvsRequest response: ", obj);
 					if ("result" in obj) {
 						resolve(obj);
 					} else if ("error" in obj) {
@@ -237,14 +237,14 @@ export class PvsProxy {
 								if (me.activeProgressReporters[id])
 									me.activeProgressReporters[id](obj.message);
 								else
-									console.log(`[pvsProxy.pvsRequest pendingRequest] message received from PVS but cliListener not set. msg: ${obj.message}`);
+									console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProxy.pvsRequest pendingRequest] message received from PVS but cliListener not set. msg: ${obj.message}`);
 								break;
 							default:
-								console.log('[pvsProxy.pvsRequest pendingRequest] unknown');
+								console.log(`[${fsUtils.generateTimestamp()}] `+'[pvsProxy.pvsRequest pendingRequest] unknown');
 								console.dir(obj, { depth: null });
 						}
 					} else {
-						console.log('Bad obj:');
+						console.log(`[${fsUtils.generateTimestamp()}] `+'Bad obj:');
 						console.dir(obj);
 					}
 				};
@@ -256,7 +256,7 @@ export class PvsProxy {
 				: (this.pvsServerProcessStatus === ProcessCode.PVS_START_FAIL ? 
 					"(PVS not responding)" : 
 					"(Unknown error)"));
-			console.log(errorMsg);
+			console.log(`[${fsUtils.generateTimestamp()}] `+errorMsg);
 			return new Promise(async (resolve, reject) => {
 				resolve({
 					jsonrpc: "2.0",
@@ -297,20 +297,20 @@ export class PvsProxy {
 				const jsonReq: string = JSON.stringify(req, null, " ");
 				this.interruptConn.send(jsonReq);
 				this.pendingRequests[id] = function (obj: PvsResponse) {
-					//console.log("pvsInterrupt response: ", obj);
+					//console.log(`[${fsUtils.generateTimestamp()}] `+"pvsInterrupt response: ", obj);
 					if ("result" in obj) {
 						resolve(obj);
 					} else if ("error" in obj) {
 						//reject(obj);
 						resolve(obj);
 					} else {
-						console.log('Bad obj:');
+						console.log(`[${fsUtils.generateTimestamp()}] `+'Bad obj:');
 						console.dir(obj);
 					}
 				};
 			});
 		} else {
-			console.log(`[pvs-proxy] Warning: could not invoke pvsInterrupt (pvs is not installed)`);
+			console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy] Warning: could not invoke pvsInterrupt (pvs is not installed)`);
 			return new Promise(async (resolve, reject) => {
 				resolve({
 					jsonrpc: "2.0",
@@ -325,33 +325,33 @@ export class PvsProxy {
 	}
 
 	async startWebSocket(): Promise<void> {
-		console.log("[pvsProxy.startWebSocket] Creating web socket client connection...");
+		console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startWebSocket] Creating web socket client connection...");
 		this.webSocket = new WebSocket(`ws://${this.webSocketAddress}:${this.webSocketPort}`);
 		this.webSocket.on('redirect', () => {
-			console.log("[pvsProxy.startWebSocket] redirect");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startWebSocket] redirect");
 		});
 		this.webSocket.on('upgrade', (response) => {
-			console.log("[pvsProxy.startWebSocket] upgrade");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startWebSocket] upgrade");
 		});
 		this.webSocket.on('pong', () => {
-			console.log("[pvsProxy.startWebSocket] PONG");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startWebSocket] PONG");
 		});
 		this.webSocket.on('unexpected-response', () => {
-			console.log("[pvsProxy.startWebSocket] unexpected-response");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startWebSocket] unexpected-response");
 		});
 		this.webSocket.on('ping', () => {
-			console.log("[pvsProxy.startWebSocket] PING");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startWebSocket] PING");
 		});
 		this.webSocket.on('error', (error) => {
-			console.log(`[pvsProxy.startWebSocket] Error on starting: ${error.code} - ${error.errors}`);
+			console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProxy.startWebSocket] Error on starting: ${error.code} - ${error.errors}`);
 			// If the connection was refused, we retry, in case PVS is still starting
 			
 		});
 		this.webSocket.on('open', () => {
-			console.log("[pvsProxy.startWebSocket] OPEN");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startWebSocket] OPEN");
 		});
 		this.webSocket.on('close', () => {
-			console.log("[pvsProxy.startWebSocket] CLOSE");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startWebSocket] CLOSE");
 			if(!this.externalServer){
 				setTimeout(() => {
 					if (this.pvsServerProcessStatus === ProcessCode.SUCCESS) this.startWebSocket(); 
@@ -361,57 +361,57 @@ export class PvsProxy {
 		this.webSocket.on('message', (msg: string) => {
 			const obj = JSON.parse(msg);
 			// Should check for valid JSON-RPC,
-			//console.log('webSocket.on: ', this.pendingRequests);
-			//console.log('  obj = ', obj);
+			//console.log(`[${fsUtils.generateTimestamp()}] `+'webSocket.on: ', this.pendingRequests);
+			//console.log(`[${fsUtils.generateTimestamp()}] `+'  obj = ', obj);
 			if (obj.id) {
 				if ("result" in obj || "error" in obj || "method" in obj) {
 					if (this.pendingRequests[obj.id]) {
-						// console.log(`[pvsRequest] msg = ${msg}`)
+						// console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsRequest] msg = ${msg}`)
 						this.pendingRequests[obj.id](obj) // resolve(obj);
 						if ("result" in obj || "error" in obj) {
 							delete this.pendingRequests[obj.id];
 							delete this.activeProgressReporters[obj.id];
 						}
 					} else {
-						console.log('[pvsProxy.startWebSocket.on message] id not found');
+						console.log(`[${fsUtils.generateTimestamp()}] `+'[pvsProxy.startWebSocket.on message] id not found');
 					}
 				} else {
-					console.log('[pvsProxy.startWebSocket.on message] Unknown kind of object BEGIN');
+					console.log(`[${fsUtils.generateTimestamp()}] `+'[pvsProxy.startWebSocket.on message] Unknown kind of object BEGIN');
 					console.dir(obj, { depth: null });
-					console.log('[pvsProxy.startWebSocket.on message] Unknown kind of object END');
+					console.log(`[${fsUtils.generateTimestamp()}] `+'[pvsProxy.startWebSocket.on message] Unknown kind of object END');
 				}
 			}
 		});		
 	}
 
 	async startInterruptionWebSocket(): Promise<void> {
-		console.log("[pvsProxy.startInterruptionWebSocket] Creating web socket client connection...");
+		console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startInterruptionWebSocket] Creating web socket client connection...");
 		this.interruptConn = new WebSocket(`ws://${this.webSocketAddress}:${this.webSocketPort}`);
 		this.interruptConn.on('redirect', () => {
-			console.log("[pvsProxy.startInterruptionWebSocket]  redirect");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startInterruptionWebSocket]  redirect");
 		});
 		this.interruptConn.on('upgrade', (response) => {
-			console.log("[pvsProxy.startInterruptionWebSocket]  upgrade");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startInterruptionWebSocket]  upgrade");
 		});
 		this.interruptConn.on('pong', () => {
-			console.log("[pvsProxy.startInterruptionWebSocket]  PONG");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startInterruptionWebSocket]  PONG");
 		});
 		this.interruptConn.on('unexpected-response', () => {
-			console.log("[pvsProxy.startInterruptionWebSocket]  unexpected-response");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startInterruptionWebSocket]  unexpected-response");
 		});
 		this.interruptConn.on('ping', () => {
-			console.log("[pvsProxy.startInterruptionWebSocket]  PING");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startInterruptionWebSocket]  PING");
 		});
 		this.interruptConn.on('error', (error) => {
-			console.log(`ERROR: ${error}`);
+			console.log(`[${fsUtils.generateTimestamp()}] `+`ERROR: ${error}`);
 			// If the connection was refused, we retry, in case PVS is still starting
 			
 		});
 		this.interruptConn.on('open', () => {
-			console.log("[pvsProxy.startInterruptionWebSocket]  OPEN");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startInterruptionWebSocket]  OPEN");
 		});
 		this.interruptConn.on('close', () => {
-			console.log("[pvsProxy.startInterruptionWebSocket]  CLOSE");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startInterruptionWebSocket]  CLOSE");
 			setTimeout(() => {
 				if (this.pvsServerProcessStatus === ProcessCode.SUCCESS) this.startInterruptionWebSocket();
 			}, 5000);
@@ -421,21 +421,21 @@ export class PvsProxy {
 			if (obj.id) {
 				if ("result" in obj || "error" in obj) {
 					if (this.pendingRequests[obj.id]) {
-						// console.log(`[pvsRequest] msg = ${msg}`)
+						// console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsRequest] msg = ${msg}`)
 						this.pendingRequests[obj.id](obj) // resolve(obj);
 						delete this.pendingRequests[obj.id]
 					} else {
-						console.log('[on message] id not found');
+						console.log(`[${fsUtils.generateTimestamp()}] `+'[on message] id not found');
 					}
 				} else {
 					switch (obj.method) {
 						case 'pvsMessage':
 							// A notification
-							// console.log(`[pvsRequest]  ${method} = ${msg}`);
-							console.log(`[pvsMessage] ${obj.params}`);
+							// console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsRequest]  ${method} = ${msg}`);
+							console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsMessage] ${obj.params}`);
 							break;
 						default:
-							console.log('[on message] unknown');
+							console.log(`[${fsUtils.generateTimestamp()}] `+'[on message] unknown');
 							console.dir(obj, { depth: null });
 					}
 				}
@@ -465,8 +465,8 @@ export class PvsProxy {
 	 */
 	async activate(opt?: { debugMode?: boolean, showBanner?: boolean, verbose?: boolean, pvsErrorManager?: PvsErrorManager }): Promise<ProcessCode> {
 		opt = opt || {};
-		console.log(`[pvs-proxy.activate] Starting pvs-proxy...`);
-		console.log(`[pvs-proxy.activate] this.webSocket ${this.webSocket}`);
+		console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy.activate] Starting pvs-proxy...`);
+		console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy.activate] this.webSocket ${this.webSocket}`);
 
 		this.pvsErrorManager = opt.pvsErrorManager;
 		this.showBanner = (opt.showBanner === undefined) ? true : opt.showBanner;
@@ -486,11 +486,11 @@ export class PvsProxy {
 					currentConnectionAttempt++;
 					try {
 						await this.startWebSocket();
-						console.log("[pvsProxy.activate] Waiting for webSocket to be operational");
+						console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.activate] Waiting for webSocket to be operational");
 						await this.waitForOpenConnection(this.webSocket);
 					} catch (jsonError) {
 						// Start up PVS 
-						console.log("[pvsProxy.activate] Error", jsonError.message);
+						console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.activate] Error", jsonError.message);
 					}
 				} while (!this.abortingActivation && (currentConnectionAttempt < this.SOCKET_CLIENT_ATTEMPTS || this.externalServer) && !this.isOperational(this.webSocket)); 
 			}
@@ -500,17 +500,17 @@ export class PvsProxy {
 					currentConnectionAttempt++;
 					try {
 						await this.startInterruptionWebSocket();
-						console.log("[pvsProxy.activate] Waiting for interruptConn to be operational");
+						console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.activate] Waiting for interruptConn to be operational");
 						await this.waitForOpenConnection(this.interruptConn);
 					} catch (jsonError) {
 						// Start up PVS 
-						console.log("[pvsProxy.activate] Error creating interruptConn", jsonError.message);
+						console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.activate] Error creating interruptConn", jsonError.message);
 					}
 				} while (!this.abortingActivation &&  (currentConnectionAttempt < this.SOCKET_CLIENT_ATTEMPTS || this.externalServer) && !this.isOperational(this.interruptConn));
 			}
 	
 			if(this.isOperational(this.webSocket) && this.isOperational(this.interruptConn))
-				console.log(`[pvs-proxy.activate] Restart PVS Server done. PvsProxy is Ready ✅`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy.activate] Restart PVS Server done. PvsProxy is Ready ✅`);
 			else {
 				console.error(`[pvs-proxy.activate] Failed to open socket client at ${this.webSocketAddress}:${this.webSocketPort} ❌`);					
 				this.pvsServerProcessStatus = ProcessCode.COMM_FAILURE; 
@@ -606,7 +606,7 @@ export class PvsProxy {
 		enableEParser?: boolean
 	}): Promise<PvsResponse | null> {
 		opt = opt || {};
-		// console.log('[parseFile] desc = ', desc);
+		// console.log(`[${fsUtils.generateTimestamp()}] `+'[parseFile] desc = ', desc);
 		if (desc) {
 			const fname: string = this.fileRef(desc);
 			const fileExists: boolean = fsUtils.fileExists(fname);
@@ -644,7 +644,7 @@ export class PvsProxy {
 							let range: languageserver.Range = null;
 							let message: string = `File ${desc.fileName} parsed successfully`;
 							let mathObjects: { types: number, definitions: number, lemmas: number } = { types: 0, definitions: 0, lemmas: 0 };
-							// console.log('[parseFile] res = ', res);
+							// console.log(`[${fsUtils.generateTimestamp()}] `+'[parseFile] res = ', res);
 							if (res.result) {
 								const result: ParseResult = res.result;
 								if (result && result.length) {
@@ -710,7 +710,7 @@ export class PvsProxy {
 									if (antlrdiags && antlrdiags.errors) {
 										diags.errors = diags.errors.concat(antlrdiags.errors);
 										if (antlrdiags["parse-time"]) {
-											console.log(`[pvs-parser] antlr completed parsing in ${antlrdiags["parse-time"].ms}ms`)
+											console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-parser] antlr completed parsing in ${antlrdiags["parse-time"].ms}ms`)
 										}
 									}
 								}
@@ -831,7 +831,7 @@ export class PvsProxy {
 	(collect-theory-usings theoryname nil))))
 	(mapcar (lambda (theory) (cons (format nil "|~a|" (id theory)) (shortname (make-specpath (filename theory))))) (reverse usings))))
 	`);
-			// console.log(res.result);
+			// console.log(`[${fsUtils.generateTimestamp()}] `+res.result);
 			if (res && res.result) {
 				const regex: RegExp = /\"\|(\w+)\|\"\s*\.\s*\"([^\|]+)\"\)/g;
 				let match: RegExpMatchArray = null;
@@ -938,9 +938,9 @@ export class PvsProxy {
 						});
 						if (response && !response.error) {
 							if (response.result) {
-								// console.log(`-- ${desc.fileName}.tccs --`);
-								// console.log(response.result);
-								// console.log("---------------------------");
+								// console.log(`[${fsUtils.generateTimestamp()}] `+`-- ${desc.fileName}.tccs --`);
+								// console.log(`[${fsUtils.generateTimestamp()}] `+response.result);
+								// console.log(`[${fsUtils.generateTimestamp()}] `+"---------------------------");
 								const tccResult: ShowTCCsResult = <ShowTCCsResult>response.result;
 								let line: number = TCC_START_OFFSET;
 								const tccs: FormulaDescriptor[] = (tccResult) ? tccResult.map(tcc => {
@@ -971,7 +971,7 @@ export class PvsProxy {
 									theorems: tccs
 								});
 							} else {
-								console.log(`[pvsProxy.generateTccs] No TCCs generated`);
+								console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProxy.generateTccs] No TCCs generated`);
 							}
 						} else {
 							this.pvsErrorManager.handleShowTccsError({ response: <PvsError>response });
@@ -995,7 +995,7 @@ export class PvsProxy {
 		opt = opt || {};
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
 			let fname: string = this.fileRef(desc);
-			//console.log('[typecheckFile] fname = ', fname);
+			//console.log(`[${fsUtils.generateTimestamp()}] `+'[typecheckFile] fname = ', fname);
 			if (this.isProtectedFolder(desc.contextFolder)) {
 				this.info(`${desc.fileName}${desc.fileExtension} is already typechecked`);
 				return {
@@ -1015,7 +1015,7 @@ export class PvsProxy {
 			await this.getPvsTemporaryFolder();
 			// typecheck file
 			await this.changeContext(desc);
-			// console.log('Typechecking ', fname);
+			// console.log(`[${fsUtils.generateTimestamp()}] `+'Typechecking ', fname);
 			const res: PvsResponse = await this.pvsRequest('typecheck', [fname, desc.fileContent], opt.progressReporter );
 			if (res && (res.error && res.error.data) || res.result) {
 				if (res.error) {
@@ -1186,7 +1186,7 @@ export class PvsProxy {
 	}
 
 	async emptyAllWorkspaces(): Promise<void> {
-		// console.log(`[pvs-proxy] Emptying all workspaces`);
+		// console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy] Emptying all workspaces`);
 		this.clearWorkspace(":all", { emptyPvsContext: true });
 	}
 
@@ -1285,7 +1285,7 @@ export class PvsProxy {
 
 	async getServerMode(): Promise<ServerMode> {
 		const proverStatus: PvsResponse = await this.getProverStatus();
-		// console.log("Prover status: ", proverStatus);
+		// console.log(`[${fsUtils.generateTimestamp()}] `+"Prover status: ", proverStatus);
 		if (proverStatus === undefined) {
 			console.warn(`[pvs-language-server] Warning: prover status is undefined`);
 			// const pvsResponse: PvsResponse = await this.pvsProxy.proofCommand({ cmd: "(skip)" });
@@ -1304,7 +1304,7 @@ export class PvsProxy {
 	// 	const proverStatus: PvsResult = await this.getProverStatus();
 	// 	expect(proverStatus.result).toBeDefined();
 	// 	expect(proverStatus.error).not.toBeDefined();
-	// 	console.log(proverStatus);
+	// 	console.log(`[${fsUtils.generateTimestamp()}] `+proverStatus);
 	// 	if (proverStatus && proverStatus.result !== "inactive") {
 	// 		await this.proofCommand({ cmd: 'quit' });
 	// 	}
@@ -1405,7 +1405,7 @@ export class PvsProxy {
 		if (desc) {
 			const test: CheckParResult = checkPar(desc.cmd);
 			let res: PvsResponse = { jsonrpc: "2.0", id: "" };
-			// console.log('[proofCommand] test = ', test);
+			// console.log(`[${fsUtils.generateTimestamp()}] `+'[proofCommand] test = ', test);
 			if (test.success) {
 				// console.dir(desc, { depth: null });
 				const showHidden: boolean = isShowHiddenFormulas(desc.cmd);
@@ -1557,7 +1557,7 @@ export class PvsProxy {
 								shasum,
 								status: jpdesc?.info?.status || "untried"
 							});
-							// console.log(pdesc);
+							// console.log(`[${fsUtils.generateTimestamp()}] `+pdesc);
 						}
 						if (!languageUtils.isEmptyProof(pdesc)) {
 							break;
@@ -1680,7 +1680,7 @@ export class PvsProxy {
 	// 		if (opt.newProof) {
 	// 			return empty_pdesc;
 	// 		} else {
-	// 			// console.log(`[pvs-proxy] Trying to load proof for formula ${formula.formulaName} from .jprf file`);
+	// 			// console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy] Trying to load proof for formula ${formula.formulaName} from .jprf file`);
 	// 			let pdesc: ProofDescriptor = await this.openProofFile({
 	// 				fileName: formula.fileName,
 	// 				fileExtension: ".prf",
@@ -1688,7 +1688,7 @@ export class PvsProxy {
 	// 			}, formula, opt);
 	// 			if (!pdesc || pdesc.isEmpty()) {
 	// 				// try to load from the .prf legacy file
-	// 				// console.log(`[pvs-proxy] Trying to load proof for formula ${formula.formulaName} from legacy .prf file`);
+	// 				// console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy] Trying to load proof for formula ${formula.formulaName} from legacy .prf file`);
 	// 				pdesc = await this.openProofFile({
 	// 					fileName: formula.fileName,
 	// 					fileExtension: ".jprf",
@@ -1867,7 +1867,7 @@ export class PvsProxy {
 		// create tccs files
 		try {
 			if (res && res.result) {
-				//console.log('[generateTccsFile] res = ', res);
+				//console.log(`[${fsUtils.generateTimestamp()}] `+'[generateTccsFile] res = ', res);
 				const result: ShowTCCsResult = res.result;
 				const keys: string[] = Object.keys(result);
 				let content: string = "";
@@ -1997,7 +1997,7 @@ export class PvsProxy {
 	//--------------------------------------------------
 	protected info(...data: any): void {
 		if (this.debugMode) {
-			console.info(data);
+			console.info(`[${fsUtils.generateTimestamp()}] `+data);
 		}
 		if (this.cliListener) {
 			this.cliListener(data);
@@ -2012,12 +2012,12 @@ export class PvsProxy {
 	protected checkPort(port: number, retry: boolean): Promise<boolean> {
 		return new Promise((resolve, reject) => {
 			if (this.showBanner) {
-				console.log(`[pvs-proxy] Checking port ${port}...`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy] Checking port ${port}...`);
 			}
 			const socket: net.Socket = net.createConnection({ host: this.webSocketAddress, port });
 			socket.once('error', (error: Error) => {
 				// noone is serving on the given port
-				console.log(`[pvs-proxy] port ${port} is available :)`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy] port ${port} is available :)`);
 				resolve(true);
 			});
 			socket.once('connect', () => {
@@ -2035,7 +2035,7 @@ export class PvsProxy {
 
 			let currentAttempt = 0
 			const intervalId = setInterval(() => {
-				console.log(`[waitForOpenConnection] waiting for ${JSON.stringify(ws)}`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[waitForOpenConnection] waiting for ${JSON.stringify(ws)}`);
 				if (ws.readyState === WebSocket.OPEN) {
 					clearInterval(intervalId);
 					resolve();
@@ -2046,7 +2046,7 @@ export class PvsProxy {
 					clearInterval(intervalId);
 					reject(new Error('Maximum number of attempts exceeded'));
 				} else if (ws.readyState === WebSocket.CLOSING) {
-					console.log(`[waitForOpenConnection] closing`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[waitForOpenConnection] closing`);
 					reject(new Error('Web socket in CLOSING state'));
 				}
 				currentAttempt++;
@@ -2058,7 +2058,7 @@ export class PvsProxy {
 	 * Checks if pvs-server accepts connection
 	 */
 	async testServerConnectivity(): Promise<boolean> {
-		//console.log(`opening ws://${this.webSocketAddress}:${this.webSocketPort}`);
+		//console.log(`[${fsUtils.generateTimestamp()}] `+`opening ws://${this.webSocketAddress}:${this.webSocketPort}`);
 		//const ws = new WebSocket(`ws://${this.webSocketAddress}:${this.webSocketPort}`);
 		return new Promise((resolve, reject) => {
 			const id = 'test1'
@@ -2066,14 +2066,14 @@ export class PvsProxy {
 			const jsonReq = JSON.stringify(req, null, " ");
 			this.webSocket.send(jsonReq);
 			this.webSocket.once('message', (msg: string) => {
-				//console.log("on %s", msg);
+				//console.log(`[${fsUtils.generateTimestamp()}] `+"on %s", msg);
 				const resp = JSON.parse(msg);
-				//console.log("got %s", resp);
+				//console.log(`[${fsUtils.generateTimestamp()}] `+"got %s", resp);
 				if (resp.result) {
-					console.log("server-test value:", resp.result);
+					console.log(`[${fsUtils.generateTimestamp()}] `+"server-test value:", resp.result);
 					resolve(true);
 				} else {
-					console.log("[pvs-proxy] server-test error:", resp.error);
+					console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-proxy] server-test error:", resp.error);
 					reject(resp.error)
 				}
 			});
@@ -2092,37 +2092,37 @@ export class PvsProxy {
 	// protected serverReadyCallBack() {
 	// 	this.guiServer.on('request', (error: any, params: string[], callback: (error: any, value: any) => void) => {
 	// 	    if (error) {
-	// 		console.log("[pvs-proxy] Error", error);
+	// 		console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-proxy] Error", error);
 	// 	    }
-	// 	    // console.log("params", params);
+	// 	    // console.log(`[${fsUtils.generateTimestamp()}] `+"params", params);
 	// 	    if (params && params.length > 0) {
 	// 		try {
 	// 		    for (let i = 0; i < params.length; i++) {
 	// 			const json: { method: string, params: string[] } = JSON.parse(params[i]);
-	// 			// console.info(`\n json: `, json);
+	// 			// console.info(`[${fsUtils.generateTimestamp()}] `+`\n json: `, json);
 	// 			if (json && json.method && this.handlers[json.method]) {
 	// 			    this.handlers[json.method](json.params);
 	// 			}
 	// 		    }
 	// 		} catch (jsonError) {
-	// 		    console.log("[pvs-proxy] Error", jsonError);
+	// 		    console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-proxy] Error", jsonError);
 	// 		}
 	// 	    }
 	// 	    callback(error, params);
 	// 	});
 	// 	this.guiServer.on("error", (error: Error) => {
-	// 	    console.log(`[pvs-proxy] GUI-Server Error`, error);
+	// 	    console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy] GUI-Server Error`, error);
 	// 	});
 	// 	this.guiServer.on("connect", (error: any, params: string, callback: (error: any, value: any) => void) => {
 	// 	    if (error) {
-	// 		console.log("[pvs-proxy] connection error", error);
+	// 		console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-proxy] connection error", error);
 	// 	    }
 	// 	    if (params) {
-	// 		console.info("[pvs-proxy] connection params", params);
+	// 		console.info(`[${fsUtils.generateTimestamp()}] `+"[pvs-proxy] connection params", params);
 	// 	    }
 	// 	});
 	// 	// this.isActive = true;
-	// 	// console.info(this.server.httpServer);
+	// 	// console.info(`[${fsUtils.generateTimestamp()}] `+this.server.httpServer);
 	// }
 
 	/**
@@ -2136,10 +2136,10 @@ export class PvsProxy {
 		opt = opt || {};
 		const externalServer: boolean = opt.externalServer === undefined ? this.externalServer : !!opt.externalServer;
 		if (externalServer) {
-			console.log(`[pvsProxy.createPvsServer] +-- EXTERNAL SERVER CONFIGURATION --`);
-			console.log(`[pvsProxy.createPvsServer] |  Address: ${this.webSocketAddress}`);
-			console.log(`[pvsProxy.createPvsServer] |  Port: ${this.webSocketPort}`);
-			console.log(`[pvsProxy.createPvsServer] +-----------------------------------`);
+			console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProxy.createPvsServer] +-- EXTERNAL SERVER CONFIGURATION --`);
+			console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProxy.createPvsServer] |  Address: ${this.webSocketAddress}`);
+			console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProxy.createPvsServer] |  Port: ${this.webSocketPort}`);
+			console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProxy.createPvsServer] +-----------------------------------`);
 
 			this.pvsServerProcessStatus = ProcessCode.SUCCESS;
 		} else {
@@ -2156,7 +2156,7 @@ export class PvsProxy {
 //					externalServer: opt.externalServer, //TODO REMOVE
 					verbose: opt.verbose
 				});
-				console.log(`[pvsProxy] pvs Process activate returned ${success}`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProxy] pvs Process activate returned ${success}`);
 				if (success === ProcessCode.PVS_NOT_FOUND) {
 					// if the pvs executable is not found, pvs needs to be installed -- notify the client to trigger the installation wizard
 					this.pvsServerProcessStatus = ProcessCode.PVS_NOT_FOUND;
@@ -2166,7 +2166,7 @@ export class PvsProxy {
 					this.pvsServerProcessStatus = ProcessCode.UNSUPPORTED_PLATFORM;
 				} else if (success === ProcessCode.PVS_START_FAIL) {
 					// try again
-					console.log(`[pvsProxy.createPvsServer] Didn't get feedback from PVS (attempt #${currentPortAttemptNumber+1})`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProxy.createPvsServer] Didn't get feedback from PVS (attempt #${currentPortAttemptNumber+1})`);
 					currentPvsStartAttemptNumber++;
 					await proc.kill(); 
 				} else {
@@ -2182,20 +2182,20 @@ export class PvsProxy {
 				this.webSocketPort = proc.getReportedServerPort();
 				if (!opt.externalServer) {
 					if (connection) {
-						connection.console.log(`[pvsProxy.createPvsServer] PVS active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
+						connection.console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProxy.createPvsServer] PVS active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
 					} else {
-						console.log(`[pvsProxy.createPvsServer] PVS active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
+						console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProxy.createPvsServer] PVS active at ws://${this.webSocketAddress}:${this.webSocketPort}`);
 					}
 				} else {
-					console.log(`[pvsProxy.createPvsServer] using external PVS on port ${this.webSocketPort}`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProxy.createPvsServer] using external PVS on port ${this.webSocketPort}`);
 				}
 				this.pvsServer = proc;
 				this.pvsServerProcessStatus = ProcessCode.SUCCESS;
 			} else if (currentPortAttemptNumber >= this.MAX_PORT_ATTEMPTS) {
-				console.log(`[pvsProxy.createPvsServer] Failed to activate PVS at ws://${this.webSocketAddress}:${this.webSocketPort}`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProxy.createPvsServer] Failed to activate PVS at ws://${this.webSocketAddress}:${this.webSocketPort}`);
 				this.pvsServerProcessStatus = ProcessCode.ADDR_IN_USE;
 			} else { // currentPvsStartAttemptNumber >= this.MAX_PVS_START_ATTEMPTS
-				console.log(`[pvsProxy.createPvsServer] Failed to start PVS process`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProxy.createPvsServer] Failed to start PVS process`);
 				this.pvsServerProcessStatus = ProcessCode.PVS_START_FAIL;
 			}	
 		}
@@ -2227,10 +2227,10 @@ export class PvsProxy {
 		const serverKilled: boolean = (this.pvsServer? await this.pvsServer.kill(): true);
 		if (serverKilled){
 			this.pvsServerProcessStatus = ProcessCode.TERMINATED;
-			console.log("[pvs-proxy] Killed pvs-server");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-proxy] Killed pvs-server");
 		}
 		else
-			console.log("[pvs-proxy] Couldn't kill pvs-server");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-proxy] Couldn't kill pvs-server");
 	}
 	/**
 	 * Kill pvs-gui server
@@ -2242,7 +2242,7 @@ export class PvsProxy {
 				this.webSocket.close();
 				this.interruptConn.close();
 				if (this.debugMode) {
-					console.log("[pvs-proxy] Closed pvs-proxy");
+					console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-proxy] Closed pvs-proxy");
 				}
 				this.webSocket = null;
 				this.interruptConn = null;
@@ -2262,11 +2262,11 @@ export class PvsProxy {
 
 				this.webSocket.send(jsonReq)
 				this.webSocket.once('message', (value: string[]) => {
-					console.log('[listSystemMethods]: have value = %s: %s', value, typeof (value));
+					console.log(`[${fsUtils.generateTimestamp()}] `+'[listSystemMethods]: have value = %s: %s', value, typeof (value));
 					resolve(value);
 				});
 			} else {
-				console.log('[pvs-proxy] Warning: socket is null :/');
+				console.log(`[${fsUtils.generateTimestamp()}] `+'[pvs-proxy] Warning: socket is null :/');
 				reject();
 			}
 		});
@@ -2274,7 +2274,7 @@ export class PvsProxy {
 
 	async rebootPvsServer(desc: { pvsPath?: string }): Promise<boolean> {
 		this.pvsPath = desc?.pvsPath || "";
-		console.log(`[pvs-proxy] New PVS path: ${this.pvsPath}`);
+		console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy] New PVS path: ${this.pvsPath}`);
 		await this.killPvsServer();
 		const processStatus : ProcessCode = await this.restartPvsServer();
 		const result: boolean = (processStatus === ProcessCode.SUCCESS);
@@ -2314,7 +2314,7 @@ export class PvsProxy {
 	async restartPvsServer(opt?: { pvsPath?: string, pvsLibraryPath?: string, externalServer?: boolean }): Promise<ProcessCode> {
 		opt = opt || {};
 
-		console.log('[pvs-proxy.restartPvsServer] called');
+		console.log(`[${fsUtils.generateTimestamp()}] `+'[pvs-proxy.restartPvsServer] called');
 
 		// set server mode to "lisp"
 		this.mode = "lisp";
@@ -2323,16 +2323,16 @@ export class PvsProxy {
 		if (opt) {
 			if (opt.pvsPath) {
 				this.pvsPath = opt.pvsPath;
-				console.log(`[pvs-proxy.restartPvsServer] PVS path: ${this.pvsPath}`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy.restartPvsServer] PVS path: ${this.pvsPath}`);
 			}
 			if (opt.pvsLibraryPath) {
 				this.pvsLibraryPath = opt.pvsLibraryPath;
-				console.log(`[pvs-proxy.restartPvsServer] PVS library path: ${this.pvsLibraryPath}`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy.restartPvsServer] PVS library path: ${this.pvsLibraryPath}`);
 			}
 		}
 
-		console.info("[pvs-proxy.restartPvsServer] Rebooting pvs-server...");
-		console.info(`[pvs-proxy.restartPvsServer] External Server: ${this.externalServer}`);
+		console.info(`[${fsUtils.generateTimestamp()}] `+"[pvs-proxy.restartPvsServer] Rebooting pvs-server...");
+		console.info(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy.restartPvsServer] External Server: ${this.externalServer}`);
 
 		// create PVS websocket server
 		// if externalServer === true then method createPvsServer will create only 
@@ -2375,7 +2375,7 @@ export class PvsProxy {
 			const match: RegExpMatchArray = /"([\w\W]+)"/g.exec(response.result);
 			if (match && match.length > 1 && match[1]) {
 				const pvsLibraries: string[] = match[1].split(`""`);
-				console.log(`[pvs-proxy.pvsLibraryPath] reported *pvs-library-path* : ${pvsLibraries}`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy.pvsLibraryPath] reported *pvs-library-path* : ${pvsLibraries}`);
 				return pvsLibraries;
 			}
 		}
@@ -2390,7 +2390,7 @@ export class PvsProxy {
 			const pvsLibraries: string[] = await this.getPvsLibraryPath(opt);
 			const nasalibPath: string = this.getNasalibPath();
 			if (!pvsLibraries.includes(nasalibPath) && fsUtils.folderExists(nasalibPath)) {
-				console.log(`[pvs-proxy] Setting nasalib path to ${nasalibPath}`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy] Setting nasalib path to ${nasalibPath}`);
 				// return await this.lisp(`(push "${nasalibPath}" *pvs-library-path*)`, opt);
 				return await this.pushPvsLibraryPath({ pvsLibraryPath: nasalibPath, useLisp: true });
 			}
@@ -2464,7 +2464,7 @@ export class PvsProxy {
 	// 	    }
 	// 	    if (portIsAvailable) {
 	// 		this.banner = `GUI Server active at http://${this.clientAddress}:${this.clientPort}`;
-	// 		console.log(`[pvs-proxy] Starting GUI Server on http://${this.clientAddress}:${this.clientPort}`)
+	// 		console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy] Starting GUI Server on http://${this.clientAddress}:${this.clientPort}`)
 	// 		this.client = xmlrpc.createClient({
 	// 		    host: this.webSocketAddress, port: this.webSocketPort, path: "/RPC2"
 	// 		});
@@ -2479,14 +2479,14 @@ export class PvsProxy {
 	// 			}, () => {
 	// 			    this.serverReadyCallBack();
 	// 			    if (opt.showBanner) {
-	// 				console.log("[pvs-proxy] " + this.banner);
+	// 				console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-proxy] " + this.banner);
 	// 			    }
 	// 			    resolve(true);
 	// 			});
 	// 			this.guiServer.once('error', (error: Error) => {
 	// 			    console.error(error);
 	// 			    if (error["code"] === 'EADDRINUSE') {
-	// 				console.log(`[pvs-proxy] port ${this.clientPort} busy`);
+	// 				console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy] port ${this.clientPort} busy`);
 	// 			    }
 	// 			});
 	// 		    } catch (gui_server_error) {

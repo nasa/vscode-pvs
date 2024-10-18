@@ -114,7 +114,7 @@ export class VSCodePvsPackageManager {
 		this.context = context;
         // pvs installation handlers
         this.client.onRequest(serverEvent.pvsNotFound, async () => {
-            console.log(`[vscodePvsPackageManager] responding request ${serverEvent.pvsNotFound}`); // #DEBUG
+            console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsPackageManager] responding request ${serverEvent.pvsNotFound}`); // #DEBUG
             this.statusBar.clear();
             if (this.firstRun) {
                 // show the wizard only the first time vscode is opened, to avoid annoying the user with messages if they don't want to install pvs right away during the current session
@@ -129,7 +129,7 @@ export class VSCodePvsPackageManager {
             }
         });
         this.client.onRequest(serverEvent.pvsIncorrectVersion, async (msg: string) => {
-            console.log(`[vscodePvsPackageManager] responding request ${serverEvent.pvsIncorrectVersion} - param: ${msg}`); // #DEBUG
+            console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsPackageManager] responding request ${serverEvent.pvsIncorrectVersion} - param: ${msg}`); // #DEBUG
             this.statusBar.clear();
             if (this.firstRun) {
                 this.firstRun = false;
@@ -445,7 +445,7 @@ export class VSCodePvsPackageManager {
                 });
                 this.client.sendRequest(serverRequest.downloadLicensePage);
                 this.client.onRequest(serverEvent.downloadLicensePageResponse, (desc: { response: string }) => {
-                    console.log(`[vscodePvsPackageManager] responding request ${serverEvent.downloadLicensePageResponse} - param: ${desc}`); // #DEBUG
+                    console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsPackageManager] responding request ${serverEvent.downloadLicensePageResponse} - param: ${desc}`); // #DEBUG
                     if (desc && desc.response && desc.response) {
                         progress.report({ increment: -1, message: `Please read the PVS license agreement before proceeding` });
                         resolve(desc.response);

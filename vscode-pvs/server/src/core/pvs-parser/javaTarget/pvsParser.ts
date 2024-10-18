@@ -76,9 +76,9 @@ export class PvsParser {
     protected processWorker (fname: string, args: string[]): Promise<string> {
         return new Promise((resolve, reject) => {
             // const cmd: string = `java ${args.concat(fname).join(" ")}`;
-            // console.log(cmd);
+            // console.log(`[${fsUtils.generateTimestamp()}] `+cmd);
             // const res: Buffer = execSync(cmd);
-            // console.log(res.toLocaleString());
+            // console.log(`[${fsUtils.generateTimestamp()}] `+res.toLocaleString());
             const worker: ChildProcess = spawn("java", args.concat(fname));
             this.workers[fname] = worker;
             worker.stdout.setEncoding("utf8");
@@ -91,17 +91,17 @@ export class PvsParser {
                 // resolve(false);
             });
             worker.on("error", (err: Error) => {
-                console.log("[pvs-parser] Process error ", err);
+                console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-parser] Process error ", err);
                 // console.dir(err, { depth: null });
             });
             worker.on("exit", (code: number, signal: string) => {
-                // console.log("[pvs-parser] Process exited with code ", code);
+                // console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-parser] Process exited with code ", code);
                 // file parsed successfully
                 resolve(null);
                 // console.dir({ code, signal });
             });
             worker.on("message", (message: any) => {
-                console.log("[pvs-parser] Process message", message);
+                console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-parser] Process message", message);
                 // console.dir(message, { depth: null });
             });
         });
@@ -127,7 +127,7 @@ export class PvsParser {
      */
     async parseFile (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<ParserDiagnostics> {
         const fname: string = fsUtils.desc2fname(desc);
-        console.info(`[vscode-pvs-parser] Parsing ${fname}`);
+        console.info(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-parser] Parsing ${fname}`);
 
         let diags: ParserDiagnostics = null;
         const libFolder: string = path.join(__dirname, "../../../../out/core/lib");
@@ -138,18 +138,18 @@ export class PvsParser {
             const ans: string = await this.processWorker(fname, args);
             // const stats: number = Date.now() - start;
             if (ans) {
-                console.log(ans);
+                console.log(`[${fsUtils.generateTimestamp()}] `+ans);
                 diags = JSON.parse(ans);
                 if (diags.errors) {
-                    console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed with errors in ${diags["parse-time"].ms}ms`);
+                    console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed with errors in ${diags["parse-time"].ms}ms`);
                 } else {
-                    console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully in ${diags["parse-time"].ms}ms`);
+                    console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully in ${diags["parse-time"].ms}ms`);
                 }
             }
         } catch (parserError) {
-            console.log(parserError);
+            console.log(`[${fsUtils.generateTimestamp()}] `+parserError);
         } finally {
-            // console.log(`[vscode-pvs-parser] Sending diagnostics for ${desc.fileName}${desc.fileExtension}`);
+            // console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-parser] Sending diagnostics for ${desc.fileName}${desc.fileExtension}`);
             // if (diagnostics && diagnostics.length > 0) {
             //     console.dir(diagnostics, { depth: null });
             // }
@@ -164,7 +164,7 @@ export class PvsParser {
      */
     async getStats (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<Diagnostic[]> {
         const fname: string = fsUtils.desc2fname(desc);
-        console.info(`[vscode-pvs-parser] Parsing ${fname}`);
+        console.info(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-parser] Parsing ${fname}`);
 
         let diagnostics: Diagnostic[] = [];
         const libFolder: string = path.join(__dirname, "../../../../out/core/lib");
@@ -176,16 +176,16 @@ export class PvsParser {
             const diags: string = await this.processWorker(fname, args);
             const stats: number = Date.now() - start;
             if (diags) {
-                console.log(diags);
+                console.log(`[${fsUtils.generateTimestamp()}] `+diags);
                 diagnostics = JSON.parse(diags);
-                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed with errors in ${stats}ms`);
+                console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed with errors in ${stats}ms`);
             } else {
-                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully in ${stats}ms`);
+                console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully in ${stats}ms`);
             }
         } catch (parserError) {
-            console.log(parserError);
+            console.log(`[${fsUtils.generateTimestamp()}] `+parserError);
         } finally {
-            // console.log(`[vscode-pvs-parser] Sending diagnostics for ${desc.fileName}${desc.fileExtension}`);
+            // console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-parser] Sending diagnostics for ${desc.fileName}${desc.fileExtension}`);
             // if (diagnostics && diagnostics.length > 0) {
             //     console.dir(diagnostics, { depth: null });
             // }
@@ -199,7 +199,7 @@ export class PvsParser {
      */
     async getOutline (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<Outline> {
         const fname: string = fsUtils.desc2fname(desc);
-        console.info(`[vscode-pvs-parser] Building outline for ${fname}`);
+        console.info(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-parser] Building outline for ${fname}`);
 
         let res: Outline = null;
         const libFolder: string = path.join(__dirname, "../../../../out/core/lib");
@@ -211,16 +211,16 @@ export class PvsParser {
             const outline: string = await this.processWorker(fname, args);
             const stats: number = Date.now() - start;
             if (outline) {
-                console.log(outline);
+                console.log(`[${fsUtils.generateTimestamp()}] `+outline);
                 res = JSON.parse(outline);
-                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed with errors in ${stats}ms`);
+                console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed with errors in ${stats}ms`);
             } else {
-                console.log(`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully in ${stats}ms`);
+                console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-parser] File ${desc.fileName}${desc.fileExtension} parsed successfully in ${stats}ms`);
             }
         } catch (parserError) {
-            console.log(parserError);
+            console.log(`[${fsUtils.generateTimestamp()}] `+parserError);
         } finally {
-            // console.log(`[vscode-pvs-parser] Sending diagnostics for ${desc.fileName}${desc.fileExtension}`);
+            // console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-parser] Sending diagnostics for ${desc.fileName}${desc.fileExtension}`);
             // if (diagnostics && diagnostics.length > 0) {
             //     console.dir(diagnostics, { depth: null });
             // }

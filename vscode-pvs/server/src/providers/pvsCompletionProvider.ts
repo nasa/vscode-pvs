@@ -249,7 +249,7 @@ export class PvsCompletionProvider {
 							// RegExp objects are stateful, we need to reset them every time
 							// utils.isense.recordExpression.lastIndex = utils.isense.recordAccessor.lastIndex = 0;
 							if (currentLine.trim().endsWith("(#") || currentLine.trim().endsWith(",")) {
-								console.log("[pvs-completion-provider] provideCompletionItems, currentLine: ", currentLine);
+								console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-completion-provider] provideCompletionItems, currentLine: ", currentLine);
 								// resolve accessor
 								const symbolName: string = match[1];
 								let declarations: PvsDefinition[] = await this.definitionProvider.findSymbolDefinition(document.fname, symbolName, position);

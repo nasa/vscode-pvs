@@ -1399,7 +1399,7 @@ export async function annotateFormula (desc: PvsFormula, tag: Tag, opt?: TagOpti
                 success = await document.save();
                 resolve(success);
             }, (error) => {
-                console.log("[vscode-utils] Warning: unable to annotate pvs file", error, desc);
+                console.log(`[${fsUtils.generateTimestamp()}] `+"[vscode-utils] Warning: unable to annotate pvs file", error, desc);
                 resolve(false);
             });
         }

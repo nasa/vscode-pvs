@@ -127,12 +127,10 @@ function getHtmlTemplate (sessionType: SessionType, opt?: { integratedHelpSize?:
 
     // Handler for sending commands to xterm
     window.addEventListener('message', async (event) => {
-        // console.log("[xterm-webview] message", { event });
         const message = event.data; // JSON data sent by vscode-pvs
         switch (message.command) {
             {{#each xtermCommands}}
             case "{{this}}": {
-                // console.log("[xterm-webview] {{this}} data", message);
                 xterm["{{this}}"](message.data);
                 break;
             }
@@ -291,7 +289,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
      */
     enableBracketColors (flag?: boolean): void {
         this.colorizeParens = flag !== undefined ? !!flag : true;
-        // console.log("[xterm-pvs] Bracket colors: ", this.colorizeParens);
+        // console.log(`[${fsUtils.generateTimestamp()}] `+"[xterm-pvs] Bracket colors: ", this.colorizeParens);
     }
 
     /**
@@ -374,7 +372,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         });
         const success: boolean = await new Promise((resolve, reject) => {
             this.client.onRequest(serverEvent.proveFormulaResponse, (data: ProveFormulaResponse) => {
-              console.log(`[vscodePvsXTerm] responding request ${serverEvent.proveFormulaResponse} - param: ${data} `); // #DEBUG
+              console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsXTerm] responding request ${serverEvent.proveFormulaResponse} - param: ${data} `); // #DEBUG
                 if (this.sessionType) {
                     if (this.prettyPrinter) {
                         const color: colorUtils.PvsColor = colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme);
@@ -391,8 +389,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             // The following handler is registered here because proof commands may originate from proof-explorer.
             // This handler will be replaced by the one in sendText as soon as a sendText is performed.
             this.client.onRequest(serverEvent.proofCommandResponse, (data: ProofCommandResponse) => {
-              console.log(`[vscodePvsXTerm] responding request ${serverEvent.proofCommandResponse} - param: ${data} `); // #DEBUG
-                // console.log("[vscode-pvs-xterm] proofCommandResponse", data);
+              console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsXTerm] responding request ${serverEvent.proofCommandResponse} - param: ${data} `); // #DEBUG
+                // console.log(`[${fsUtils.generateTimestamp()}] `+"[vscode-pvs-xterm] proofCommandResponse", data);
                 this.onProverResponse(data);
             });
         });
@@ -420,7 +418,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                     // disable response handlers
                     this.terminateSession();
                 } else {
-                    console.log(data.res);
+                    console.log(`[${fsUtils.generateTimestamp()}] `+data.res);
                 }
             } else {
                 // res is a SequentDescriptor
@@ -435,7 +433,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 }
                 // load prettyprinter from vscode configuration
                 const pp: string = this.prettyPrinter?.file; //vscodeUtils.getPrettyPrinter();
-                // console.log({ pp }); // debug #TODO remove
+                // console.log(`[${fsUtils.generateTimestamp()}] `+{ pp }); // debug #TODO remove
                 // format sequent
                 const sequent: string = fsUtils.formatSequent(data?.res, { 
                     colorTheme: this.colorTheme, 
@@ -536,7 +534,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.client.sendRequest(serverRequest.startEvaluator, theory);
         const success: boolean = await new Promise((resolve, reject) => {
             this.client.onRequest(serverEvent.startEvaluatorResponse, (data: { response: PvsResponse, args: PvsTheory, error?: string }) => {
-              console.log(`[vscodePvsXTerm] responding request ${serverEvent.startEvaluatorResponse} - param: ${data} `); // #DEBUG
+              console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsXTerm] responding request ${serverEvent.startEvaluatorResponse} - param: ${data} `); // #DEBUG
                 if (data?.response) {
                     const banner: string = colorUtils.colorText(utils.pvsioBannerAlt, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme));
                     const hints: HintsObject = getHints(this.sessionType, {
@@ -678,7 +676,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             if (this.sessionType === "evaluator") {
                 this.client.sendRequest(serverRequest.evaluatorCommand, req);
                 this.client.onRequest(serverEvent.evaluatorCommandResponse, (data: EvaluatorCommandResponse) => {
-                  console.log(`[vscodePvsXTerm] responding request ${serverEvent.evaluatorCommandResponse} - param: ${data} `); // #DEBUG
+                  console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsXTerm] responding request ${serverEvent.evaluatorCommandResponse} - param: ${data} `); // #DEBUG
                     this.onEvaluatorResponse(data);
                     resolve(data)
                 });
@@ -698,7 +696,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
 				if (parens?.success) {
                     this.client.sendRequest(serverRequest.proofCommand, req);
                     this.client.onRequest(serverEvent.proofCommandResponse, (data: ProofCommandResponse) => {
-                      console.log(`[vscodePvsXTerm] responding request ${serverEvent.proofCommandResponse} - param: ${data} `); // #DEBUG
+                      console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsXTerm] responding request ${serverEvent.proofCommandResponse} - param: ${data} `); // #DEBUG
                         this.onProverResponse(data);
                         const success: boolean = data ? 
                             typeof data.res === "string" ? isQEDCommand(data.res)
@@ -840,7 +838,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         hints?: HintsObject, 
         mathObjects?: MathObjects
     }): void {
-        // console.log("[vscode-pvs-xterm] log", data);
+        // console.log(`[${fsUtils.generateTimestamp()}] `+"[vscode-pvs-xterm] log", data);
         const message: XTermMessage = {
             command: XTermCommands.log,
             data
@@ -1030,10 +1028,10 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     protected terminateSession (): void {
         // disable handlers
         this.client.onRequest(serverEvent.proofCommandResponse,() => {
-            console.log(`[vscodePvsXTerm] responding request ${serverEvent.proofCommandResponse}`); // #DEBUG        
+            console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsXTerm] responding request ${serverEvent.proofCommandResponse}`); // #DEBUG        
         });
         this.client.onRequest(serverEvent.evaluatorCommandResponse, () => {
-            console.log(`[vscodePvsXTerm] responding request ${serverEvent.evaluatorCommandResponse}`); // #DEBUG        
+            console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsXTerm] responding request ${serverEvent.evaluatorCommandResponse}`); // #DEBUG        
         });
         // clear session type -- this is equivalent to marking the session as terminated
         this.sessionType = null;
@@ -1101,7 +1099,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         // Handle messages from the webview
                         this.panel.webview.onDidReceiveMessage(
                             async (message: XTermMessage) => {
-                                // console.log("[vscode-xterm] Received message", message);
+                                // console.log(`[${fsUtils.generateTimestamp()}] `+"[vscode-xterm] Received message", message);
                                 if (message) {
                                     switch (message.command) {
                                         case XTermEvent.sendText: {

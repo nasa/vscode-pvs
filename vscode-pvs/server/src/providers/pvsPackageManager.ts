@@ -294,8 +294,8 @@ export class PvsPackageManager {
                         const tgt: string = path.join(targetFolder, patchFileName);
                         const tgtExists: boolean = fsUtils.fileExists(tgt);
                         if (!tgtExists || (await fsUtils.stat(tgt)).ctime < (await fsUtils.stat(src)).ctime) {
-                            if (tgtExists) console.log(`[pvsPackageManager] Overwriting ${tgt} with ${src}.`);
-                            else console.log(`[pvsPackageManager] Copying ${src} into ${tgt}.`);
+                            if (tgtExists) console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsPackageManager] Overwriting ${tgt} with ${src}.`);
+                            else console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsPackageManager] Copying ${src} into ${tgt}.`);
                             const fileContent: string = fsUtils.readFile(src);
                             const success: boolean = fileContent && fsUtils.writeFile(tgt, fileContent);
                             if (!success) {

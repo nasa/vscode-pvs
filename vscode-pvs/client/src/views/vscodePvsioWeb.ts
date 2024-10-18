@@ -55,7 +55,7 @@ const pvsiowebFolder: string = "pvsioweb";
 const dbg: boolean = false;
 function log(...args: any): void {
     if (dbg) {
-        console.log(args);
+        console.log(`[${fsUtils.generateTimestamp()}] `+args);
     }
 }
 

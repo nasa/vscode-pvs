@@ -460,8 +460,8 @@ export class PvsCodeLensProvider {
         //     const contextFolder: string = codeLens.data.contextFolder;
 
         //     const theoryName: string = utils.findTheoryName(doc, line);
-        //     console.log("codelense: theoryName = ", theoryName);
-        //     console.log("codelense: formulaName = ", formulaName);
+        //     console.log(`[${fsUtils.generateTimestamp()}] `+"codelense: theoryName = ", theoryName);
+        //     console.log(`[${fsUtils.generateTimestamp()}] `+"codelense: formulaName = ", formulaName);
             
         //     const args = { fileName, theoryName, formulaName, line, fileExtension, contextFolder }
         //     return {

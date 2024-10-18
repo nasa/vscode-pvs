@@ -96,7 +96,7 @@ export class PvsProofExplorer {
 	readonly DEBUG_LOG: boolean = false;
 	protected log(...args): void {
 		if (this.DEBUG_LOG) {
-			console.log(args);
+			console.log(`[${fsUtils.generateTimestamp()}] `+args);
 		}
 	}
 
@@ -2052,7 +2052,7 @@ export class PvsProofExplorer {
 		if (this.connection && !this.autoRunFlag) {
 			this.connection.sendNotification(serverEvent.proverEvent, evt);
 		}
-		// console.log(`[proof-explorer] Initial sequent for ${this.formula.formulaName}`, this.initialProofState);
+		// console.log(`[${fsUtils.generateTimestamp()}] `+`[proof-explorer] Initial sequent for ${this.formula.formulaName}`, this.initialProofState);
 	}
 
 	/**
@@ -2102,7 +2102,7 @@ export class PvsProofExplorer {
 				this.connection?.sendNotification(serverEvent.proverEvent, evt);
 			}
 
-			// console.log(`[proof-explorer] Starting proof for ${this.formula.formulaName}`,
+			// console.log(`[${fsUtils.generateTimestamp()}] `+`[proof-explorer] Starting proof for ${this.formula.formulaName}`,
 			// 	{ currentSequent: this.root.sequentDescriptor, initialSequent: this.initialProofState });
 		} else {
 			console.warn(`[proof-explorer] Warning: unable to activate selected proof (root node is null)`);
@@ -2677,7 +2677,7 @@ export class PvsProofExplorer {
 		if (cmdArray) {
 			for (let i = 0; i < cmdArray.length; i++) {
 				const cmd: string = cmdArray[i];
-				// console.log(cmd);
+				// console.log(`[${fsUtils.generateTimestamp()}] `+cmd);
 				const req: PvsProofCommand = {
 					fileName: request.fileName,
 					fileExtension: request.fileExtension,
@@ -2800,7 +2800,7 @@ export abstract class ProofItem extends TreeItem {
 	readonly DEBUG_LOG: boolean = false;
 	protected log(...args): void {
 		if (this.DEBUG_LOG) {
-			console.log(args);
+			console.log(`[${fsUtils.generateTimestamp()}] `+args);
 		}
 	}
 	getNodeXStructure(): ProofNodeX {

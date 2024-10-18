@@ -84,7 +84,7 @@ export class PvsRenameProvider {
                             }
                             if (range) {
                                 const newTheoryName: string = desc.newName;
-                                console.log(`[rename-provider] Renaming theory ${theoryName} to ${newTheoryName}`);
+                                console.log(`[${fsUtils.generateTimestamp()}] `+`[rename-provider] Renaming theory ${theoryName} to ${newTheoryName}`);
                                 // change text in the theory
                                 const mod: string = ln.substring(0, range.start.character) + newTheoryName + ln.substring(range.end.character);
                                 const newLines: string[] = lines.slice(0, desc.position.line).concat(mod).concat(lines.slice(desc.position.line + 1, lines.length + 1));
@@ -147,7 +147,7 @@ export class PvsRenameProvider {
                             }
                             if (range) {
                                 const newFormulaName: string = desc.newName;
-                                console.log(`[rename-provider] Renaming formula ${formulaName} to ${newFormulaName}`);
+                                console.log(`[${fsUtils.generateTimestamp()}] `+`[rename-provider] Renaming formula ${formulaName} to ${newFormulaName}`);
                                 // change text in the theory
                                 const mod: string = ln.substring(0, range.start.character) + newFormulaName + ln.substring(range.end.character);
                                 const newLines: string[] = lines.slice(0, desc.position.line).concat(mod).concat(lines.slice(desc.position.line + 1, lines.length + 1));

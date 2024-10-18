@@ -46,8 +46,8 @@ import { forceLocale } from './common/languageUtils';
 
 import { PvsPackageManager } from './providers/pvsPackageManager';
 
-import consoleStamp from 'console-stamp';
-consoleStamp(console, { format: ':date(yyyy/mm/dd HH:MM:ss.l)' });
+// import consoleStamp from 'console-stamp';
+// consoleStamp(console, { format: ':date(yyyy/mm/dd HH:MM:ss.l)' });
 
 const MAX_LOG_CHUNK: number = 600;
 
@@ -99,7 +99,7 @@ export class PvsProcess {
 			if (this.connection && this.enableNotifications) {
 				this.connection.sendNotification('pvs-error', msg);
 			} else {
-				console.log(msg);
+				console.log(`[${fsUtils.generateTimestamp()}] `+msg);
 			}
 		}
 	}
@@ -121,7 +121,7 @@ export class PvsProcess {
 			if (!msg.startsWith("127.0.0.1") && !msg.startsWith("emacs does not support X;")) {
 				if (this.connection && this.connection.console) {
 					// msg = msg.replace(/(\r\n|\n|\r)/gm, "");
-					this.connection.console.log(msg);
+					this.connection.console.log(`[${fsUtils.generateTimestamp()}] `+msg);
 					if (this.progressInfoEnabled) {
 						const ln: string[] = msg.trim().split("\n").filter(line => {
 							return line.trim() && !line.includes("PVS(") && !(line.trim() === "NIL");
@@ -129,7 +129,7 @@ export class PvsProcess {
 						this.sendProgressInfo(ln[ln.length - 1]);
 					}
 				} else {
-					console.log(msg);
+					console.log(`[${fsUtils.generateTimestamp()}] `+msg);
 				}
 			}
 		}
@@ -173,9 +173,9 @@ export class PvsProcess {
 	// 	if (relocate) {
 	// 		try {
 	// 			const output: Buffer = execSync(relocate);
-	// 			// console.log(output.toString());
+	// 			// console.log(`[${fsUtils.generateTimestamp()}] `+output.toString());
 	// 		} catch (relocateError) {
-	// 			console.log(relocateError);
+	// 			console.log(`[${fsUtils.generateTimestamp()}] `+relocateError);
 	// 			return false;
 	// 		}
 	// 		return true;
@@ -198,23 +198,23 @@ export class PvsProcess {
 		serverPort?: number,
 		verbose?: boolean
 	}): Promise<ProcessCode> {
-		console.info("[pvsProcess.activate] start... ");
+		console.info(`[${fsUtils.generateTimestamp()}] `+"[pvsProcess.activate] start... ");
 		if (this.pvsProcess) {
 			// process already running, nothing to do
-			console.info("[pvsProcess.activate] process already running, nothing to do ");
+			console.info(`[${fsUtils.generateTimestamp()}] `+"[pvsProcess.activate] process already running, nothing to do ");
 			return ProcessCode.SUCCESS;
 		}
 		if (!this.pvsPath) {
 			return ProcessCode.PVS_NOT_FOUND;
 		}
-		console.info("[pvsProcess.activate] pvs is not already running, path seems right ");
+		console.info(`[${fsUtils.generateTimestamp()}] `+"[pvsProcess.activate] pvs is not already running, path seems right ");
 		opt = opt || {};
 		this.enableNotifications = !!opt.enableNotifications;
 		this.verbose = !!opt.verbose;
 		this.serverPort = opt.serverPort || this.serverPort;
 		// force locale settings
 		forceLocale();
-		console.log(`[PvsProcess.activate] ACL_LOCALE=${process.env["ACL_LOCALE"]}, LC_ALL=${process.env["LC_ALL"]}, LANG=${process.env["LANG"]}`);
+		console.log(`[${fsUtils.generateTimestamp()}] `+`[PvsProcess.activate] ACL_LOCALE=${process.env["ACL_LOCALE"]}, LC_ALL=${process.env["LC_ALL"]}, LANG=${process.env["LANG"]}`);
 		// pvs args
 		const pvs: string = path.join(this.pvsPath, "pvs");
 		
@@ -225,16 +225,16 @@ export class PvsProcess {
 
 		const args: string[] = [ "-raw" , "-port", `${this.serverPort}`, loadAdditionalPatchesCode];
 
-		console.info(`[PvsProcess.activate] shell command  ${pvs} ${args.join(" ")}`);
-		console.info(`[PvsProcess.activate] pvsLibraryPath ${this.pvsLibraryPath}`);
+		console.info(`[${fsUtils.generateTimestamp()}] `+`[PvsProcess.activate] shell command  ${pvs} ${args.join(" ")}`);
+		console.info(`[${fsUtils.generateTimestamp()}] `+`[PvsProcess.activate] pvsLibraryPath ${this.pvsLibraryPath}`);
 		const fileExists: boolean = fsUtils.fileExists(pvs);
 		if (fileExists) {
 			// Start the PVS process
 			if (!this.pvsProcess) {
 				this.currentStatus = undefined;
-				console.info('[PvsProcess.activate] about to spawn PVS');
+				console.info(`[${fsUtils.generateTimestamp()}] `+'[PvsProcess.activate] about to spawn PVS');
 				this.pvsProcess = spawn(pvs, args, { detached: true, env: { ...process.env, PVS_LIBRARY_PATH: this.pvsLibraryPath} });
-				console.info(`[PvsProcess.activate] PVS spawned (PID: ${this.pvsProcess.pid})`);
+				console.info(`[${fsUtils.generateTimestamp()}] `+`[PvsProcess.activate] PVS spawned (PID: ${this.pvsProcess.pid})`);
 				// console.dir(this.pvsProcess, { depth: null });
 				this.pvsProcess.stdout.setEncoding("utf8");
 				this.pvsProcess.stderr.setEncoding("utf8");
@@ -249,7 +249,7 @@ export class PvsProcess {
 
 				function logOutputToConsole(output: string, tag?: string) {
 					for(let line of output.split('\n')){
-						console.log(`${tag}${line}`);
+						console.log(`[${fsUtils.generateTimestamp()}] `+`${tag}${line}`);
 					}
 				}
 
@@ -322,7 +322,7 @@ export class PvsProcess {
 				});
 				this.pvsProcess.on("exit", (code: number, signal: string) => {
 					resetLocalLog();
-					console.log(`[pvsProcess] Process exited, code: ${code}, signal: ${signal}, this.ready: ${this.currentStatus}`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProcess] Process exited, code: ${code}, signal: ${signal}, this.ready: ${this.currentStatus}`);
 					// if PVS fails before communicating its 'ready' state, it's a starting-up fail.
 					if(!this.currentStatus)
 						this.currentStatus = ProcessCode.PVS_START_FAIL;
@@ -340,20 +340,20 @@ export class PvsProcess {
 				const intervalTime = 200; //ms
 	
 				let currentAttempt = 0
-				console.log("[pvsProcess.activate] Waiting for PVS confirmation ")
+				console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProcess.activate] Waiting for PVS confirmation ")
 				const interval = setInterval(() => {
-					console.log(`[pvsProcess.activate] -> polling on currentStatus (check ${currentAttempt+1} of ${maxNumberOfAttempts})...`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProcess.activate] -> polling on currentStatus (check ${currentAttempt+1} of ${maxNumberOfAttempts})...`);
 					if (this.currentStatus === ProcessCode.SUCCESS) {
 						clearInterval(interval);
-						console.log("[pvsProcess.activate] DONE: PVS is active and waiting for requests");
+						console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProcess.activate] DONE: PVS is active and waiting for requests");
 						resolveWait(ProcessCode.SUCCESS); 
 					} else if (currentAttempt > maxNumberOfAttempts - 1) {
 						clearInterval(interval)
-						console.log("[pvsProcess.activate] FAIL: reached max number of attempts");
+						console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProcess.activate] FAIL: reached max number of attempts");
 						resolveWait(ProcessCode.PVS_START_FAIL);
 					} else if (this.currentStatus){
 						clearInterval(interval)
-						console.log(`[pvsProcess.activate] FAIL: status code ${this.currentStatus}`);
+						console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProcess.activate] FAIL: status code ${this.currentStatus}`);
 						resolveWait(this.currentStatus);
 					}
 					currentAttempt++
@@ -381,14 +381,14 @@ export class PvsProcess {
 					// because the destruction of the process is immediate but previous calls to write() may not have drained
 					// see also nodejs doc for writable.destroy([error]) https://nodejs.org/api/stream.html
 					this.pvsProcess.on("close", (code: number, signal: string) => {
-						console.log("[pvsProcess] Process terminated");
+						console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProcess] Process terminated");
 						this.currentStatus = ProcessCode.TERMINATED;
 						this.pvsProcess = null;
 						done = true;
 						resolve(true);
 					});
 					this.pvsProcess.on("error", (code: number, signal: string) => {
-						console.log("[pvsProcess] Process terminated");
+						console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProcess] Process terminated");
 						this.currentStatus = ProcessCode.TERMINATED;
 						resolve(true);
 					});
@@ -442,7 +442,7 @@ export class PvsProcess {
 	public async clearContext (contextFolder?: string): Promise<void> {
 		// const currentContext: string = contextFolder;// || this.contextFolder;
 		// if (currentContext) {
-		// 	// console.info(`** clearing pvs cache for context ${currentContext} **`)
+		// 	// console.info(`[${fsUtils.generateTimestamp()}] `+`** clearing pvs cache for context ${currentContext} **`)
 		// 	await fsUtils.deletePvsCache(currentContext);
 		// }
 	}

@@ -230,16 +230,16 @@ export async function cleanTccs(contextFolder: string, opt?: {
 	try {
 		if (contextFolder) {
 			contextFolder = tildeExpansion(contextFolder);
-			// console.log(`reading folder ${contextFolder}`);
+			// console.log(`[${generateTimestamp()}] `+`reading folder ${contextFolder}`);
 			const files: string[] = fs.readdirSync(contextFolder);
 			if (files) {
-				// console.log(files);
+				// console.log(`[${generateTimestamp()}] `+files);
 				// remove .tccs files
 				files.filter(name => {
-					// console.log(name);
+					// console.log(`[${generateTimestamp()}] `+name);
 					return name.endsWith(".tccs");
 				}).forEach(file => {
-					// console.log(`deleting ${file}`);
+					// console.log(`[${generateTimestamp()}] `+`deleting ${file}`);
 					deleteFile(path.join(contextFolder, file));
 				});
 				nCleaned++;
@@ -276,33 +276,33 @@ export async function cleanBin(contextFolder: string, opt?: {
 	opt = opt || {};
 	let nCleaned: number = 0;
 	try {
-		// console.log(`Deleting cache for context ${contextFolder}`);
+		// console.log(`[${generateTimestamp()}] `+`Deleting cache for context ${contextFolder}`);
 		if (contextFolder) {
 			contextFolder = tildeExpansion(contextFolder);
-			// console.log(`Deleting cache for context ${contextFolder}`);
+			// console.log(`[${generateTimestamp()}] `+`Deleting cache for context ${contextFolder}`);
 			const pvsbinFolder: string = path.join(contextFolder, "pvsbin");
 			deleteBinFiles(pvsbinFolder, opt);
-			// console.log(`removing ${path.join(contextFolder, ".pvscontext")}`);
+			// console.log(`[${generateTimestamp()}] `+`removing ${path.join(contextFolder, ".pvscontext")}`);
 			deleteFile(path.join(contextFolder, ".pvscontext"));
-			// console.log(`reading folder ${contextFolder}`);
+			// console.log(`[${generateTimestamp()}] `+`reading folder ${contextFolder}`);
 			const files: string[] = fs.readdirSync(contextFolder);
 			if (files) {
 				// remove .prlite files
 				files.filter(name => {
-					// console.log(name);
+					// console.log(`[${generateTimestamp()}] `+name);
 					return name.endsWith(".prlite") || name.endsWith(".log") || name.endsWith("~");
 				}).forEach(file => {
-					// console.log(`deleting ${file}`);
+					// console.log(`[${generateTimestamp()}] `+`deleting ${file}`);
 					deleteFile(path.join(contextFolder, file));
 				});
 				// remove .tccs files
 				if (!opt.keepTccs) {
-					// console.log(files);
+					// console.log(`[${generateTimestamp()}] `+files);
 					files.filter(name => {
-						// console.log(name);
+						// console.log(`[${generateTimestamp()}] `+name);
 						return name.endsWith(".tccs");
 					}).forEach(file => {
-						// console.log(`deleting ${file}`);
+						// console.log(`[${generateTimestamp()}] `+`deleting ${file}`);
 						deleteFile(path.join(contextFolder, file));
 					});
 				}
@@ -789,8 +789,8 @@ export function getOs (): OsVersion {
 		}
 		return { version: process.platform };
 	} catch (err) {
-		const error: string = err.message + "Unable to detect OS version. This problem is likey due to missing dependency 'node' (please download node from https://nodejs.org/)";
-		console.log(`[pvs-server] ${error}`);
+		const error: string = err.message + "Unable to detect OS version. This problem is likely due to missing dependency 'node' (please download node from https://nodejs.org/)";
+		console.log(`[${generateTimestamp()}] `+`[pvs-server] ${error}`);
 		return { error };
 	}
 }
@@ -880,7 +880,7 @@ export function execShellCommand (req: ShellCommand, opt?: {
 			opt?.callback(code === 0);
 		});
 		shellProcess.on("message", (message: any) => {
-			console.log(message);
+			console.log(`[${generateTimestamp()}] `+message);
 		});
 		return shellProcess;
 	}
@@ -893,7 +893,7 @@ export function execShellCommand (req: ShellCommand, opt?: {
 // 		const buf: Buffer = execSync(cmd);
 // 		if (buf) {
 // 			const info: string = buf.toLocaleString();
-// 			console.log(`[pvs-server] ${cmd}\n `, info);
+// 			console.log(`[${generateTimestamp()}] `+`[pvs-server] ${cmd}\n `, info);
 // 			const match: RegExpMatchArray = /(v?[\d\.]+)/g.exec(info);
 // 			if (match && match.length > 1) {
 // 				return { version: match[1] };
@@ -901,10 +901,10 @@ export function execShellCommand (req: ShellCommand, opt?: {
 // 				return { error: info };
 // 			}
 // 		} else {
-// 			console.log("[pvs-server] Missing dependency: node (please download node from https://nodejs.org/)");
+// 			console.log(`[${generateTimestamp()}] `+"[pvs-server] Missing dependency: node (please download node from https://nodejs.org/)");
 // 		}
 // 	} catch (error) {
-// 		console.log("[pvs-server]", error);
+// 		console.log(`[${generateTimestamp()}] `+"[pvs-server]", error);
 // 		return { error };
 // 	}
 // 	return null;
@@ -941,7 +941,7 @@ export function findTheoryName(fileContent: string, line: number): string | null
 
 		// keep searching theory names -- the first element in candidates will be the closest to the current line number
 		txt = txt.split("\n").slice(0, line).join("\n");
-		// console.log({ line, txt: txt.split("\n") });
+		// console.log(`[${generateTimestamp()}] `+{ line, txt: txt.split("\n") });
 		let match: RegExpMatchArray = regexp.exec(txt);
 		const maxIterations: number = 64;
 		// while (match) {
@@ -961,7 +961,7 @@ export function findTheoryName(fileContent: string, line: number): string | null
 					candidates = [ theoryName ].concat(candidates);
 					match = regexp.exec(txt);
 				}
-				// console.log("match", { theoryName, candidates });
+				// console.log(`[${generateTimestamp()}] `+"match", { theoryName, candidates });
 			} else {
 				match = regexp.exec(txt);
 			}
@@ -998,18 +998,18 @@ export async function listPvsFiles (contextFolder: string): Promise<FileList> {
  * @param desc Descriptor indicating filename, file extension, context folder, and file content
  */
 export function listTheories(desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean }): TheoryDescriptor[] {
-	// console.log(`[language-utils] Listing theorems in file ${desc.fileName}${desc.fileExtension}`);
+	// console.log(`[${generateTimestamp()}] `+`[language-utils] Listing theorems in file ${desc.fileName}${desc.fileExtension}`);
 	let ans: TheoryDescriptor[] = [];
 	if (desc && desc.fileContent) {
 		let txt: string = desc.fileContent.replace(commentRegexp, "");
-		// console.log(txt);
+		// console.log(`[${generateTimestamp()}] `+txt);
 		const start: number = Date.now();
 		const regexp: RegExp = new RegExp(theoryOrDatatypeRegexp);
 		// let lastIndex: number = 0;
 		let match: RegExpMatchArray = new RegExp(regexp).exec(txt);
 		let lineOffset: number = 0;
 		while (match) {
-			// console.log(`[language-utils] Found ${match[0]}`);
+			// console.log(`[${generateTimestamp()}] `+`[language-utils] Found ${match[0]}`);
 			if (match.length > 1 && match[1]) {
 				const theoryName: string = match[1];
 
@@ -1044,10 +1044,10 @@ export function listTheories(desc: { fileName: string, fileExtension: string, co
 			} else {
 				match = regexp.exec(txt);
 			}
-			// console.log(match);
+			// console.log(`[${generateTimestamp()}] `+match);
 		}
 		const stats: number = Date.now() - start;
-		// console.log(`[languageUtils] listTheories(${desc.fileName}) completed in ${stats}ms`);
+		// console.log(`[${generateTimestamp()}] `+`[languageUtils] listTheories(${desc.fileName}) completed in ${stats}ms`);
 	}
 	return ans;
 }
@@ -1089,7 +1089,7 @@ export function listTheoryNames (fileContent: string): string[] {
  * @param fname Path to a pvs file
  */
 export async function listTheoriesInFile (fname: string, opt?: { content?: string }): Promise<TheoryDescriptor[]> {
-	// console.log(`listing theories in file ${fname}`);
+	// console.log(`[${generateTimestamp()}] `+`listing theories in file ${fname}`);
 	opt = opt || {};
 	if (fname) {
 		const fileName: string = getFileName(fname);
@@ -1231,7 +1231,7 @@ export async function typesLookUpTable (cdesc: PvsContextDescriptor): Promise<{ 
 				}
 			}
 		}
-		// console.log(lookupTable);
+		// console.log(`[${generateTimestamp()}] `+lookupTable);
 		return lookupTable;
 	}
 	return null;
@@ -1679,14 +1679,14 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 							formulaDescriptors.push(fdesc);
 						}
 						// const matchTime: number = Date.now() - startMatch;
-						// console.log(`[languageUtils] listTheorems(${desc.fileName}${desc.fileExtension}.${match[0]?.trim()}) completed in ${matchTime}ms`);			
+						// console.log(`[${generateTimestamp()}] `+`[languageUtils] listTheorems(${desc.fileName}${desc.fileExtension}.${match[0]?.trim()}) completed in ${matchTime}ms`);			
 					}
 				} else {
 					console.error("Error while finding theory names :/");
 				}
 			}
 			// const time: number = Date.now() - start;
-			// console.log(`[languageUtils] listTheorems(${desc.fileName}${desc.fileExtension}) completed in ${time}ms`);
+			// console.log(`[${generateTimestamp()}] `+`[languageUtils] listTheorems(${desc.fileName}${desc.fileExtension}) completed in ${time}ms`);
 			return formulaDescriptors;
 		}
 	}
@@ -1744,7 +1744,7 @@ export function findProofObligation(formulaName: string, txt: string): number {
  */
  export async function getContextDescriptor (contextFolder: string, opt?: { listTheorems?: boolean, includeTccs?: boolean, prelude?: boolean }): Promise<PvsContextDescriptor> {
 	if (contextFolder) {
-		// console.log(`[language-utils] Generating context descriptor for ${contextFolder}...`);
+		// console.log(`[${generateTimestamp()}] `+`[language-utils] Generating context descriptor for ${contextFolder}...`);
 		const response: PvsContextDescriptor = {
 			fileDescriptors: {},
 			contextFolder
@@ -1752,11 +1752,11 @@ export function findProofObligation(formulaName: string, txt: string): number {
 		const fileList: FileList = await listPvsFiles(contextFolder);
 		for (let i = 0; i < fileList?.fileNames?.length; i++) {
 			const fname: string = path.join(contextFolder, fileList.fileNames[i]);
-			// console.log(`[language-utils] Processing file ${fname}`);
+			// console.log(`[${generateTimestamp()}] `+`[language-utils] Processing file ${fname}`);
 			const desc: PvsFileDescriptor = await getFileDescriptor(fname, opt);
 			response.fileDescriptors[fname] = desc;
 		}
-		// console.log("[language-utils] Done");
+		// console.log(`[${generateTimestamp()}] `+"[language-utils] Done");
 		return response;
 	}
 	return null;
@@ -1779,10 +1779,10 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 	};
 	const pvsFileContent: string = await readFile(fname);
 	const tccsFileContent: string = (opt.includeTccs) ? await readFile(path.join(contextFolder, `${fileName}.tccs`)) : null;
-	// console.log(`[languageUtils.getFileDescriptor] listTheories(${fileName})`);
+	// console.log(`[${generateTimestamp()}] `+`[languageUtils.getFileDescriptor] listTheories(${fileName})`);
 	const theories: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent });
 	if (theories) {
-		// if (opt.listTheorems) { console.log(`[languageUtils.getFileDescriptor] listTheorems(${fileName})`);	}
+		// if (opt.listTheorems) { console.log(`[${generateTimestamp()}] `+`[languageUtils.getFileDescriptor] listTheorems(${fileName})`);	}
 		const lemmas: FormulaDescriptor[] = 
 			(opt.listTheorems) 
 				? await listTheorems({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent, prelude: opt?.prelude, cache: { theories } })
@@ -1792,10 +1792,10 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 				? await listTheorems({ fileName, fileExtension: ".tccs", contextFolder, fileContent: tccsFileContent, prelude: opt?.prelude })
 					: [];
 		const descriptors: FormulaDescriptor[] = lemmas.concat(tccs);
-		// console.log(`[language-utils] Processing ${theories.length} theories`);
+		// console.log(`[${generateTimestamp()}] `+`[language-utils] Processing ${theories.length} theories`);
 		for (let i = 0; i < theories.length; i++) {
 			const theoryName: string = theories[i].theoryName;
-			// console.log(`[language-utils] Processing theory ${theoryName}`);
+			// console.log(`[${generateTimestamp()}] `+`[language-utils] Processing theory ${theoryName}`);
 			const position: Position = theories[i].position;
 			const theoryDescriptor: TheoryDescriptor = {
 				fileName, fileExtension, contextFolder, theoryName, position, 
@@ -1803,13 +1803,13 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 					return desc.theoryName === theoryName;
 				}) : []
 			};
-			// console.log(`[language-utils] Done`);
+			// console.log(`[${generateTimestamp()}] `+`[language-utils] Done`);
 			response.theories.push(theoryDescriptor);
 		}
 	}
 	// timing stats, collected for debugging purposes
 	const stats: number = Date.now() - start;
-	// console.log(`[languageUtils.getFileDescriptor] File descriptor for ${fname} created in ${stats}ms`);
+	// console.log(`[${generateTimestamp()}] `+`[languageUtils.getFileDescriptor] File descriptor for ${fname} created in ${stats}ms`);
 	return response;
 }
 
@@ -2301,7 +2301,7 @@ function tryPrettyPrintFormula (formula: string, pp: PrettyPrinter): string {
                 fmla = formula;
             }
         } catch (err) {
-            console.log(`[language-utils] Error while trying to use external prettyprinter (${pp.cmd} ${args.join(" ")})`, err);
+            console.log(`[${generateTimestamp()}] `+`[language-utils] Error while trying to use external prettyprinter (${pp.cmd} ${args.join(" ")})`, err);
             // restore original output
             fmla = formula;
         }
@@ -2538,8 +2538,8 @@ export function getNasalibPath(pvsLibraryPath: string): string | undefined {
 				libPath = tildeExpansion(libPath);
 				if(folderExists(libPath) && containsNasalib(libPath)){
 					result = libPath;
-					console.log(`[getNasalibPath] NASALib v8.0 found at ${libPath}`);
-				} // else console.log(`[nasalibInstallationWizard] omitting ${libPath} from PVS_LIBRARY_PATH (folder not found)`);
+					console.log(`[${generateTimestamp()}] `+`[getNasalibPath] NASALib v8.0 found at ${libPath}`);
+				} // else console.log(`[${generateTimestamp()}] `+`[nasalibInstallationWizard] omitting ${libPath} from PVS_LIBRARY_PATH (folder not found)`);
 		});
 	}
 	return result;
@@ -2565,7 +2565,7 @@ export function prunePvsLibraryPath(pvsLibraryPath: string): string {
  */
 export function getUserInfo (): os.UserInfo<string> {
 	const userInfo: os.UserInfo<string> = os.userInfo();
-	console.log({ username: userInfo.username, uid: userInfo.uid, gid: userInfo.gid });
+	console.log(`[${generateTimestamp()}] `+{ username: userInfo.username, uid: userInfo.uid, gid: userInfo.gid });
 	return userInfo;
 }
 
@@ -2582,22 +2582,22 @@ export function chown (contextFolder: string, opt?: { uid?: number, gid?: number
 			contextFolder = tildeExpansion(contextFolder);
 			if (fs.existsSync(contextFolder)) {
 				try {
-					console.log(`[fsUtils] chown `, { contextFolder, uid, gid, files: opt?.fileExtension || "*.*" });
+					console.log(`[${generateTimestamp()}] `+`[fsUtils] chown `, { contextFolder, uid, gid, files: opt?.fileExtension || "*.*" });
 					// chown the folder
-					console.log(`[fsUtils] chown(${uid}:${gid}, ${contextFolder})`);
+					console.log(`[${generateTimestamp()}] `+`[fsUtils] chown(${uid}:${gid}, ${contextFolder})`);
 					fs.chownSync (contextFolder, uid, gid);
 					let files: string[] = fs.readdirSync(contextFolder);
 					if (files?.length) {
 						// filter files if needed
 						files = files.filter(name => {
-							// console.log(name);
+							// console.log(`[${generateTimestamp()}] `+name);
 							return (opt?.fileExtension) ? name.endsWith(opt.fileExtension)
 								: (isPvsFile(name) || isProofFile(name));
 						});
 						// chown all files
 						for (let i = 0; i < files.length; i++) {
 							const fname: string = path.join(contextFolder, files[i]);
-							console.log(`[fsUtils] chown(${uid}:${gid}, ${fname})`);
+							console.log(`[${generateTimestamp()}] `+`[fsUtils] chown(${uid}:${gid}, ${fname})`);
 							fs.chownSync (fname, uid, gid);
 						}
 					}
@@ -2609,4 +2609,17 @@ export function chown (contextFolder: string, opt?: { uid?: number, gid?: number
 		}
 	}
 	return false;
+}
+
+export function generateTimestamp(): string {
+	const now = new Date();
+
+	const year = now.getFullYear();
+	const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+	const day = String(now.getDate()).padStart(2, '0');
+	const hours = String(now.getHours()).padStart(2, '0');
+	const minutes = String(now.getMinutes()).padStart(2, '0');
+	const seconds = String(now.getSeconds()).padStart(2, '0');
+
+	return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
 }

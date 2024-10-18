@@ -337,7 +337,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
                 if (workspace?.workspaceFolders?.length) {
 					for (let i in pvsFiles) {
 						const tccFile: Uri = Uri.file(pvsFiles[i].oldUri.path.replace(".pvs", ".tccs"));
-						console.log(`[pvs-client] Removing file ${tccFile}`);
+						console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-client] Removing file ${tccFile}`);
 						workspace.fs.delete(tccFile);
 					}
 				}
@@ -471,7 +471,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			} else {
 				contextFolder = vscodeUtils.getEditorContextFolder();
 			}
-			// console.log(`Context folder: ${contextFolder}`);
+			// console.log(`[${fsUtils.generateTimestamp()}] `+`Context folder: ${contextFolder}`);
 			this.pvsPath = vscodeUtils.getConfiguration("pvs.path");
 			this.alreadySuggestedNASALib = this.alreadySuggestedNASALib && !(this.pvsPath === undefined || this.pvsPath === '');
 			this.pvsLibraryPath = vscodeUtils.getPvsLibraryPath();
@@ -486,7 +486,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			commands.executeCommand('setContext', 'pvs-server-active', true);
 			// create handler for pvsServerReady event
 			this.client.onRequest(serverEvent.pvsServerReady, async (info: PvsVersionDescriptor) => {
-			  console.log(`[pvsLanguageClient] responding request ${serverEvent.pvsServerReady} - param: ${info} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageClient] responding request ${serverEvent.pvsServerReady} - param: ${info} `); // #DEBUG
 				// reset other globals
 				vscodeUtils.resetGlobals();
 

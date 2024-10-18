@@ -71,7 +71,7 @@ export class PvsProxyLegacy {
         this.pvsProcess = pvsProcess;
         this.pvsErrorManager = opt.pvsErrorManager;
         if (!this.pvsProcess) {
-            console.log(`[pvs-proxy-legacy] Activating stand-alone pvs process`);
+            console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy-legacy] Activating stand-alone pvs process`);
             this.pvsProcess = new PvsProcess(this.pvsPath, opt);
             // await this.pvsProcess.activate({ externalServer: true });
         }
@@ -153,7 +153,7 @@ export class PvsProxyLegacy {
         }
         // else
         if (data.indexOf("[") !== 0) {
-            console.log(cmd); // this is done only for debugging purposes, to check when vscode-output patch erroneously includes extraneous output
+            console.log(`[${fsUtils.generateTimestamp()}] `+cmd); // this is done only for debugging purposes, to check when vscode-output patch erroneously includes extraneous output
         }
         // let qed: boolean = data.endsWith("nil"); // this is a workaround while waiting vscode-output patch to be fixed 
         data = data.substring(data.indexOf("["), data.lastIndexOf("]") + 1);

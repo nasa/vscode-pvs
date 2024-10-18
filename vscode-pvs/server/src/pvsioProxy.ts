@@ -91,7 +91,7 @@ class PvsIoProcess {
 			if (this.connection && this.enableNotifications) {
 				this.connection.sendNotification('pvs-error', msg);
 			}
-			console.log('[pvsio-process] ', msg);
+			console.log(`[${fsUtils.generateTimestamp()}] `+'[pvsio-process] ', msg);
 		}
 	}
 
@@ -225,11 +225,11 @@ class PvsIoProcess {
 				libraries.push(fsUtils.tildeExpansion(lib));
 			}
 			process.env["PVS_LIBRARY_PATH"] = (libraries?.length) ? libraries.join(":") : "";
-			console.log(`\nPVS_LIBRARY_PATH=${process.env["PVS_LIBRARY_PATH"]}\n`);
+			console.log(`[${fsUtils.generateTimestamp()}] `+`\nPVS_LIBRARY_PATH=${process.env["PVS_LIBRARY_PATH"]}\n`);
 			const fileExists: boolean = fsUtils.fileExists(pvsioExecutable);
 			let bootData: string = "";
 			if (fileExists && !this.pvsioProcess) {
-				console.log(pvsioExecutable + " " + args.join(" "));
+				console.log(`[${fsUtils.generateTimestamp()}] `+pvsioExecutable + " " + args.join(" "));
 				this.pvsioProcess = spawn(pvsioExecutable, args);
 				// console.dir(this.pvsProcess, { depth: null });
 				this.pvsioProcess.stdout.setEncoding("utf8");
@@ -237,9 +237,9 @@ class PvsIoProcess {
 				this.pvsioProcess.stdout.on("data", (data: string) => {
 					// data = data.trim();
 					if (this.connection) {
-						this.connection.console.log(data);
+						this.connection.console.log(`[${fsUtils.generateTimestamp()}] `+data);
 					} else {
-						console.log(data);
+						console.log(`[${fsUtils.generateTimestamp()}] `+data);
 					}
 
 					this.data += data;
@@ -261,7 +261,7 @@ class PvsIoProcess {
 					// 	type: "memory usage",
 					// 	data: process.memoryUsage()
 					// }, { depth: null });
-					// console.log(data);
+					// console.log(`[${fsUtils.generateTimestamp()}] `+data);
 
 					// wait for the pvs prompt, to make sure pvs-server is operational
 					// const match: RegExpMatchArray = /\s*<PVSio>\s*/g.exec(data);
@@ -281,15 +281,15 @@ class PvsIoProcess {
 					}
 				});
 				this.pvsioProcess?.stdin.on("data", (data: string) => {
-					console.log("stdin", data);
+					console.log(`[${fsUtils.generateTimestamp()}] `+"stdin", data);
 				});
 				this.pvsioProcess.stderr.on("data", (data: string) => {
-					console.log("[pvsio-process] Error: " + data);
+					console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsio-process] Error: " + data);
 					this.error(data);
 					// resolve(false);
 				});
 				this.pvsioProcess.on("error", (err: Error) => {
-					console.log("[pvsio-process] Process error", err);
+					console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsio-process] Process error", err);
 					// console.dir(err, { depth: null });
 					if (this.externalHandlers.onError && typeof this.externalHandlers.onError === "function") {
 						this.externalHandlers.onError(err);
@@ -300,7 +300,7 @@ class PvsIoProcess {
 					this.patchesLoaded = false;
 					if (!this.ready) {
 						this.error(bootData);
-						console.log("[pvsio-process] Process exited with code ", code);
+						console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsio-process] Process exited with code ", code);
 						resolve(false);
 						return;
 					}
@@ -308,11 +308,11 @@ class PvsIoProcess {
 						this.cb(this.data, true);
 						console.error("[pvsio-process] Evaluation error ", this.data);
 						// re-activate pvsio process
-						console.log(`[pvsio-process] Re-activating pvsio...`);
+						console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsio-process] Re-activating pvsio...`);
 						this.resetData();
 						this.ready = false;
 						const success: boolean = await this.activate(this.desc, { showBanner: false });
-						console.log(success);
+						console.log(`[${fsUtils.generateTimestamp()}] `+success);
 						if (this.externalHandlers?.onExit && typeof this.externalHandlers.onExit === "function") {
 							this.externalHandlers.onExit();
 						}
@@ -321,11 +321,11 @@ class PvsIoProcess {
 					// console.dir({ code, signal });
 				});
 				this.pvsioProcess.on("message", (message: any) => {
-					console.log("[pvsio-process] Process message");
+					console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsio-process] Process message");
 					// console.dir(message, { depth: null });
 				});
 			} else {
-				console.log(`\n>>> PVSio executable not found at ${pvsioExecutable} <<<\n`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`\n>>> PVSio executable not found at ${pvsioExecutable} <<<\n`);
 				resolve(false);
 			}
 		});
@@ -362,7 +362,7 @@ class PvsIoProcess {
 				try {
 					execSync(`kill -9 ${pvs_shell}`);
 					this.pvsioProcess.on("close", (code: number, signal: string) => {
-						console.log("[pvs-process] Process terminated");
+						console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-process] Process terminated");
 						if (this.externalHandlers?.onExit && typeof this.externalHandlers.onExit === "function") {
 							this.externalHandlers.onExit();
 						}
@@ -370,7 +370,7 @@ class PvsIoProcess {
 						// console.dir({ code, signal }, { depth: null });
 					});
 				} catch (kill_error) {
-					console.log(`[pvsProcess] Warning: Could not kill process id ${pvs_shell}.`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProcess] Warning: Could not kill process id ${pvs_shell}.`);
 					resolve(false);
 				} finally {
 					this.pvsioProcess = null;
@@ -527,7 +527,7 @@ export class PvsIoProxy {
 				let data: string = "";
 				for (let i = 0; i < cmdSeq.length; i++) {
 					let cmd: string = cmdSeq[i];
-					// console.log(cmd);
+					// console.log(`[${fsUtils.generateTimestamp()}] `+cmd);
 					// check if this is a quit command
 					if (isQuitCommand(cmd)) {
 						await pvsio.kill();

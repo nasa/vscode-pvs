@@ -236,7 +236,7 @@ export class VSCodePvsFileViewer {
         this.client?.sendRequest(serverRequest.openFileWithExternalApp, fdesc);
         const success: boolean = await new Promise((resolve, reject) => {
             this.client?.onNotification(serverRequest.openFileWithExternalApp, (ans: { res: string } ) => {
-                console.log("[vscodePvsFileViewer] onNotification(serverRequest.openFileWithExternalApp)", ans);
+                console.log(`[${fsUtils.generateTimestamp()}] `+"[vscodePvsFileViewer] onNotification(serverRequest.openFileWithExternalApp)", ans);
                 resolve(true);
             });
         });
