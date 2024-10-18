@@ -1269,13 +1269,13 @@ export function getVisiblePvsEditors (): vscode.TextEditor[] {
  */
 export function getActivePvsEditor (): vscode.TextEditor {
     const activePvsEditor: vscode.TextEditor = vscode.window?.activeTextEditor;
-    if (activePvsEditor?.document?.languageId === "pvs") {
+    if (activePvsEditor?.document?.fileName?.endsWith("pvs")) {
         return activePvsEditor;
     }
     // else, return the first visible pvs editor
     const visiblePvsEditors: vscode.TextEditor[] = getVisiblePvsEditors();
     const visible: vscode.TextEditor = visiblePvsEditors?.length ? visiblePvsEditors[0] : null;
-    return visible?.document?.languageId === "pvs" ? visible : null;
+    return visible?.document?.fileName?.endsWith("pvs") ? visible : null;
 }
 
 /**
