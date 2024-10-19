@@ -220,10 +220,9 @@ export class PvsProcess {
 		
 		// Manually loads PVS patches for VSCode-PVS
 		var loadAdditionalPatchesCode: string = PvsPackageManager.generateLoadOwnPatchesCode();
+		var args: string[] = [ "-raw" , "-port", `${this.serverPort}`];
 		if (loadAdditionalPatchesCode.length > 0)
-			loadAdditionalPatchesCode = `-E '${loadAdditionalPatchesCode}'`;
-
-		const args: string[] = [ "-raw" , "-port", `${this.serverPort}`, loadAdditionalPatchesCode];
+			args = args.concat(["-E", loadAdditionalPatchesCode]);
 
 		console.info(`[${fsUtils.generateTimestamp()}] `+`[PvsProcess.activate] shell command  ${pvs} ${args.join(" ")}`);
 		console.info(`[${fsUtils.generateTimestamp()}] `+`[PvsProcess.activate] pvsLibraryPath ${this.pvsLibraryPath}`);

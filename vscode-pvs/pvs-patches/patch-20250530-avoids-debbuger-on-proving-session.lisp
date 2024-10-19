@@ -1,5 +1,3 @@
-(format t "~&~%Loading VSCode-PVS patch '~a'...~%~%" #.(or *compile-file-truename* *load-truename*))
-
 (in-package :pvs)
 
 (defun strat-eval (strat)
@@ -76,5 +74,3 @@
 	   (let ((subst-rule (get-rule '(query*) *ps*)))
 	     (commentary (format nil "~%Ill-formed rule or strategy (error: '~a'), applying ~a instead~%" (substitute #\Space #\Newline (format nil "~a" c)) (rule-input subst-rule)))
 	     subst-rule))))
-
-(format t "~&~%VSCode-PVS patch '~a' LOADED~%~%" #.(or *compile-file-truename* *load-truename*))

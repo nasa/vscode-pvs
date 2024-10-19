@@ -66,7 +66,8 @@ export class PvsPackageManager {
      */
     static readonly approvedPatches: { fname: string, description: string }[] = [
         { fname: "patch-20250530-avoids-debbuger-on-proving-session.lisp", description: "Avoids errors to trigger the debugger in a proof session" },
-        { fname: "patch-20250618-lisp-rule-no-quoted-string.lisp", description: "Prevents the lisp proof rule from returning quoted strings" }
+        { fname: "patch-20250618-lisp-rule-no-quoted-string.lisp", description: "Prevents the lisp proof rule from returning quoted strings" },
+        { fname: "interface--pvs-emacs.lisp", description: "Ensures each log message starts in a new line and print also date of timestamp" }
     ];
 
     /**
@@ -277,42 +278,6 @@ export class PvsPackageManager {
     }
 
     /**
-     * Utility function, installs required pvs patches
-     */
-    // TODO REMOVE deprecated. Use generateLoadOwnPatchesCode instead
-    static async installPvsPatches (desc: { pvsPath: string }): Promise<boolean> {
-        if (desc?.pvsPath && fsUtils.folderExists(desc?.pvsPath)) {
-            const targetFolder: string = path.join(desc.pvsPath, "pvs-patches");
-            let successSummary: boolean = fsUtils.createFolder(targetFolder);
-            if (successSummary) {
-                for (let i = 0; i < PvsPackageManager.approvedPatches.length; i++) {
-                    const patchFileName: string = PvsPackageManager.approvedPatches[i].fname;
-                    const src: string = path.join(__dirname, "..", "..", "..", "pvs-patches", patchFileName);
-                    if (!fsUtils.fileExists(src)) {
-                        console.warn(`[pvsPackageManager] Warning: expected patch not found ${src}`);
-                    } else {
-                        const tgt: string = path.join(targetFolder, patchFileName);
-                        const tgtExists: boolean = fsUtils.fileExists(tgt);
-                        if (!tgtExists || (await fsUtils.stat(tgt)).ctime < (await fsUtils.stat(src)).ctime) {
-                            if (tgtExists) console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsPackageManager] Overwriting ${tgt} with ${src}.`);
-                            else console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsPackageManager] Copying ${src} into ${tgt}.`);
-                            const fileContent: string = fsUtils.readFile(src);
-                            const success: boolean = fileContent && fsUtils.writeFile(tgt, fileContent);
-                            if (!success) {
-                                console.warn(`[pvsPackageManager] Warning: could not install patch ${PvsPackageManager.approvedPatches[i]?.fname} (${PvsPackageManager.approvedPatches[i]?.description})`);
-                            }
-                            successSummary = successSummary && success;
-                        }
-                    }
-                }
-            } else {
-                console.warn(`[pvsPackageManager] Warning: could not install patches (folder ${targetFolder} could not be created)`);
-            }
-            return successSummary;
-        }
-        return false;
-    }
-    /**
      * @returns lisp code to load the PVS patches for VSCode-PVS 
      */
     static generateLoadOwnPatchesCode(): string {
@@ -323,11 +288,9 @@ export class PvsPackageManager {
             if (!fsUtils.fileExists(src)) {
                 console.warn(`[pvsPackageManager] Warning: expected patch not found ${src}`);
             } else {
-                result += `(load \"{$patchFileName}\")`;
+                result += `(format t "~&~%Loading VSCode-PVS patch ${src}") (load "${src}") (format t "~&~%VSCode-PVS patch ${src} LOADED~%~%")`;
             }
         }
-        if (result.length > 0)
-            result = `(progn ${result})`;
         return result;
     }
 
