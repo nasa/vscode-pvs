@@ -35,10 +35,11 @@
  * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  * TERMINATION OF THIS AGREEMENT.
  **/
-import { StatusBarItem, ExtensionContext, StatusBarAlignment, window, commands, TextEditor } from "vscode";
+import { StatusBarItem, ExtensionContext, StatusBarAlignment, window, commands, TextEditor, MarkdownString } from "vscode";
 import { LanguageClient } from "vscode-languageclient";
 import { PvsVersionDescriptor } from "../common/serverInterface";
 import * as vscodeUtils from '../utils/vscode-utils';
+import * as path from 'path';
 
 export class StatusBarPriority {
     public static Min: number = 1;
@@ -55,8 +56,10 @@ export class VSCodePvsStatusBarItem {
         this.lab = window.createStatusBarItem(alignment, priority);
     }
     setTooltip (text: string): void {
-        this.lab.tooltip = text;
-        this.ico.tooltip = text;
+        const tooltipMessage = new MarkdownString(text);
+        tooltipMessage.supportHtml = true;
+        this.lab.tooltip = tooltipMessage;
+        this.ico.tooltip = tooltipMessage;
     }
     getText(): string {
         return this.lab.text;
@@ -139,6 +142,24 @@ export class VSCodePvsStatusBar {
         if (desc) {
             this.hideinstallpvsButton();
             this.pvsVersionInfo = desc;
+
+            let tooltipMessage 
+              = "## PVS System Information\n" 
+                + "\n* **Status**: ready to receive commands\n";
+  
+            if (this.pvsVersionInfo) {
+                tooltipMessage += `\n* **PVS Version**: ${this.pvsVersionInfo["pvs-version"]}\n`
+                + `\n* **Lisp Version**: ${this.pvsVersionInfo["lisp-version"]}\n`
+                + (this.pvsVersionInfo["nasalib-version"]? `\n* **NASALib Version**: ${this.pvsVersionInfo["nasalib-version"]}\n` : "\n* No NASALib detected.\n");
+        
+                tooltipMessage += "\n* **Active Library Paths**";
+                for (const libPath of this.pvsVersionInfo["reported-library-paths"]){
+                    tooltipMessage += `\n\n  1. ${libPath}<a> </a>`; // @M3 the anchor forces the tooltip to remain up when moving the pointer, allowing the user to copy the library paths.
+                }
+            } 
+            
+            this.pvsStatus.setTooltip(tooltipMessage);
+  
             const activeEditor: TextEditor = vscodeUtils.getActivePvsEditor();
             if (activeEditor?.document?.languageId === "pvs") {
                 this.showVersionInfo();
@@ -168,12 +189,11 @@ export class VSCodePvsStatusBar {
     };
 
     ready(): void {
-        this.pvsStatus.setTooltip("PVS is ready to receive commands");
         const currentStatusMsg: string = this.pvsStatus.getText();
         if (currentStatusMsg && currentStatusMsg !== "" && currentStatusMsg !== `$(pass) PVS ready`)
             this.pvsStatus.text(`$(pass) PVS ready - ${currentStatusMsg}`);
         else
-        this.pvsStatus.text(`$(pass) PVS ready`);
+            this.pvsStatus.text(`$(pass) PVS ready`);
     }
 
     /**

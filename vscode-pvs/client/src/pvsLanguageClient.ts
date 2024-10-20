@@ -501,7 +501,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 
 				// update status bar
 				this.statusBar.clear();
-				this.statusBar.ready();
+				this.statusBar.pvsReady(info);
 
 				this.statusBar.toggleVisibilityDownloadNasalibButton(!info["nasalib-version"]);
 

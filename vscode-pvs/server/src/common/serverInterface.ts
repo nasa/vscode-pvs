@@ -79,7 +79,8 @@ export declare interface PvsVersionDescriptor {
 	"pvs-version": string,
 	"lisp-version": string,
 	"nasalib-version": string,
-	version: string // this is the original version string returned by pvs
+	version: string, // this is the original version string returned by pvs
+	"reported-library-paths"?: string[] 
 };
 
 export declare interface VSCodePvsVersionDescriptor {

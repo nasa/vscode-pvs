@@ -1957,39 +1957,45 @@ export class PvsProxy {
 	 * Loads pvs version information
 	 */
 	async loadPvsVersionInfo(): Promise<PvsVersionDescriptor | null> {
-		let res: PvsResponse = await this.lisp(`(get-pvs-version-information)`);
-		const nasalib: string = await this.getNasalibVersionInfo();
-		if (res && res.result) {
+		let pvsVersion: string = undefined;
+		let lispVersion: string = undefined;
+		let nasaLibVersion: string = undefined;
+		let pvsLibPaths: string[] = undefined;
+
+		let pvsVersionResponse: PvsResponse 
+		  = await this.lisp(`(get-pvs-version-information)`);
+		if (pvsVersionResponse && pvsVersionResponse.result) {
 			const regexp: RegExp = /\(\"?(\d+(?:.?\d+)*)\"?[\s|NIL]*\"?([\w\s\d\.]*)\"?/g; // group 1 is pvs version, group 2 is lisp version
-			const info: RegExpMatchArray = regexp.exec(res.result);
+			const info: RegExpMatchArray = regexp.exec(pvsVersionResponse.result);
 			if (info && info.length > 2) {
-				const nasalibInfo: string[] = nasalib?.split(" ");
-				this.pvsVersionInfo = {
-					"pvs-version": info[1].trim(),
-					"lisp-version": info[2].replace("International", "").trim(),
-					"nasalib-version": nasalib ? nasalibInfo?.length ? nasalibInfo[0] : "NASALib" : null,
-					version: res.result
-				}
-				return this.pvsVersionInfo;
+				pvsVersion = info[1].trim();
+				lispVersion = info[2].replace("International", "").trim();
 			}
 		}
-		return null;
-	}
 
-	/**
-	 * Returns pvs version information
-	 */
-	async getNasalibVersionInfo(): Promise<string | null> {
-		if (this.nasalibPath && this.nasalibPath !== '') {
-			// const nasalibVersion: PvsResponse = await this.lisp(`(when (fboundp 'extra-pvslib-keyval) (extra-pvslib-keyval "NASALib" "version"))`);
-			const cmd: string = `PVS_LIBRARY_PATH=${this.nasalibPath} sh ${path.join(this.nasalibPath, "nasalib-version")}`;
-			const result: string = execSync(cmd, { encoding: "utf-8" });
-			const nasalibVersion: { result: string } = { result };
-
-			this.useNasalib = (nasalibVersion?.result !== 'NIL' && nasalibVersion?.result !== 'nil');
-			return this.useNasalib? nasalibVersion.result : null;
+		let nasaLibVersionResponse: PvsResponse 
+		  = await this.lisp(`(when (fboundp 'extra-pvslib-keyval) (extra-pvslib-keyval "NASALib" "version"))`);
+		if (nasaLibVersionResponse && nasaLibVersionResponse.result &&
+			 nasaLibVersionResponse.result !== "NIL" && nasaLibVersionResponse.result !== "nil"
+		) {
+			nasaLibVersion = nasaLibVersionResponse.result;
 		}
-		return null;
+
+		// @M3 the only characters that cannot be used in filenames in Mac and Linux are the slash and the zero character.
+		let pvsLibPathsResponse: PvsResponse
+		  = await this.lisp('(with-output-to-string (*standard-output*) (dolist (str *pvs-library-path*) (write-string str) (write-string (string #\\Null))))');
+		if (pvsLibPathsResponse && pvsLibPathsResponse.result){
+			pvsLibPaths = pvsLibPathsResponse.result.split("\0").slice(0,-1);
+		}
+
+		this.pvsVersionInfo = {
+			"pvs-version": pvsVersion,
+			"lisp-version": lispVersion,
+			"nasalib-version": nasaLibVersion,
+			version: pvsVersionResponse.result,
+			"reported-library-paths": pvsLibPaths
+		}
+		return this.pvsVersionInfo;
 	}
 
 	//--------------------------------------------------
