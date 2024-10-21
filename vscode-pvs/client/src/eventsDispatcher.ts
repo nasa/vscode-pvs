@@ -888,7 +888,7 @@ export class EventsDispatcher {
 
             const item = await window.showInformationMessage(`Report Issue                                                              `, {
                 modal: true,
-                detail: `Please send a brief description of the issue along with the following ${pvsLogFile !== undefined? "files": "file"}: \n\n• ${vscodePvsLogFile}\n${pvsLogFile !== undefined? `• ${pvsLogFile}\n`: ""}\nto\n\n mariano.m.moscato@nasa.gov\n\nDisclaimer: the log file could contain information about the system, such as location of PVS files in your system. Please review the log file before sending it and remove any information you do not want to share.`
+                detail: `Please send a brief description of the issue along with the following ${pvsLogFile !== undefined? "files": "file"}: \n\n• ${vscodePvsLogFile}\n${pvsLogFile !== undefined? `• ${pvsLogFile}\n`: ""}\nto\n\n mariano.m.moscato@nasa.gov\n\nDisclaimer: the logs could contain information about the system, such as name of the theories you were working on, location of PVS files in your installation, etc. Please review the log ${pvsLogFile !== undefined? "files": "file"} before sending ${pvsLogFile !== undefined? "them": "it"} and remove any information you do not want to share. No guarantee that issues would be addressed should be assumed.`
             }, { isCloseAffordance: true, title: "OK" },
             { isCloseAffordance: false, title: openLogBtnLbl });
 
