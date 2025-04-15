@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.66-eta-202410211334",
+	"version": "1.0.66-eta-202504291343",
 	"author": "NASA LaRC Formal Methods Team",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -202,19 +202,22 @@
 					"id": "workspace-explorer-view",
 					"name": "PVS Workspace Explorer",
 					"when": "pvs-server-active",
-					"visibility": "visible"
+					"visibility": "visible",
+					"icon": "$(engines)"
 				},
 				{
 					"id": "proof-explorer-view",
 					"name": "PVS Proof Explorer",
 					"when": "pvs-server-active && proof-explorer.visible",
-					"visibility": "visible"
+					"visibility": "visible",
+					"icon": "$(engines)"
 				},
 				{
 					"id": "proof-mate-view",
 					"name": "PVS Proof Mate",
 					"when": "pvs-server-active && proof-mate.visible",
-					"visibility": "collapsed"
+					"visibility": "collapsed",
+					"icon": "$(engines)"
 				}
 			],
 			"explorer": []
@@ -290,6 +293,39 @@
 				"icon": {
 					"light": "icons/svg-typecheck-file-black-icon.svg",
 					"dark": "icons/svg-typecheck-file-white-icon.svg"
+				},
+				"vscode-icon": "$(tools)"
+			},
+			{
+				"command": "vscode-pvs.latex-file",
+				"title": "Generate LaTeX For File",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
+				"category": "pvs",
+				"icon": {
+					"light": "icons/tex-logo-black.svg",
+					"dark": "icons/tex-logo-white.svg"
+				},
+				"vscode-icon": "$(tools)"
+			},
+			{
+				"command": "vscode-pvs.latex-theory",
+				"title": "Generate LaTeX For Theory",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
+				"category": "pvs",
+				"icon": {
+					"light": "icons/tex-logo-black.svg",
+					"dark": "icons/tex-logo-white.svg"
+				},
+				"vscode-icon": "$(tools)"
+			},
+			{
+				"command": "vscode-pvs.latex-importchain",
+				"title": "Generate LaTeX For Import Chain",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
+				"category": "pvs",
+				"icon": {
+					"light": "icons/tex-logo-black.svg",
+					"dark": "icons/tex-logo-white.svg"
 				},
 				"vscode-icon": "$(tools)"
 			},
@@ -1054,9 +1090,31 @@
 					"group": "y-group4-commands"
 				},
 				{
-					"command": "vscode-pvs.pvsio-evaluator",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active || resourceScheme == file && resourceExtname == .tccs && pvs-server-active || resourceScheme == file && resourceExtname == .summary && pvs-server-active",
+					"command": "vscode-pvs.latex-file",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active",
 					"group": "y-group5-commands"
+				},
+				{
+					"command": "vscode-pvs.pvsio-evaluator",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active",
+					"group": "y-group5-commands"
+				}
+			],
+			"vscode-pvs.latex": [
+				{
+					"command": "vscode-pvs.latex-file",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active",
+					"group": "latex-spec"
+				},
+				{
+					"command": "vscode-pvs.latex-theory",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active",
+					"group": "latex-spec"
+				},
+				{
+					"command": "vscode-pvs.latex-importchain",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active",
+					"group": "latex-spec"
 				}
 			],
 			"view/item/context": [
@@ -1472,8 +1530,13 @@
 					"group": "navigation@7"
 				},
 				{
-					"command": "vscode-pvs.open-pvs-workspace",
+					"command": "vscode-pvs.latex-file",
+					"when": "editorLangId == pvs",
 					"group": "navigation@8"
+				},
+				{
+					"command": "vscode-pvs.open-pvs-workspace",
+					"group": "navigation@9"
 				}
 			],
 			"editor/title/context": [
@@ -1592,6 +1655,11 @@
 				{
 					"command": "vscode-pvs.plot-expression",
 					"when": "resourceScheme == file && resourceExtname == .pvs && editorLangId == pvs",
+					"group": "y-group5-commands"
+				},
+				{
+					"submenu": "vscode-pvs.latex",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active",
 					"group": "y-group5-commands"
 				}
 			],
@@ -1818,6 +1886,13 @@
 				}
 			]
 		},
+		"submenus": [
+			{
+				"id": "vscode-pvs.latex",
+				"command": "vscode-pvs.latex",
+				"label": "Generate LaTeX"
+			}
+		],
 		"keybindings": [
 			{
 				"key": "alt+x",

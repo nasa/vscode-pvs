@@ -67,8 +67,8 @@ export class PvsPackageManager {
     static readonly approvedPatches: { fname: string, description: string }[] = [
         { fname: "patch-20250530-avoids-debbuger-on-proving-session.lisp", description: "Avoids errors to trigger the debugger in a proof session" },
         { fname: "patch-20250618-lisp-rule-no-quoted-string.lisp", description: "Prevents the lisp proof rule from returning quoted strings" },
-        { fname: "interface--pvs-emacs.lisp", description: "Ensures each log message starts in a new line and print also date of timestamp" }
-    ];
+        { fname: "interface--pvs-emacs.lisp", description: "Ensures each log message starts in a new line and print also date of timestamp" },
+        ];
 
     /**
      * Installs PVS and provides progress feedback to the front-end.

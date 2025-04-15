@@ -986,6 +986,30 @@ export class PvsProxy {
 		}
 		return null;
 	}
+	async latexTheories(desc: PvsFile | PvsTheory, opt?: { importchain?: boolean, quiet?: boolean, progressReporter?: (msg: string) => void }): Promise<PvsResponse> {
+		opt = opt || {};
+		let res: PvsResponse = null;
+		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
+			if ((desc as PvsTheory).theoryName === undefined || (desc as PvsTheory).theoryName === null)
+				res = await this.pvsRequest('latex-pvs-file', [this.fileRef(desc), desc.fileContent], opt.progressReporter );
+			else if (opt?.importchain)
+				res = await this.pvsRequest('latex-importchain', [this.theoryRef(desc as PvsTheory)], opt.progressReporter );
+			else
+				res = await this.pvsRequest('latex-theory', [this.theoryRef(desc as PvsTheory)], opt.progressReporter );
+			if (res) {
+				if (res.error) {
+					if (res.error.data) {
+						res = {
+							jsonrpc: "2.0",
+							id: this.get_fresh_id(),
+							error: { data: res.error.data }
+						};
+					}
+				} 
+			}
+		}
+		return res;
+	}	
 	/**
 	 * Typechecks a given pvs file
 	 * @param desc pvs file descriptor:
@@ -1878,16 +1902,7 @@ export class PvsProxy {
 						content += result[i].comment;
 						if (result[i].id) {
 							const formulaName: string = result[i].id;
-							// try to fetch the last know status from  the .jprf file
-							const lastKnownStatus: ProofStatus = await fsUtils.getProofStatus({
-								fileName: desc.fileName,
-								fileExtension: ".tccs",
-								contextFolder: desc.contextFolder,
-								theoryName: desc.theoryName,
-								formulaName
-							});
-							result[i]["status"] = result[i].proved ? "proved"
-								: lastKnownStatus || "unfinished"; // we are artificially adding this field because pvs-server does not provide it
+							result[i]["status"] = result[i].proved === 'true' ? "proved" : "unfinished"; 
 							const status: string = result[i]["status"]; //lastKnownStatus || (result[i].proved) ? "proved" : "untried";
 							content += `\n  % ${status}\n`;
 							content += `${formulaName}: OBLIGATION\n${result[i].definition}\n\n`;

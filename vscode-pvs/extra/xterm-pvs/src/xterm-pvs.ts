@@ -2016,7 +2016,7 @@ export class XTermPvs extends Backbone.Model {
     protected brackets: MatchBrackets;
 
     // scroll timer
-    protected timer: NodeJS.Timer = null;
+    protected timer: NodeJS.Timeout = null;
     readonly timerTimeout: number = 50; //ms
 
     // list of commands

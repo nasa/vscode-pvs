@@ -53,12 +53,31 @@ export class PvsErrorManager {
             if (desc.taskId) {
                 const msg: string = `Typecheck errors in ${desc.request.fileName}${desc.request.fileExtension}.\nPlease fix the typecheck errors before trying to start the evaluator on theory ${desc.request.theoryName}.`;
                 // this.connection?.sendRequest(serverEvent.closeDontSaveEvent, { args: desc.request, msg });
-                this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg });
+                this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg, showProblemsPanel: true });
             } else {
                 const msg: string = (desc.response.error && desc.response.error.message) ? desc.response.error.message 
                 : `Error: PVSio crashed into Lisp. Please start a new evaluator session.`;
                 this.notifyError({ msg });
                 console.error(`[pvs-language-server] ${msg}`);
+            }
+        }
+    }
+    /**
+     * Handler for latex generation errors
+     */
+    handleLatexFileError (desc: {
+        request: { fileName: string, fileExtension: string, contextFolder: string },
+        response: PvsError,
+        taskId?: string
+    }): void {
+        if (desc && desc.response && desc.response.error) {
+            if (desc.response.error.data) {
+                const fname: string = (desc.response.error.data.file_name) ? desc.response.error.data.file_name : fsUtils.desc2fname(desc.request);
+                const msg: string = desc.response.error.data.error_string || desc.response.error.data;
+                if (desc.taskId) 
+                    this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `${msg}`, showProblemsPanel: false });
+            } else if (desc.response.error.message) {
+                this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: desc.response.error.message, showProblemsPanel: false });
             }
         }
     }
@@ -76,14 +95,14 @@ export class PvsErrorManager {
                 const msg: string = desc.response.error.data.error_string || "";
                 if (desc.taskId) {
                     if (fname === fsUtils.desc2fname(desc.request)) {
-                        this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `Typecheck errors in ${desc.request.fileName}${desc.request.fileExtension}: ${msg}` });
+                        this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `Typecheck errors in ${desc.request.fileName}${desc.request.fileExtension}: ${msg}`, showProblemsPanel: true });
                     } else {
-                        this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `File ${fsUtils.getFileName(fname)}${fsUtils.getFileExtension(fname)} imported by ${desc.request.fileName}${desc.request.fileExtension} contains typecheck errors.` });
+                        this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `File ${fsUtils.getFileName(fname)}${fsUtils.getFileExtension(fname)} imported by ${desc.request.fileName}${desc.request.fileExtension} contains typecheck errors.`, showProblemsPanel: true });
                     }
                 }
             } else if (desc.response.error.message) {
                 // this is typically an error thrown by pvs-server, not an error in the PVS spec
-                this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: desc.response.error.message });
+                this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: desc.response.error.message, showProblemsPanel: true });
             }
         }
     }
@@ -149,7 +168,7 @@ export class PvsErrorManager {
     }
     
     // additional utility functions for notifying errors to the client
-    notifyEndImportantTaskWithErrors (desc: { id: string, msg: string }) {
+    notifyEndImportantTaskWithErrors (desc: { id: string, msg: string, showProblemsPanel: boolean }) {
         this.connection?.sendNotification(`server.status.end-important-task-${desc.id}-with-errors`, desc);
 	}
 	notifyPvsFailure (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src: string }): void {

@@ -1979,19 +1979,19 @@ export abstract class ProofItem extends TreeItem {
 		if (this.completeFlag) {
 			if (this.contextValue === "root") {
 				this.iconPath = {
-					light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"),
-					dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")
+					light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")),
+					dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"))
 				};
 			} else {
 				this.iconPath = {
-					light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-round.svg"),
-					dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-round.svg")
+					light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-round.svg")),
+					dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-round.svg"))
 				};
 			}
 		} else if (this.activeFlag) {
 			this.iconPath = {
-				light: path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg"),
-				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg")
+				light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg")),
+				dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg"))
 			};
 		} else if (this.pendingFlag) {
 			this.iconPath = new vscode.ThemeIcon("star-empty");
@@ -2370,8 +2370,8 @@ export class RootNode extends ProofItem {
 		super.pending();
 		this.updateLabel();
 		this.iconPath = {
-            light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"),
-            dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")
+            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")),
+            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"))
         }
 	}
 	QED (): void {
@@ -2381,8 +2381,8 @@ export class RootNode extends ProofItem {
 		this.setProofStatus(QED);
 		this.updateLabel();
 		this.iconPath = {
-            light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"),
-            dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")
+            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")),
+            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"))
 		};
 	}
 	isQED (): boolean {

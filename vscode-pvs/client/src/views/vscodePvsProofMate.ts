@@ -470,8 +470,8 @@ abstract class ProofMateItem extends ProofItem {
 			this.iconPath = new vscode.ThemeIcon("circle-filled");// star-full, new vscode.ThemeColor("pvs.orange"));
 		} else if (this.activeFlag) {
 			this.iconPath = {
-				light: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg"),
-				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg")
+				light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg")),
+				dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg"))
 			};	
 		}
 	}

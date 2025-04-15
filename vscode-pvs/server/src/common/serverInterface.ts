@@ -504,6 +504,9 @@ export declare interface PvsDocResponse {
 	res: PvsDocDescriptor
 };
 export const serverRequest = {
+	latexImportchain: "pvs.latex-importchain",
+	latexTheory: "pvs.latex-theory",
+	latexFile: "pvs.latex-file",
 	typecheckFile: "pvs.typecheck-file",
 	proveFormula: "pvs.prove-formula",
 	autorunFormula: "pvs.autorun-formula",
@@ -571,6 +574,7 @@ export const serverRequest = {
 };
 
 export const serverEvent = {
+	latexTheoriesResponse: "pvs.response.latex-theories",
 	typecheckFileResponse: "pvs.response.typecheck-file",
 	typecheckWorkspaceResponse: "pvs.response.typecheck-workspace",
 	proveFormulaResponse: "pvs.response.prove-formula",

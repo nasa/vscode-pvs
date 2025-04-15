@@ -69,7 +69,7 @@ import { VSCodePvsioWeb } from "./views/vscodePvsioWeb";
 import { StartXTermEvaluatorRequest, VSCodePvsXTerm } from "./views/vscodePvsXTerm";
 import { colorText, PvsColor } from "./common/colorUtils";
 import { YesNoCancel, quickFixReplace, quickFixAddImporting, RunningTask, showWarningMessage } from "./utils/vscode-utils";
-import { getUndumpFolderName, isDumpFile, isPvsFile } from "./common/fsUtils";
+import { findTheoryName, getUndumpFolderName, isDumpFile, isPvsFile } from "./common/fsUtils";
 import { VSCodePvsFileViewer } from "./views/vscodePvsFileViewer";
 
 import * as fs from 'fs';
@@ -215,6 +215,26 @@ export class EventsDispatcher {
 				this.workspaceExplorer.updateContextFolder(desc);
 			}
 		});
+		this.client.onRequest(serverEvent.latexTheoriesResponse, (desc: { 
+            response: PvsResponse, 
+            args: { 
+                fileName: string, 
+                fileExtension: string, 
+                contextFolder: string 
+            }
+        }) => {
+            console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.latexTheoriesResponse} - param: ${desc} `); // #DEBUG            
+            if(desc.response?.result && desc.response.result["main-file"] ){
+                const mainFile: string = desc.response.result["main-file"];
+                const mainFileFolder: string = path.dirname(mainFile);
+                const mainFileExt: string = path.extname(mainFile);
+                const mainFileName : string = path.basename(mainFile, mainFileExt);
+                const uri: vscode.Uri = vscode.Uri.file(fsUtils.desc2fname({ fileName: mainFileName, contextFolder: mainFileFolder, fileExtension: mainFileExt}));
+                const editors: readonly vscode.TextEditor[] = vscode.window.visibleTextEditors;
+                const viewColumn: number = (editors && editors.length > 0) ? editors[0].viewColumn : vscode.ViewColumn.Beside;
+                vscode.window.showTextDocument(uri, { preserveFocus: true, preview: true, viewColumn });
+            }
+        });
 		this.client.onRequest(serverEvent.typecheckFileResponse, (desc: { 
             response: PvsResponse, 
             args: { 
@@ -1782,6 +1802,87 @@ export class EventsDispatcher {
             }
 		}));
 
+        // vscode-pvs.latex-file
+		context.subscriptions.push(commands.registerCommand("vscode-pvs.latex-file", async (resource: string | { path: string } | { contextValue: string } | PvsFile) => {
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (activeEditor?.document) {
+                // if the file is currently open in the editor, save file first
+                await activeEditor.document.save();
+                if (!resource) {
+                    resource = { path: activeEditor.document.fileName };
+                }
+            }
+			if (resource) {
+                const desc: FileDescriptor = vscodeUtils.resource2desc(resource);
+                if (isPvsFile(desc)) {
+                    // send request to pvs-server
+                    this.client.sendRequest(serverRequest.latexFile, desc);
+                } else {
+                    showWarningMessage (`Tried to latexify a non 'pvs' file.`);
+                }
+            } else {
+                console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
+            }
+        }));
+        // vscode-pvs.latex-theory
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.latex-theory", async (resource: string | { path: string } | { contextValue: string } | PvsFile) => {
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (activeEditor?.document) {
+                // if the file is currently open in the editor, save file first
+                await activeEditor.document.save();
+
+                const fname: string = activeEditor.document.fileName;
+                const cursorPosition: vscode.Position = activeEditor.selection?.active;
+                const text: string = activeEditor.document.getText();
+
+                const desc: FileDescriptor = vscodeUtils.resource2desc({
+                                theoryName: findTheoryName(text, cursorPosition.line),
+                                formulaName: null,
+                                fileName: fsUtils.getFileName(fname),
+                                fileExtension: fsUtils.getFileExtension(fname),
+                                contextFolder: fsUtils.getContextFolder(fname)
+                            });
+
+                if (isPvsFile(desc)) {
+                    // send request to pvs-server
+                    this.client.sendRequest(serverRequest.latexTheory, desc);
+                } else {
+                    showWarningMessage (`Tried to latexify a non 'pvs' file.`);
+                }
+            } else {
+                console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
+            }
+        }));
+        // vscode-pvs.latex-importchain
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.latex-importchain", async (resource: string | { path: string } | { contextValue: string } | PvsFile) => {
+            const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
+            if (activeEditor?.document) {
+                // if the file is currently open in the editor, save file first
+                await activeEditor.document.save();
+
+                const fname: string = activeEditor.document.fileName;
+                const cursorPosition: vscode.Position = activeEditor.selection?.active;
+                const text: string = activeEditor.document.getText();
+
+                const desc: FileDescriptor = vscodeUtils.resource2desc({
+                                theoryName: findTheoryName(text, cursorPosition.line),
+                                formulaName: null,
+                                fileName: fsUtils.getFileName(fname),
+                                fileExtension: fsUtils.getFileExtension(fname),
+                                contextFolder: fsUtils.getContextFolder(fname)
+                            });
+
+                if (isPvsFile(desc)) {
+                    // send request to pvs-server
+                    this.client.sendRequest(serverRequest.latexImportchain, desc);
+                } else {
+                    showWarningMessage (`Tried to latexify a non 'pvs' file.`);
+                }
+            } else {
+                console.error("[vscode-events-dispatcher] Warning: resource is null", resource);
+            }
+        }));
+
         //----------------------------------
         // events triggered by pvs-language-server
         //----------------------------------
@@ -1887,7 +1988,7 @@ export class EventsDispatcher {
                                 resolve();
                             }
                         });
-                        this.client.onNotification(`server.status.end-important-task-${desc.id}-with-errors`, (desc: { msg: string }) => {
+                        this.client.onNotification(`server.status.end-important-task-${desc.id}-with-errors`, (desc: { msg: string, showProblemsPanel: boolean }) => {
                             this.statusBar.ready();
                             complete = true;
                             if (desc && desc.msg) {
@@ -1904,7 +2005,8 @@ export class EventsDispatcher {
                                 // setTimeout(() => {
                                 //     resolve();
                                 // }, this.NOTIFICATION_TIMEOUT * 4);
-                                vscodeUtils.showProblemsPanel();
+                                if(desc.showProblemsPanel)
+                                    vscodeUtils.showProblemsPanel();
                                 resolve();
                             } else {
                                 resolve();

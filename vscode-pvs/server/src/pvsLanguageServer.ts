@@ -816,6 +816,125 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		}
 	}
 	/**
+	 * Latex file
+	 */
+	async latexTheories (file: PvsFile | PvsTheory, opt?: { importchain?: boolean, quiet?: boolean, progressReporter?: (msg: string) => void }): Promise<PvsResponse | null> {
+		opt = opt || {};
+		if (file && file.fileName && file.fileExtension && file.contextFolder) {
+			try {
+				const response: PvsResponse = await this.pvsProxy?.latexTheories(file, opt);
+				// send diagnostics
+				if (response) {
+					if (response.result) {
+						const fname: string = fsUtils.desc2fname(file);
+						if (!opt?.quiet) {
+							this.sendDiags("LatexFile");
+						}
+					} else {
+						if (response.error?.data) {
+							this.sendDiags("LatexFile");
+						}
+					}
+				}
+				return response;
+			} catch (ex) {
+				console.error('[pvs-language-server.latexFile] Error: pvsProxy has thrown an exception', ex);
+				return null;
+			}
+		}
+		return null;
+	}
+	/**
+	 * Latex file request handler
+	 */
+	async latexFileRequest (request: PvsFile): Promise<void> {
+		const mode: string = await this.getMode();
+		if (mode !== "lisp") {
+			return;
+		}
+		if (isPvsFile(request) && request.fileExtension === ".pvs") { // @M3 only .pvs files can be printed as a latex file (for now, at least)
+			request = fsUtils.decodeURIComponents(request);
+			
+			const fname: string = fsUtils.desc2fname(request);
+			// make sure file exists
+			if (!fsUtils.fileExists(fname)) {
+				this.notifyMessage({ msg: `Warning: file ${fname} does not exist.` });
+				return;
+			}
+			const taskId: string = `latex-file-${fname}`;
+			// send feedback to the front-end
+			this.notifyStartImportantTask({ id: taskId, msg: `Latexing ${fname}`, taskName: serverRequest.latexFile, affectedObject: fname });
+			const response: PvsResponse = await this.latexTheories(request, { progressReporter: (msg: string) => {this.notifyProgressImportantTask({ id: taskId, msg: msg, increment: -1})}});
+			this.connection?.sendRequest(serverEvent.latexTheoriesResponse, { response, args: request });
+			// send diagnostics
+			if (response) {
+				if (response.result) {
+					this.notifyEndImportantTask({ id: taskId, msg: `LaTeX files successfully generated!` });
+				} else {
+					this.pvsErrorManager?.handleLatexFileError({ response: <PvsError> response, taskId, request });
+				}
+			}
+		} else {
+			console.error("[pvs-language-server] Warning: pvs.latex-file invoked with null request or with a file extension different than .pvs", request);
+		}
+	}
+	/**
+	 * Latex theory request handler
+	 */
+	async latexTheoryRequest (request: PvsTheory): Promise<void> {
+		const mode: string = await this.getMode();
+		if (mode !== "lisp") {
+			return;
+		}
+		if (isPvsFile(request) && request.fileExtension === ".pvs") { // @M3 only .pvs files can be printed as a latex file (for now, at least)
+			request = fsUtils.decodeURIComponents(request);
+			const fname: string = fsUtils.desc2fname(request);
+			const taskId: string = `latex-file-${fname}-${request.theoryName}`;
+			// send feedback to the front-end
+			this.notifyStartImportantTask({ id: taskId, msg: `Latexing ${fname}#${request.theoryName}`, taskName: serverRequest.latexFile, affectedObject: fname });
+			const response: PvsResponse = await this.latexTheories(request, { progressReporter: (msg: string) => {this.notifyProgressImportantTask({ id: taskId, msg: msg, increment: -1})}});
+			this.connection?.sendRequest(serverEvent.latexTheoriesResponse, { response, args: request });
+			// send diagnostics
+			if (response) {
+				if (response.result) {
+					this.notifyEndImportantTask({ id: taskId, msg: `LaTeX files successfully generated!` });
+				} else {
+					this.pvsErrorManager?.handleLatexFileError({ response: <PvsError> response, taskId, request });
+				}
+			}
+		} else {
+			console.error("[pvs-language-server] Warning: pvs.latex-file invoked with null request or with a file extension different than .pvs", request);
+		}
+	}
+	/**
+	 * Latex import chain request handler
+	 */
+	async latexImportchainRequest (request: PvsTheory): Promise<void> {
+		const mode: string = await this.getMode();
+		if (mode !== "lisp") {
+			return;
+		}
+		if (isPvsFile(request) && request.fileExtension === ".pvs") { // @M3 only .pvs files can be printed as a latex file (for now, at least)
+			request = fsUtils.decodeURIComponents(request);
+			const fname: string = fsUtils.desc2fname(request);
+			const taskId: string = `latex-file-${fname}-${request.theoryName}-importchain`;
+			// send feedback to the front-end
+			this.notifyStartImportantTask({ id: taskId, msg: `Latexing the importchain from ${fname}#${request.theoryName}`, taskName: serverRequest.latexFile, affectedObject: fname });
+			const response: PvsResponse = await this.latexTheories(request, {importchain: true, progressReporter: (msg: string) => {this.notifyProgressImportantTask({ id: taskId, msg: msg, increment: -1})}});
+			this.connection?.sendRequest(serverEvent.latexTheoriesResponse, { response, args: request });
+			// send diagnostics
+			if (response) {
+				if (response.result) {
+					this.notifyEndImportantTask({ id: taskId, msg: `LaTeX files successfully generated!` });
+				} else {
+					this.pvsErrorManager?.handleLatexFileError({ response: <PvsError> response, taskId, request });
+				}
+			}
+		} else {
+			console.error("[pvs-language-server] Warning: pvs.latex-file invoked with null request or with a file extension different than .pvs", request);
+		}
+	}
+	/**
 	 * Generate theory summary file request handler
 	 */
 	async generateTheorySummaryRequest (request: PvsTheory, opt?: { showSummaryRequest?: boolean }): Promise<void> {
@@ -1524,7 +1643,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				// send diagnostics
 				this.sendDiags("Parse");
 				if (response && response.error) {
-					this.pvsErrorManager?.notifyEndImportantTaskWithErrors({ id: taskId, msg: `Error: ${desc.fileName}.pvs could not be generated -- please check pvs-server output to view errors.` });
+					this.pvsErrorManager?.notifyEndImportantTaskWithErrors({ id: taskId, msg: `Error: ${desc.fileName}.pvs could not be generated -- please check pvs-server output to view errors.`, showProblemsPanel: true });
 				} else {
 					this.notifyEndImportantTask({ id: taskId, msg: `PVS file ${desc.fileName}.pvs generated successfully!` });
 				}
@@ -2153,6 +2272,18 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			this.connection?.onRequest(serverRequest.hp2pvs, async (request: PvsFile) => {
 			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.hp2pvs} - param: ${JSON.stringify(request)} `); // #DEBUG
 				this.hp2pvsRequest(request); // async call
+			});
+			this.connection?.onRequest(serverRequest.latexFile, async (request: PvsFile) => {
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.latexFile} - param: ${JSON.stringify(request)} `); // #DEBUG
+				this.latexFileRequest(request); // async call
+			});
+			this.connection?.onRequest(serverRequest.latexTheory, async (request: PvsTheory) => {
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.latexTheory} - param: ${JSON.stringify(request)} `); // #DEBUG
+				this.latexTheoryRequest(request); // async call
+			});
+			this.connection?.onRequest(serverRequest.latexImportchain, async (request: PvsTheory) => {
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.latexTheory} - param: ${JSON.stringify(request)} `); // #DEBUG
+				this.latexImportchainRequest(request); // async call
 			});
 			this.connection?.onRequest(serverRequest.typecheckFile, async (request: PvsFile) => {
 			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.typecheckFile} - param: ${JSON.stringify(request)} `); // #DEBUG

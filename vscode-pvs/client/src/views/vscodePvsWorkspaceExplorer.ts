@@ -275,8 +275,8 @@ export class FormulaOverviewItem extends OverviewItem {
 			// this.label = `${utils.icons.checkmark} ${this.name}  (${nProved} proved)`;
 			this.label = `${this.name}  (${nProved} proved)`;
 			this.iconPath = {
-				light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"),
-				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")
+				light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")),
+				dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"))
 			};
 		} else {
 			// this.label = `${utils.icons.whitecircle} ${this.name}  (${nProved} proved, ${nTheorems-nProved} to be proved)`;
@@ -284,8 +284,8 @@ export class FormulaOverviewItem extends OverviewItem {
 			this.iconPath = {
 				// light: path.join(__dirname, "..", "..", "..", "icons", "svg-gray-circle.svg"),
 				// dark: path.join(__dirname, "..", "..", "..", "icons", "svg-white-circle.svg")
-				light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"),
-				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")
+				light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")),
+				dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"))
 			};
 		}
 		this.collapsibleState = (this.theorems.length > 0) ?
@@ -367,20 +367,20 @@ export class FormulaItem extends TreeItem {
 		this.label = `${this.formulaName}  (${this.status})`;
 		const icon: string = utils.getIcon(this.status);
 		this.iconPath = (icon === utils.icons.checkmark) ? {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"),
-			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")
+			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")),
+			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"))
 		} : (icon === utils.icons.bang) ? {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg"),
-			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg")
+			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg")),
+			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg"))
 		} : (icon === utils.icons.snowflake) ? {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"),
-			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")
+			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")),
+			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"))
 		} : (icon === utils.icons.sparkles) ? {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles-orange.svg"),
-			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles.svg")
+			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles-orange.svg")),
+			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles.svg"))
 		} : (icon === utils.icons.whitecircle) ? {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-gray-circle.svg"),
-			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-white-circle.svg")
+			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-gray-circle.svg")),
+			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-white-circle.svg"))
 		} : null;
 	}
 }

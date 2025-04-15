@@ -39,8 +39,10 @@
 
 import {
     Uri, WebviewPanel, ExtensionContext, Terminal, TerminalOptions, 
-    ExtensionTerminalOptions, TerminalExitStatus, window, ViewColumn, TextEditor, commands, WebviewPanelOnDidChangeViewStateEvent, TerminalState
+    ExtensionTerminalOptions, TerminalExitStatus, window, ViewColumn, TextEditor, commands, WebviewPanelOnDidChangeViewStateEvent, TerminalState,
+    TerminalShellIntegration
 } from 'vscode';
+
 import * as path from 'path';
 import * as Handlebars from "handlebars";
 import Backbone = require('backbone');
@@ -210,6 +212,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
         this.colorTheme = vscodeUtils.detectColorTheme();
         this.proofExplorer = proofExplorer;
     }
+    shellIntegration: TerminalShellIntegration;
 
     /**
      * Internal function, adjusts the theory name for tcc formulas
@@ -1067,6 +1070,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                             enableFindWidget: true
                         }
                     );
+
                     try {
                         this.panel.iconPath = {
                             light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png")),
@@ -1191,6 +1195,9 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         this.createContent();
                         // reveal the panel 
                         this.panel.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
+                        
+                        commands.executeCommand("workbench.action.positionPanelBottom");
+
                         // set language to pvs
                         vscodeUtils.setEditorLanguagetoPVS();
                     } catch (err) {

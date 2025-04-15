@@ -259,7 +259,6 @@ export class VSCodePvsStatusBar {
             this.pvsStatus.icon("");
             this.pvsStatus.text(`$(error)  ${shortmsg}`); // messages in the status bar should always be on one line
             this.pvsStatus.show();
-            vscodeUtils.showProblemsPanel();
         } else {
             this.clear();
         }
