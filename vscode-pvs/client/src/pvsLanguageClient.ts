@@ -504,6 +504,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.alreadySuggestedNASALib = this.alreadySuggestedNASALib && !(this.pvsPath === undefined || this.pvsPath === '');
 			this.pvsLibraryPath = vscodeUtils.getPvsLibraryPath();
 			const remoteDetails = vscodeUtils.getRemoteDetail(context);
+			console.log(`Remote details: ${remoteDetails.remoteServerIP}, ${remoteDetails.remoteServerPort}, ${remoteDetails.privateSSHKeyPath}, ${remoteDetails.remoteHostname}`);
 			this.client.sendRequest(serverRequest.startPvsServer, {
 				pvsPath: this.pvsPath,
 				pvsLibraryPath: this.pvsLibraryPath,

@@ -2619,22 +2619,43 @@ export function chown(contextFolder: string, opt?: { uid?: number, gid?: number,
 
 export function runRsync(localPath: string, remotePath: string, ssh_key_path: string, user: string, host: string): Promise<number> {
 	return new Promise((resolve, reject) => {
-		const rsyncArgs = [
-			'-v', '-i', ssh_key_path, '-r', localPath+'/*', `${user}@${host}:${path.join(remotePath, '/')}`
-		];
+		let child;
 
-		console.log(`Attempting to sync folder ${localPath}`);
-		const process = spawn('scp', rsyncArgs);
+		if (process.platform === "win32") {
+			console.log("Windows detected, using scp");
+			const scpArgs = [
+				'-i', ssh_key_path,
+				'-r',
+				localPath + '/*',
+				`${user}@${host}:${path.join(remotePath, '/')}`
+			];
+			child = spawn('scp', scpArgs);
+		} else {
+			console.log("Linux detected, using rsync");
+			const rsyncArgs = [
+				'-avz',
+				'--partial',
+				'--prune-empty-dirs',
+				'--include', '*/',
+				'--include', '**/*.pvs',
+				'--include', '**/*.prf',
+				'--exclude', '*',
+				'-e', `ssh -i ${ssh_key_path}`,
+				path.join(localPath, '/'),
+				`${user}@${host}:${path.join(remotePath, '/')}`
+			];
+			child = spawn('rsync', rsyncArgs);
+		}
 
-		process.stdout.on('data', (data) => {
+		child.stdout.on('data', (data) => {
 			console.log(`stdout: ${data}`);
 		});
 
-		process.stderr.on('data', (data) => {
+		child.stderr.on('data', (data) => {
 			console.error(`stderr: ${data}`);
 		});
 
-		process.on('close', (code) => {
+		child.on('close', (code) => {
 			if (code === 0) {
 				resolve(code);
 			} else {
@@ -2642,7 +2663,7 @@ export function runRsync(localPath: string, remotePath: string, ssh_key_path: st
 			}
 		});
 
-		process.on('error', (err) => {
+		child.on('error', (err) => {
 			console.log(`Error in syncing ${localPath} - ${err}`);
 			reject(err);
 		});

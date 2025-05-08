@@ -104,6 +104,7 @@ export class PvsCodeLensProvider {
                             start: { line, character },
                             end: { line, character: character + theoryName.length }
                         };
+                        
                         codeLens.push({
                             range,
                             command: {

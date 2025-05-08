@@ -598,6 +598,7 @@ export class PvsProxy {
 				const id: string = obj.syncPathsResponse ? obj.syncPathsResponse.id : '';
 				for (const key in obj.syncPathsResponse.workspacePaths) {
 					this.pathCache.workspacePaths[key] = obj.syncPathsResponse.workspacePaths[key];
+					console.warn('[workspacePaths]', this.pathCache.workspacePaths[key]);
 					if (id) {
 						const resolvePendingSync = this.pendingPathSyncs.get(id);
 						if (resolvePendingSync) {
@@ -960,10 +961,12 @@ export class PvsProxy {
 
 	fileRefRemote(desc: PvsFile): string {
 		if (desc.contextFolder in this.pathCache.workspacePaths) {
-			return path.join(this.pathCache.workspacePaths[desc.contextFolder], desc.fileName + ".pvs");
+			console.log((this.pathCache.workspacePaths[desc.contextFolder]+"/" +desc.fileName + ".pvs"));
+			return (this.pathCache.workspacePaths[desc.contextFolder]+"/" +desc.fileName + ".pvs");
 		}
 		if (desc.contextFolder in this.pathCache.libPaths) {
-			return path.join(this.pathCache.libPaths[desc.contextFolder], desc.fileName + ".pvs");
+			console.log((this.pathCache.libPaths[desc.contextFolder]+"/" +desc.fileName + ".pvs"));
+			return (this.pathCache.libPaths[desc.contextFolder]+"/" +desc.fileName + ".pvs");
 		}
 	}
 
