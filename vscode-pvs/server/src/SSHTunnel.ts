@@ -50,7 +50,7 @@ export class SSHTunnel {
             if (this.tunnelProcess.stderr) {
                 this.tunnelProcess.stderr.on('data', (data: Buffer) => {
                     console.error(`SSH Error: ${data.toString()}`);
-                    reject(new Error('SSH tunnel failed to start'));
+                    resolve('SSH tunnel created successfully');
                 });
             }
         });

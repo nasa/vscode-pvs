@@ -460,9 +460,10 @@ export function normalizeContextFolder(contextFolder: string): string {
  * TODO: use path.dirname(path), see https://nodejs.org/api/path.html
  */
 export function getContextFolder(fname: string): string {
+	//TODO: check in which situations is necessary to remove file protocol header (file://)
 	if (fname) {
-		const ctx: string = fname.replace("file://", "");
-		return ctx.split("/").slice(0, -1).join("/").replace("//", "/");
+		const ctx: string = fname.replace("file:///", "");
+		return path.dirname(ctx);
 	}
 	return null;
 }
@@ -2620,21 +2621,16 @@ export function chown(contextFolder: string, opt?: { uid?: number, gid?: number,
 export function runRsync(localPath: string, remotePath: string, ssh_key_path: string, user: string, host: string): Promise<number> {
 	return new Promise((resolve, reject) => {
 		const rsyncArgs = [
-			'-avz',
-			'--partial',
-			'--prune-empty-dirs',
-			'--include', '*/',
-			'--include', '**/*.pvs',
-			'--include', '**/*.prf',
-			'--exclude', '*',
-			'-e', `ssh -i ${ssh_key_path}`,
-			path.join(localPath, '/'),
-			`${user}@${host}:${path.join(remotePath, '/')}`
+			'-i', ssh_key_path, '-r', localPath+'/*', `${user}@${host}:${path.join(remotePath, '/')}`,
 		];
+		console.log('remotePath', remotePath);
+		console.log('localPath', localPath);
+		console.log('ssh_key_path', ssh_key_path);
+		console.log('user', user);
 
 		console.log(`Attempting to sync folder ${localPath}`);
-		const process = spawn('rsync', rsyncArgs);
-
+		const process = spawn('scp', rsyncArgs);
+		console.log(`Running command: scp ${rsyncArgs.join(' ')}`);
 		process.stdout.on('data', (data) => {
 			console.log(`stdout: ${data}`);
 		});
@@ -2682,7 +2678,7 @@ function AvailablePort(port: number): Promise<boolean> {
 
 export async function findAvailablePort(startPort: number = 23456) {
 	try {
-		const ports = new Set<number>();
+		/* const ports = new Set<number>();
 		let port = startPort;
 		let found = false;
 		const out = execSync('ps aux | grep ssh').toString();
@@ -2702,8 +2698,8 @@ export async function findAvailablePort(startPort: number = 23456) {
 					port = port + 1;
 				}
 			}
-		}
-		return port;
+		} */
+		return 23456;
 	} catch (err) {
 		console.error('Error finding existing SSH tunnels:', err);
 	}

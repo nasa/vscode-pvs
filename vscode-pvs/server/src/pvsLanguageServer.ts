@@ -77,8 +77,7 @@ import { PvsSearchEngine } from './providers/pvsSearchEngine';
 import { getOs, isPvsFile } from './common/fsUtils';
 import { PvsCodeActionProvider } from './providers/pvsCodeActionProvider';
 import { execSync } from 'child_process';
-import { Pvs2Html, Pvs2HtmlSettings } from './extra/pvs2html/pvs2html';
-import { Pvs2Latex } from './extra/pvs2latex/pvs2latex';
+
 
 export declare interface PvsTheoryDescriptor {
 	id?: string;
@@ -539,61 +538,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			// this.cliGateway?.publish({ type: "pvs.event.quit", channelID });
 		}
 	}
-	/**
-	 * Runs pvsDoc
-	 */
-	async pvsDocRequest (req: PvsDocRequest): Promise<void> {
-		if (req?.theory?.fileName && req?.theory?.fileExtension && req?.theory?.contextFolder) {
-			const kind: PvsDocKind = req?.docKind || PvsDocKind.html;
-			switch (kind) {
-				case PvsDocKind.html: {
-					// send feedback to the front-end
-					const taskId: string = `pvsdoc-${req.theory.fileName}@${req.theory.theoryName}`;
-					// const channelID: string = utils.desc2id(theory);
-					this.notifyStartImportantTask({ id: taskId, msg: `Generating HTML files for theory ${req.theory.theoryName}` });
 
-					// generate the documentation
-					const inputFile: string = fsUtils.desc2fname(req.theory);
-					const settings: Pvs2HtmlSettings = {
-						...req,
-						inputFile
-					};
-					const engine: Pvs2Html = new Pvs2Html();
-					const res: PvsDocDescriptor = await engine.run(settings);
-					const ans: PvsDocResponse = { req, res };
-
-					// send response back to the front-end
-					this.connection?.sendNotification(serverRequest.pvsDoc, ans);
-					this.notifyEndImportantTask({ id: taskId, msg: "HTML files ready!" });
-					break;
-				}
-				case PvsDocKind.latex: {
-					// send feedback to the front-end
-					const taskId: string = `pvsdoc-${req.theory.fileName}@${req.theory.theoryName}`;
-					// const channelID: string = utils.desc2id(theory);
-					this.notifyStartImportantTask({ id: taskId, msg: `Generating LaTex files for theory ${req.theory.theoryName}` });
-
-					// generate the documentation
-					const inputFile: string = fsUtils.desc2fname(req.theory);
-					const settings: Pvs2HtmlSettings = {
-						...req,
-						inputFile
-					};
-					const engine: Pvs2Latex = new Pvs2Latex();
-					const res: PvsDocDescriptor = await engine.run(settings);
-					const ans: PvsDocResponse = { req, res };
-
-					// send response back to the front-end
-					this.connection?.sendNotification(serverRequest.pvsDoc, ans);
-					this.notifyEndImportantTask({ id: taskId, msg: "LaTex files ready!" });
-					break;
-				}
-				default: {
-					break;
-				}
-			}
-		}
-	}
 
 
 	/**
@@ -782,7 +727,16 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking -- pvs-server is not able for now tho.
 			// proceed with typechecking
 			const response: PvsResponse = await this.typecheckFile(request, { progressReporter: (msg: string) => {this.notifyProgressImportantTask({ id: taskId, msg: msg, increment: -1})}});
-			this.connection?.sendRequest(serverEvent.typecheckFileResponse, { response, args: request });
+			console.warn("Sending typecheckFileResponse:");
+console.warn("  → Event:", serverEvent.typecheckFileResponse);
+console.warn("  → Response:", response);
+console.warn("  → Args (request):", request);
+
+this.connection?.sendRequest(serverEvent.typecheckFileResponse, {
+	response,
+	args: request
+});
+
 			// // send diagnostics
 			if (response) {
 				if (response.result) {
@@ -911,11 +865,17 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	/**
 	 * Generate tccs file request handler
 	 */
-	async generateTccsRequest (request: { fileName: string, fileExtension: string, contextFolder: string }, opt?: { quiet?: boolean, showTccsRequest?: boolean }): Promise<void> {
+	async generateTccsRequest(request: { fileName: string, fileExtension: string, contextFolder: string }, opt?: { quiet?: boolean, showTccsRequest?: boolean }): Promise<void> {
 		request = fsUtils.decodeURIComponents(request);
+		console.warn("Decoded request:", request);
+	
 		if (request && this.pvsProxy) {
 			opt = opt || {};
+			console.warn("Options:", opt);
+	
 			const desc: FileDescriptor = (typeof request === "string") ? fsUtils.fname2desc(request) : request;
+			console.warn("File descriptor:", desc);
+	
 			if (desc) {
 				const fname: string = fsUtils.desc2fname({
 					contextFolder: desc.contextFolder,
@@ -924,49 +884,58 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				});
 				const shortName: string = `${desc.fileName}.pvs`;
 				const taskId: string = `generate-tcc-for-${fname}`;
+	
+				console.warn("Target file name:", fname);
+				console.warn("Task ID:", taskId);
+	
 				if (!opt.quiet) {
 					this.notifyStartImportantTask({ id: taskId, msg: `Generating typecheck conditions for ${shortName}`});
 				}
-				// parse files first, so front-end is updated with stats
-				// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking, pvs-server is not able to do this tho.
-				// then generate tccs
+	
 				const response: PvsContextDescriptor = await this.pvsProxy.generateTccs(desc);
+				console.warn("Raw TCC generation response:", response);
+	
 				this.connection?.sendNotification((opt.showTccsRequest) ? serverRequest.showTccs : serverRequest.generateTccs, { response, args: request });
-
+	
 				let nTccs: number = 0;
 				let nProved: number = 0;
+	
 				if (response && response.fileDescriptors && response.fileDescriptors[fname] && response.fileDescriptors[fname].theories) {
 					const theories: TheoryDescriptor[] = response.fileDescriptors[fname].theories;
+					console.warn(`Found ${theories.length} theory(ies)`);
+	
 					for (let i = 0; i < theories.length; i++) {
 						if (theories[i].theorems && theories[i].theorems.length) {
-							// count only tccs with id --- the others are subsumed
-							nTccs += theories[i].theorems.filter((elem: FormulaDescriptor) => {
-								return elem.formulaName;
-							}).length;
-							for (let j = 0; j < theories[i].theorems.length; j++) {
-								if (utils.isProved(theories[i].theorems[j].status)) {
-									nProved++;
-								}
-							}
+							const tccs = theories[i].theorems.filter((elem: FormulaDescriptor) => elem.formulaName);
+							nTccs += tccs.length;
+	
+							const provedCount = tccs.filter((t: FormulaDescriptor) => utils.isProved(t.status)).length;
+							nProved += provedCount;
+	
+							console.warn(`Theory ${i}: ${tccs.length} tccs (${provedCount} proved)`);
 						}
 					}
-					// tccs were generated, send a context descriptor update to the client so the tccs can be rendered in workspace explorer
+	
 					const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
+					console.warn("Sending updated context descriptor to client:", cdesc);
 					this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);					
 				} else {
-					console.warn("[pvs-language-server] Warning: generate-tccs-request returned error", response);
+					console.warn("[pvs-language-server] Warning: generate-tccs-request returned malformed or empty response", response);
 				}
+	
 				if (!opt.quiet) {
 					const msg: string = `${nTccs} tccs generated for ${shortName} (${nProved} proved, ${nTccs - nProved} to be proved)`;
+					console.warn("Final TCC generation summary:", msg);
 					this.notifyEndImportantTask({ id: taskId, msg });
 				}
 			} else {
-				console.error("[pvs-language-server] Warning: pvs.generate-tccs is unable to identify filename for ", request);
+				console.warn("[pvs-language-server] Warning: pvs.generate-tccs is unable to identify filename for ", request);
 			}
 		} else {
-			console.error("[pvs-language-server] Warning: pvs.generate-tccs invoked with null request");
+			console.warn("[pvs-language-server] Warning: pvs.generate-tccs invoked with null request or proxy");
 		}
 	}
+	
 	/**
 	 * Parse file
 	 */
@@ -1808,16 +1777,16 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	async checkDependencies (): Promise<boolean> {
 		console.log(`[pvs-server] Checking dependencies...`);
 		const osVersion: { version?: string, error?: string } = getOs();
-		if (osVersion && (osVersion.version !== "Linux" && osVersion.version !== "MacOSX")) {
-			let msg: string = `VSCode-PVS currently runs only under Linux or MacOSX.\nPlease use a virtual machine to run VSCode-PVS under ${osVersion.version}.`;
-			console.error(msg);
-			this.pvsErrorManager?.notifyPvsFailure({
-				msg,
-				error_type: "dependency",
-				src: "pvs-language-server"
-			});
-			return false;
-		}
+		// if (osVersion && (osVersion.version !== "Linux" && osVersion.version !== "MacOSX")) {
+		// 	let msg: string = `VSCode-PVS currently runs only under Linux or MacOSX.\nPlease use a virtual machine to run VSCode-PVS under ${osVersion.version}.`;
+		// 	console.error(msg);
+		// 	this.pvsErrorManager?.notifyPvsFailure({
+		// 		msg,
+		// 		error_type: "dependency",
+		// 		src: "pvs-language-server"
+		// 	});
+		// 	return false;
+		// }
 		if (!osVersion || osVersion.error) {
 			console.error(osVersion.error);
 			this.pvsErrorManager?.notifyPvsFailure({
@@ -2248,9 +2217,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			});
 			this.connection?.onRequest(serverRequest.evalExpression, async (args: EvalExpressionRequest) => {
 				await this.evalExpressionRequest(args);
-			});
-			this.connection?.onRequest(serverRequest.pvsDoc, async (req: PvsDocRequest) => {
-				await this.pvsDocRequest(req);
 			});
 
 			// search request
