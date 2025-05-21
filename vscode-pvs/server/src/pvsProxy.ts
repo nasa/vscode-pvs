@@ -1903,9 +1903,7 @@ export class PvsProxy {
 						if (result[i].id) {
 							const formulaName: string = result[i].id;
 							result[i]["status"] = result[i].proved === 'true' ? "proved" : "unfinished"; 
-							const status: string = result[i]["status"]; //lastKnownStatus || (result[i].proved) ? "proved" : "untried";
-							content += `\n  % ${status}\n`;
-							content += `${formulaName}: OBLIGATION\n${result[i].definition}\n\n`;
+							content += `\n${formulaName}: OBLIGATION\n${result[i].definition}\n\n`;
 						}
 					}
 				}

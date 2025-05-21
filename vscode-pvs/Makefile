@@ -34,11 +34,13 @@
  # REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  # TERMINATION OF THIS AGREEMENT.
 
-all: install
-	npm run compile
+all: install compile 
 	make core
 	make xterm-pvs
 	-cp CHANGELOG ../
+
+compile: 
+	npm run compile
 
 loc-server:
 	find . -name '*.ts' ! -name '*.d.ts' -path '*server/src/*' | xargs wc -l
