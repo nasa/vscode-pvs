@@ -316,8 +316,12 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 */
 	async getTheoremsRequest (theory: PvsTheory): Promise<void> {
 		if (this.pvsProxy) {
-			const res: PvsResponse = await this.typecheckFile(theory);
+			const fname: string = fsUtils.desc2fname(theory);
+			const taskId: string = `typecheck-${fname}`;
+			this.notifyStartImportantTask({ id: taskId, msg: `Typechecking ${fname}`, taskName: serverRequest.typecheckFile, affectedObject: fname });
+			const res: PvsResponse = await this.typecheckFile(theory, { progressReporter: (msg: string) => {this.notifyProgressImportantTask({ id: taskId, msg: msg, increment: -1})}});
 			if (res && !res.error) {
+				this.notifyEndImportantTask({ id: taskId, msg: `${theory.fileName}${theory.fileExtension} typechecks successfully!` });
 				const theorems: PvsFormula[] = await this.pvsProxy?.getTheorems(theory);
 				this.connection?.sendRequest(serverEvent.getTheoremsResponse, { theorems });
 			} else {

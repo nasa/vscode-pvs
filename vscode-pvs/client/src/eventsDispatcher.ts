@@ -92,7 +92,7 @@ export class EventsDispatcher {
     protected packageManager: VSCodePvsPackageManager;
     protected plotter: VSCodePvsPlotter;
     protected search: VSCodePvsSearch;
-    protected pvsioweb: VSCodePvsioWeb;
+    protected pvsIoWeb: VSCodePvsioWeb;
     protected fileViewer: VSCodePvsFileViewer;
 
     protected inChecker: boolean = false;
@@ -100,6 +100,8 @@ export class EventsDispatcher {
     protected quietMode: boolean = false;
 
     protected NOTIFICATION_TIMEOUT: number = 2000; // 2sec
+
+    protected pvsFailureHandlers: Array<(params: any) => void> = [];
 
     constructor (client: LanguageClient, handlers: {
         statusBar: VSCodePvsStatusBar,
@@ -142,7 +144,7 @@ export class EventsDispatcher {
         this.packageManager = handlers.packageManager;
         this.plotter = handlers.plotter;
         this.search = handlers.search;
-        this.pvsioweb = handlers.pvsioweb;
+        this.pvsIoWeb = handlers.pvsioweb;
         this.fileViewer = handlers.fileViewer;
     }
 	activate (context: ExtensionContext): void {
@@ -696,12 +698,16 @@ export class EventsDispatcher {
             }
             if (desc) {
                 // try to fetch prooflite script
-                const proofliteFile: FileDescriptor = await this.workspaceExplorer?.generateProofliteFileWithProgress(desc);
-                if (proofliteFile?.fileContent) {
-                    // insert prooflite script at cursor position
-                    const script: string = proofliteFile?.fileContent;
-                    vscodeUtils.insertTextAtCursorPosition(utils.commentProofliteScript(script));
-                } else {
+                try {
+                    const proofliteFile: FileDescriptor = await this.workspaceExplorer?.generateProofliteFileWithProgress(desc);
+                    if (proofliteFile?.fileContent) {
+                        // insert prooflite script at cursor position
+                        const script: string = proofliteFile?.fileContent;
+                        vscodeUtils.insertTextAtCursorPosition(utils.commentProofliteScript(script));
+                    } else {
+                        vscodeUtils.showWarningMessage("Warning: Could not generate prooflite script");
+                    }
+                } catch {
                     vscodeUtils.showWarningMessage("Warning: Could not generate prooflite script");
                 }
             }
@@ -1012,7 +1018,9 @@ export class EventsDispatcher {
                     await this.workspaceExplorer.viewProofliteFile(desc, { showFileInEditor: true });
                 } else if (ans === viewOrGenerate[1]) {
                     // (re-)generate prooflite file
-                    await this.workspaceExplorer.generateProofliteFileWithProgress(desc, { showFileInEditor: true });
+                    try {
+                        await this.workspaceExplorer.generateProofliteFileWithProgress(desc, { showFileInEditor: true });
+                    } catch { }
                 } // else do nothing, the user cancelled the request
 
                 // if (!desc.theoryName) {
@@ -1110,7 +1118,7 @@ export class EventsDispatcher {
                 const ans: string = opt?.force ? yesno[0] : await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0]);
                 if (ans === yesno[0]) {
                     // dispose any previous instance
-                    await this.pvsioweb.dispose();
+                    await this.pvsIoWeb.dispose();
                     // start pvsio
                     vscodeUtils.showInformationMessage("Loading evaluator back-end, please wait...");
                     const success: boolean = await this.xterm.onStartEvaluatorRequest(req);
@@ -1118,9 +1126,9 @@ export class EventsDispatcher {
                         const theory: PvsTheory = this.xterm.getTheory();
                         if (theory) {
                             // create a new instance
-                            this.pvsioweb.setTheory(theory);
-                            this.pvsioweb.setTerminal(this.xterm);
-                            await this.pvsioweb.reveal();
+                            this.pvsIoWeb.setTheory(theory);
+                            this.pvsIoWeb.setTerminal(this.xterm);
+                            await this.pvsIoWeb.reveal();
                         }
                     } else {
                         vscodeUtils.showWarningMessage("Unable to create a new PVSio Evaluator session");
@@ -1334,7 +1342,6 @@ export class EventsDispatcher {
                 const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesno[0], yesno[1]);
                 if (ans === yesno[0] || ans === yesno[1]) {
                     opt.unprovedOnly = ans === yesno[1];
-                    this.quietMode = true;
                     this.proofMate.disableView();
                     this.proofExplorer.disableView();
                     this.xterm.bye();
@@ -1344,10 +1351,14 @@ export class EventsDispatcher {
                             : opt.useJprf ? `Re-running J-PRF proofs (theory ${desc.theoryName})` : `Re-running proofs in theory ${desc.theoryName}`;
                     this.statusBar.showProgress(msg);
 
-                    await this.workspaceExplorer.proveTheoryWithProgress(desc, opt);
+                    try{
+                        await this.workspaceExplorer.proveTheoryWithProgress(desc, opt);
+                        this.statusBar.ready();
+                        this.quietMode = false;
+                    } catch (error) {
 
-                    this.statusBar.ready();
-                    this.quietMode = false;
+                    }
+
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.prove-theory invoked with null resource", resource);
@@ -1372,10 +1383,12 @@ export class EventsDispatcher {
 
                     const msg: string = opt.useJprf ? `Re-running J-PRF importchain for theory ${desc.theoryName}` : `Re-running importchain for theory ${desc.theoryName}`
                     this.statusBar.showProgress(msg);
-                    await this.workspaceExplorer.proveImportChainWithProgress(desc, opt);
 
-                    this.statusBar.ready();
-                    this.quietMode = false;
+                    try{
+                        await this.workspaceExplorer.proveImportChainWithProgress(desc, opt);
+                        this.statusBar.ready();
+                        this.quietMode = false;
+                    } catch { }
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.prove-importchain invoked with null resource", resource);
@@ -1515,10 +1528,13 @@ export class EventsDispatcher {
                     this.proofExplorer.disableView();
                     this.xterm.bye();
 
-                    await this.workspaceExplorer.proveWorkspaceWithProgress(desc, opt);
+                    try {
+                        await this.workspaceExplorer.proveWorkspaceWithProgress(desc, opt);
+                        this.statusBar.ready();
+                        this.quietMode = false;
+                    } catch {
 
-                    this.statusBar.ready();
-                    this.quietMode = false;
+                    }
                 }
             } else {
                 console.error("[vscode-events-dispatcher] Error: vscode-pvs.discharge-tccs invoked with null resource", resource);
@@ -1908,8 +1924,7 @@ export class EventsDispatcher {
                 vscodeUtils.showInformationMessage(desc.msg);
             }
         });
-        this.client.onNotification(
-            "server.status.start-important-task", 
+        this.client.onNotification("server.status.start-important-task", 
             (desc: { id: string, msg: string, increment?: number
                      taskName?: string, affectedObject?: string }) => {
             if (desc && desc.msg) {
@@ -2029,8 +2044,8 @@ export class EventsDispatcher {
                 vscodeUtils.showErrorMessage(msg);
             }
         });
-        this.client.onNotification("server.status.pvs-failure", (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src?: string }) => {
-            opt = opt || {};
+
+        this.pvsFailureHandlers.push((opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src: string, log?: string }) => {
             const src: string = opt.src || "pvs";
             let msg: string = opt.msg || "";
             msg = msg.replace("[pvs-server]", "").trim();
@@ -2045,10 +2060,14 @@ export class EventsDispatcher {
                     // msg += `\nThe error occurred while executing method [${opt.method}](${opt.method})`; // vscode is unable to render marked strings in dialogs
                     msg += `\nThe error occurred while executing the following method ${opt.method}`;
                 }
-                msg = (msg && msg.startsWith("Error:")) ? msg : `Error: ` + msg;
-                vscodeUtils.showErrorMessage(msg);
-                // vscodeUtils.showFailure(msg, src);
+                vscodeUtils.showCriticalErrorMessage("PVS failed. Please restart using M-x reboot-pvs.");
+                vscodeUtils.showFailure(msg, src, opt.log);
             }
+        });
+
+        this.client.onNotification("server.status.pvs-failure", (params) => {
+            if (this.workspaceExplorer.pvsFailureHandler) this.workspaceExplorer.pvsFailureHandler(params);
+            for(const handler of this.pvsFailureHandlers){ handler(params)};
         });
     }
 }

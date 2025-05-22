@@ -352,7 +352,7 @@ export class PvsProxy {
 		});
 		this.webSocket.on('close', () => {
 			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startWebSocket] CLOSE");
-			if(!this.externalServer){
+			if(!this.externalServer && this.pvsServer.currentStatus === ProcessCode.SUCCESS){
 				setTimeout(() => {
 					if (this.pvsServerProcessStatus === ProcessCode.SUCCESS) this.startWebSocket(); 
 				}, 5000);
@@ -412,9 +412,11 @@ export class PvsProxy {
 		});
 		this.interruptConn.on('close', () => {
 			console.log(`[${fsUtils.generateTimestamp()}] `+"[pvsProxy.startInterruptionWebSocket]  CLOSE");
-			setTimeout(() => {
-				if (this.pvsServerProcessStatus === ProcessCode.SUCCESS) this.startInterruptionWebSocket();
-			}, 5000);
+			if(!this.externalServer && this.pvsServer.currentStatus === ProcessCode.SUCCESS){
+				setTimeout(() => {
+					if (this.pvsServerProcessStatus === ProcessCode.SUCCESS) this.startInterruptionWebSocket();
+				}, 5000);
+			}
 		});
 		this.interruptConn.on('message', (msg: string) => {
 			const obj = JSON.parse(msg);
@@ -454,6 +456,9 @@ export class PvsProxy {
 
 	private _pvsServerProcessStatus: ProcessCode;
 	public get pvsServerProcessStatus(): ProcessCode {
+		if (this.pvsServer && this.pvsServer.currentStatus) {
+			this._pvsServerProcessStatus = this.pvsServer.currentStatus;
+		}
 		return this._pvsServerProcessStatus;
 	}
 	protected set pvsServerProcessStatus(value: ProcessCode) {

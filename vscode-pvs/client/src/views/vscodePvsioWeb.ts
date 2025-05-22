@@ -850,7 +850,7 @@ export class VSCodePvsioWeb {
                 // reveal the panel 
                 this.panel.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
                 // set language to pvs
-                vscodeUtils.setEditorLanguagetoPVS();                
+                vscodeUtils.setEditorLanguageToPVS();                
             }
         });
     }

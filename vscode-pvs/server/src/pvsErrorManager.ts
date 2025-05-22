@@ -171,8 +171,7 @@ export class PvsErrorManager {
     notifyEndImportantTaskWithErrors (desc: { id: string, msg: string, showProblemsPanel: boolean }) {
         this.connection?.sendNotification(`server.status.end-important-task-${desc.id}-with-errors`, desc);
 	}
-	notifyPvsFailure (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src: string }): void {
-		// error will be shown in a dialogue box
+	notifyPvsFailure (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src: string, log?: string }): void {
         this.connection?.sendNotification("server.status.pvs-failure", opt);
 	}
 	notifyError (desc: { msg: string }): void {

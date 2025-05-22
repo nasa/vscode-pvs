@@ -255,9 +255,9 @@ export class VSCodePvsStatusBar {
      */
     showError (msg: string): void {
         if (msg) {
-            const shortmsg: string = msg.split("\n")[0];
+            const shortMsg: string = msg.split("\n")[0];
             this.pvsStatus.icon("");
-            this.pvsStatus.text(`$(error)  ${shortmsg}`); // messages in the status bar should always be on one line
+            this.pvsStatus.text(`$(error)  ${shortMsg}`); // messages in the status bar should always be on one line
             this.pvsStatus.show();
         } else {
             this.clear();
@@ -387,9 +387,9 @@ export class VSCodePvsStatusBar {
      * @param msg message
      */
     failure (msg: string): void {
-        const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
+        const shortMsg: string = (msg) ? msg.split("\n")[0] : msg;
         this.pvsStatus.icon("❌");
-        this.pvsStatus.text(`$(exclude)  ${shortmsg}`); // messages in the status bar should be on one line
+        this.pvsStatus.text(`$(exclude)  ${shortMsg}`); // messages in the status bar should be on one line
         this.pvsStatus.show();
     }
 
@@ -400,6 +400,9 @@ export class VSCodePvsStatusBar {
         this.show();
         context.subscriptions.push(commands.registerCommand("vscode.show-statusbar-message", (msg: string) => {
             this.showInfo(msg);
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode.show-statusbar-failure", (msg: string) => {
+            this.failure(msg);
         }));
     }
 

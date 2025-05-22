@@ -54,7 +54,8 @@ const MAX_LOG_CHUNK: number = 600;
 
 export enum ProcessCode {
 	SUCCESS = 0, PVS_NOT_FOUND = -1, ADDR_IN_USE = -2, COMM_FAILURE = -3, PVS_START_FAIL = -4, PVS_ERROR = -5, UNSUPPORTED_PLATFORM = -6,
-	TERMINATED = -7
+	TERMINATED = -7,
+	TERMINATING
 };
 /**
  * Wrapper class for PVS: spawns a PVS process, and exposes the PVS Lisp interface as an asynchronous JSON/web-socket server.
@@ -69,7 +70,14 @@ export class PvsProcess {
 	/**
 	 * Current status of the PVS process; `undefined` indicates that the current status cannot be determined (for example, because the process is starting but not yet ready).
 	 */
-	protected currentStatus: ProcessCode | undefined = undefined; 
+	private _currentStatus: ProcessCode | undefined = undefined; 
+	get currentStatus(): ProcessCode | undefined {
+		return this._currentStatus;
+	}
+	protected set currentStatus(value: ProcessCode | undefined) {
+		this._currentStatus = value;
+	}
+
 	protected data: string = "";
 	protected cb: (data: string) => void;
 	protected buffer: Promise<string> = Promise.resolve("");
@@ -265,7 +273,9 @@ export class PvsProcess {
 					if (matchLispDebugger || 
 						  /debugger invoked on/gi.exec(dataNoLineBreaks)
 					) {
-						this.pvsErrorManager.notifyPvsFailure({msg: "PVS entered the debugger. Please use M-x reboot-pvs to restart the process.", src: "pvs"});
+						const errorMessage: string = ( /Heap exhausted/gi.exec(logData)? "Heap Exhausted Error" : "Critical Failure");
+						this.pvsErrorManager.notifyPvsFailure({msg: errorMessage, log: logData, src: "pvs"});
+						this.kill();
 					}
 
 					if(this.currentStatus !== ProcessCode.SUCCESS){
@@ -309,10 +319,14 @@ export class PvsProcess {
 					} 
 				});
 				this.pvsProcess.stderr.on("data", (data: string) => {
+					logData += data;
 					const dataNoLineBreaks = data.replace('\n',' ');
-					if (/debugger invoked on/gi.exec(dataNoLineBreaks)
-					) {
-						this.pvsErrorManager.notifyPvsFailure({msg: "PVS entered the debugger. Please use M-x reboot-pvs to restart the process.", src: "pvs"});
+					this.data += dataNoLineBreaks;
+					if (/debugger invoked on/gi.exec(dataNoLineBreaks) || 
+							/Welcome to LDB, a low-level debugger for the Lisp runtime environment/gi.exec(dataNoLineBreaks)) 
+					{
+						this.pvsErrorManager.notifyPvsFailure({msg: "Critical Error", log: logData, src: "pvs"});
+						this.kill();
 					}
 					logOutputToConsole(data, "[pvsProcess.stderr] ");
 				});
@@ -323,7 +337,7 @@ export class PvsProcess {
 					resetLocalLog();
 					console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProcess] Process exited, code: ${code}, signal: ${signal}, this.ready: ${this.currentStatus}`);
 					// if PVS fails before communicating its 'ready' state, it's a starting-up fail.
-					if(!this.currentStatus)
+					if(this.currentStatus === undefined)
 						this.currentStatus = ProcessCode.PVS_START_FAIL;
 					else
 						this.currentStatus = undefined;
@@ -369,7 +383,7 @@ export class PvsProcess {
 	 * @returns The ID of the process that was killed. Null if no process was killed.
 	 */
 	async kill (): Promise<boolean> {
-		this.currentStatus = undefined;
+		this.currentStatus = ProcessCode.TERMINATING;
 		return new Promise(async (resolve, reject) => {
 			if (this.pvsProcess) {
 				// Only try to kill the process if it's not already dead

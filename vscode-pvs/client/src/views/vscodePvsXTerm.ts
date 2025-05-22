@@ -1199,7 +1199,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         commands.executeCommand("workbench.action.positionPanelBottom");
 
                         // set language to pvs
-                        vscodeUtils.setEditorLanguagetoPVS();
+                        vscodeUtils.setEditorLanguageToPVS();
                     } catch (err) {
                         console.error(err);
                         resolve(false);

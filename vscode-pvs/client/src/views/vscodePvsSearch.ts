@@ -643,7 +643,7 @@ export class VSCodePvsSearch {
             this.context.subscriptions
         );
         // set language to pvs
-        vscodeUtils.setEditorLanguagetoPVS();
+        vscodeUtils.setEditorLanguageToPVS();
     }
     /**
      * Utility function, show spinning wheel in the view to indicate search in progress

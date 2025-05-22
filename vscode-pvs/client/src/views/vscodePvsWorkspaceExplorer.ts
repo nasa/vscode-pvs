@@ -733,6 +733,15 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 	protected activeFile: string; // last active pvs file
 	protected mode: WorkspaceMode;
 
+	private _pvsFailureHandler: (params: any) => void;
+
+	protected set pvsFailureHandler(value: (params: any) => void) {
+		this._pvsFailureHandler = value;
+	}
+	get pvsFailureHandler(): (params: any) => void {
+		return this._pvsFailureHandler;
+	}
+
 	/**
 	 * @constructor
 	 * @param client Language client 
@@ -1005,13 +1014,10 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 		if (desc && desc.theoryName) {
 			opt = opt || {};
 			// show dialog with progress
-			await window.withProgress({
-				location: ProgressLocation.Notification,
-				cancellable: true
-			}, async (progress, token) => {
+			await window.withProgress({location: ProgressLocation.Notification, cancellable: true}, async (progress, token) => {
 				// show initial dialog with spinning progress
 				const matchingFormula: string = opt.match?.source?.replace("_TCC", "");
-				const message: string = (opt.tccsOnly) ? 
+				let message: string = (opt.tccsOnly) ? 
 					matchingFormula ? `Preparing to discharge TCCs for ${matchingFormula}` : `Preparing to prove TCCs in theory ${desc.theoryName}` 
 						: `Preparing to prove theorems in theory ${desc.theoryName}`;
 				progress.report({ increment: -1, message });
@@ -1048,10 +1054,15 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 					tccsOnly: opt.tccsOnly,
 					total: (formulas) ? formulas.length : 0
 				};
-				
+					
 				progress.report({ increment: -1, message });
 				// update the dialog
 				return new Promise<void>(async (resolve, reject) => {
+
+					this.pvsFailureHandler = (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src: string, log?: string }) => {
+							reject();
+					};
+
 					let stop: boolean = false;
 					commands.executeCommand('setContext', 'autorun', true);
 					// show output panel for feedback
@@ -1073,10 +1084,10 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 							const message: string = (opt.tccsOnly) ? `Discharging proof obligations in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
 								: `Re-running proofs in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`;
 							if (formulas.length > 1) {
-								progress.report({
-									increment: 1 / formulas.length * 100, // all increments must add up to 100
-									message
-								});
+							progress.report({
+								increment: 1 / formulas.length * 100, // all increments must add up to 100
+								message
+							});
 							}
 							const start: number = new Date().getTime();
 							const status: ProofStatus =  skip.includes(formula) ? "proved" : await new Promise((resolve, reject) => {
@@ -1089,7 +1100,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 									formulaName
 								});
 								this.client.onRequest(serverEvent.autorunFormulaResponse, (desc: { status: ProofStatus, error?: string }) => {
-								  console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.autorunFormulaResponse} - param: ${desc} `); // #DEBUG
+									console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.autorunFormulaResponse} - param: ${desc} `); // #DEBUG
 									if (desc && desc.error) {
 										vscodeUtils.showErrorMessage(desc.error);
 									}
@@ -1166,6 +1177,11 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 				
 				// update the dialog
 				return new Promise<void>(async (resolve, reject) => {
+
+					this.pvsFailureHandler = (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src: string, log?: string }) => {
+							reject();
+					};
+
 					let stop: boolean = false;
 					commands.executeCommand('setContext', 'autorun', true);
 					// show output panel for feedback
@@ -1367,6 +1383,11 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 				if (formulas && formulas.length) {
 					// update the dialog
 					return new Promise<void>(async (resolve, reject) => {
+
+						this.pvsFailureHandler = (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src: string, log?: string }) => {
+								reject();
+						};
+
 						let stop: boolean = false;
 						commands.executeCommand('setContext', 'autorun', true);
 						// show output panel for feedback
