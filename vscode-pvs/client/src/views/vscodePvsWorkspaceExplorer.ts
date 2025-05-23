@@ -1017,9 +1017,12 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 			await window.withProgress({location: ProgressLocation.Notification, cancellable: true}, async (progress, token) => {
 				// show initial dialog with spinning progress
 				const matchingFormula: string = opt.match?.source?.replace("_TCC", "");
-				let message: string = (opt.tccsOnly) ? 
-					matchingFormula ? `Preparing to discharge TCCs for ${matchingFormula}` : `Preparing to prove TCCs in theory ${desc.theoryName}` 
-						: `Preparing to prove theorems in theory ${desc.theoryName}`;
+				let message: string = 
+					(opt.tccsOnly) ? 
+					  matchingFormula ? 
+						  `Preparing to discharge TCCs for ${matchingFormula}` : 
+							`Preparing to prove TCCs in theory ${desc.theoryName}` 
+					: `Preparing to prove theorems in theory ${desc.theoryName}`;
 				progress.report({ increment: -1, message });
 
 				const candidates: PvsFormula[] = (opt.tccsOnly) ? await this.getTccs(desc) : await this.getTheorems(desc);
@@ -1631,6 +1634,10 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 						message?: string; increment?: number
 					}>, token: CancellationToken): Promise<FileDescriptor> => {
 						return new Promise<FileDescriptor>(async (resolveTask, rejectTask) => {
+
+							this.pvsFailureHandler = (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src: string, log?: string }) => {
+									reject();
+							};
 							// show initial dialog with spinning progress
 							const message: string = `Generating ProofLite script for formula ${desc.formulaName}`;
 							progress.report({ increment: -1, message });

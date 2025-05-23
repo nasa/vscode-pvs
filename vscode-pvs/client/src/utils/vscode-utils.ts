@@ -385,7 +385,7 @@ export async function showInformationMessageWithOpenFile (msg: string, desc: Fil
         const timeout: number = opt.timeout || 3200;
         vscode.commands.executeCommand("vscode.show-statusbar-message", message);
         setTimeout(() => {
-            vscode.commands.executeCommand("vscode.show-statusbar-message");
+            vscode.commands.executeCommand("vscode.remove-statusbar-message", message);
         }, timeout);
     }
 }

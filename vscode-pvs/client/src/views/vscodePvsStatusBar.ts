@@ -190,10 +190,11 @@ export class VSCodePvsStatusBar {
 
     ready(): void {
         const currentStatusMsg: string = this.pvsStatus.getText();
-        if (currentStatusMsg && currentStatusMsg !== "" && currentStatusMsg !== `$(pass) PVS ready`)
+        if (currentStatusMsg && currentStatusMsg !== "" && currentStatusMsg !== `$(pass) PVS ready` && !currentStatusMsg.startsWith(`$(gear~spin)`))
             this.pvsStatus.text(`$(pass) PVS ready - ${currentStatusMsg}`);
         else
             this.pvsStatus.text(`$(pass) PVS ready`);
+        this.pvsStatus.show();
     }
 
     /**
@@ -228,13 +229,22 @@ export class VSCodePvsStatusBar {
     showInfo (msg: string): void {
         if (msg) {
             this.pvsStatus.icon("");
-            this.pvsStatus.text(`$(info)  ${msg}`);
+            this.pvsStatus.text(`$(info) ${msg}`);
             this.pvsStatus.show();
         } else {
             this.clear();
         }
     }
 
+    removeInfo (msg: string): void {
+        const currentStatusMsg: string = this.pvsStatus.getText();
+        this.pvsStatus.icon("");
+        let newMsg: string = currentStatusMsg.replace(`- $(info) ${msg}`,"");
+        newMsg = newMsg.replace(`$(info) ${msg}`,"");
+        this.pvsStatus.text(newMsg);
+        this.pvsStatus.show();
+    }
+    
     /**
      * Shows a message in the status bar
      * @param msg message
@@ -400,6 +410,10 @@ export class VSCodePvsStatusBar {
         this.show();
         context.subscriptions.push(commands.registerCommand("vscode.show-statusbar-message", (msg: string) => {
             this.showInfo(msg);
+        }));
+        // @M3 removes an specific message from the status bar if it's there
+        context.subscriptions.push(commands.registerCommand("vscode.remove-statusbar-message", (msg: string) => {
+            this.removeInfo(msg);
         }));
         context.subscriptions.push(commands.registerCommand("vscode.show-statusbar-failure", (msg: string) => {
             this.failure(msg);

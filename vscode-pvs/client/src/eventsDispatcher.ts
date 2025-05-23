@@ -513,7 +513,7 @@ export class EventsDispatcher {
                     // await this.proofMate.saveSketchpadClips();  // saves sketchpad clips to the .jprf file
                     const msg: string = `Proof ${desc.response.formula.formulaName} saved`;// in file ${fname}`;
                     vscodeUtils.showStatusBarMessage(msg);
-                    vscodeUtils.showInformationMessage(msg);
+                    // vscodeUtils.showInformationMessage(msg); // @M3 notification area gets overrun when bulk proving (prove-all)
                     // window.showInformationMessage(msg);
                 }
             } else {
