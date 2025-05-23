@@ -424,6 +424,7 @@ export class EventsDispatcher {
                 case "did-quit-proof": { // this is sent by CliGateway when the prover CLI is closed
                     this.proofExplorer.disposeView();
                     this.proofMate.disposeView();
+                    this.statusBar.ready();
                     break;
                 }
                 case "did-load-sequent": {
@@ -456,7 +457,7 @@ export class EventsDispatcher {
                     this.xterm.running(false);
                     this.xterm.showWelcomeMessage();
                     this.statusBar.running(false);
-                    this.statusBar.clear();
+                    this.statusBar.ready();
                     break;
                 }
                 case "did-open-proof": {
@@ -774,7 +775,7 @@ export class EventsDispatcher {
                 this.xterm.running(false);
                 this.xterm.showWelcomeMessage();
                 this.statusBar.running(false);
-                this.statusBar.clear();
+                this.statusBar.ready();
             } else {
                 this.xterm.running(true);
                 this.statusBar.running(true);
@@ -863,7 +864,7 @@ export class EventsDispatcher {
             // ask the user confirmation before restarting pvs
             const action: ProofExecInterruptAndQuitProver = { action: "interrupt-and-quit-prover" };
             this.client.sendRequest(serverRequest.proverCommand, action);
-            this.statusBar.clear();
+            this.statusBar.ready();
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.download-nasalib", async () => {
             this.statusBar.hideDownloadNasalibButton();
@@ -1984,7 +1985,7 @@ export class EventsDispatcher {
                              }
                         });
                         this.client.onNotification(`server.status.end-important-task-${desc.id}`, (desc: { msg?: string }) => {
-                            this.statusBar.clear();
+                            this.statusBar.ready();
                             complete = true;
                             if (desc && desc.msg) {
                                 this.statusBar.showMsg(desc.msg);

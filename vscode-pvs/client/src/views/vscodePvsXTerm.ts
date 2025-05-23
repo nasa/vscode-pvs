@@ -930,19 +930,19 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             if (cmd === "run-proof") {
                 this.running(true);
                 this.showHelpMessage(`Executing all commands in the proof tree..${DOT_BLINK}<br>To interrupt the execution, press Ctrl+C`);
-                commands.executeCommand("vscode-pvs.progress-info", "Executing all commands in the proof tree.");
+                commands.executeCommand("vscode-pvs.progress-info", "Executing all commands in the proof tree...");
             } else if (cmd === "fast-forward") {
                 this.running(true);
                 this.showHelpMessage(`Fast-forward to ${target}..${DOT_BLINK}<br>To interrupt the execution, press Ctrl+C`);
-                commands.executeCommand("vscode-pvs.progress-info", `Fast-forward to ${target}.`);
+                commands.executeCommand("vscode-pvs.progress-info", `Fast-forward to ${target}...`);
             } else if (cmd === "rewind") {
                 this.running(true);
                 this.showHelpMessage(`Rewinding to ${target}..${DOT_BLINK}<br>To interrupt the execution, press Ctrl+C`);
-                commands.executeCommand("vscode-pvs.progress-info", `Rewinding to ${target}.`);
+                commands.executeCommand("vscode-pvs.progress-info", `Rewinding to ${target}...`);
             } else {
                 this.running(true);
                 this.showHelpMessage(`Executing ${cmd}..${DOT_BLINK}<br>To interrupt the execution, press Ctrl+C`);
-                commands.executeCommand("vscode-pvs.progress-info", `Executing ${cmd}.`);
+                commands.executeCommand("vscode-pvs.progress-info", `Executing ${cmd}...`);
             }
         }
     }
@@ -956,7 +956,6 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 data: this.prompt
             };
             this.panel?.webview?.postMessage(message);
-            commands.executeCommand("vscode-pvs.progress-info");
         }
     }
     /**
