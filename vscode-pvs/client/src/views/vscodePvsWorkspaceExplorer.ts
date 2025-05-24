@@ -159,8 +159,8 @@ export class TheoryItem extends TreeItem {
 		const nTheorems: number = this.theoremsOverview.getTotal();
 		const nTccs: number = this.tccsOverview.getTotal();
 		const n: number = nTccs + nTheorems;
-		this.label = `${this.theoryName}  (${this.fileName}${this.fileExtension}, Ln ${this.position.line})`;
-		this.tooltip = `theory ${this.theoryName}`;
+		this.label = this.theoryName;
+		this.tooltip = `${this.fileName}${this.fileExtension} (Ln ${this.position.line})`;
 		// update collapsible state
 		if (n > 0 && this.collapsibleState !== TreeItemCollapsibleState.Expanded) {
 			// this will force refresh
@@ -271,27 +271,29 @@ export class FormulaOverviewItem extends OverviewItem {
 		const nProved: number = (this.theorems) ? this.theorems.filter((item: FormulaItem) => {
 			return item.getStatus() === "proved";
 		}).length : 0;
+		this.iconPath = new ThemeIcon("tasklist");; // new ThemeIcon("eye");
 		if (nProved === nTheorems) {
 			// this.label = `${utils.icons.checkmark} ${this.name}  (${nProved} proved)`;
-			this.label = `${this.name}  (${nProved} proved)`;
-			this.iconPath = {
-				light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")),
-				dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"))
-			};
+			this.label = `${this.name}: ${nProved} proved`;
+			// this.iconPath = {
+			// 	light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")),
+			// 	dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"))
+			// };
 		} else {
 			// this.label = `${utils.icons.whitecircle} ${this.name}  (${nProved} proved, ${nTheorems-nProved} to be proved)`;
-			this.label = `${this.name}  (${nProved} proved, ${nTheorems-nProved} to be proved)`;
-			this.iconPath = {
-				// light: path.join(__dirname, "..", "..", "..", "icons", "svg-gray-circle.svg"),
-				// dark: path.join(__dirname, "..", "..", "..", "icons", "svg-white-circle.svg")
-				light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")),
-				dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"))
-			};
+			this.label = `${this.name}: ${nProved} proved, ${nTheorems-nProved} to be proved`;
+			// this.iconPath = {
+			// 	// light: path.join(__dirname, "..", "..", "..", "icons", "svg-gray-circle.svg"),
+			// 	// dark: path.join(__dirname, "..", "..", "..", "icons", "svg-white-circle.svg")
+			// 	light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")),
+			// 	dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"))
+			// };
 		}
 		this.collapsibleState = (this.theorems.length > 0) ?
-			this.collapsibleState === TreeItemCollapsibleState.None ? TreeItemCollapsibleState.Expanded : this.collapsibleState
+			this.collapsibleState === TreeItemCollapsibleState.None ? 
+				TreeItemCollapsibleState.Expanded : this.collapsibleState
 			// (nProved === nTheorems) ? TreeItemCollapsibleState.Collapsed : TreeItemCollapsibleState.Expanded
-				: TreeItemCollapsibleState.None;
+			: TreeItemCollapsibleState.None;
 	}
 	updateStatus (desc: FormulaDescriptor): void {
 		if (desc) {
@@ -364,20 +366,25 @@ export class FormulaItem extends TreeItem {
 		this.status = this.status || "unchecked"; //'\u{2705}'
 		this.status = this.status.startsWith("proved") ? "proved" : this.status;
 		// this.label = `${utils.getIcon(this.status)} ${this.formulaName}  (${this.status})`;
-		this.label = `${this.formulaName}  (${this.status})`;
+		this.label = this.formulaName;
+		this.tooltip = this.status;
 		const icon: string = utils.getIcon(this.status);
 		this.iconPath = (icon === utils.icons.checkmark) ? {
 			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")),
 			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"))
 		} : (icon === utils.icons.bang) ? {
-			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg")),
-			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg"))
+			// light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg")),
+			// dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg"))
+			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-cross-mark.svg")),
+			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-cross-mark.svg"))
 		} : (icon === utils.icons.snowflake) ? {
 			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")),
 			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"))
 		} : (icon === utils.icons.sparkles) ? {
-			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles-orange.svg")),
-			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles.svg"))
+			// light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles-orange.svg")),
+			// dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles.svg"))
+			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-cross-mark-gray.svg")),
+			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-cross-mark-gray.svg"))
 		} : (icon === utils.icons.whitecircle) ? {
 			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-gray-circle.svg")),
 			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-white-circle.svg"))
@@ -395,6 +402,7 @@ export class TccsOverviewItem extends FormulaOverviewItem {
 	contextValue: string = "tccs-overview";
 	constructor(desc: TheoryDescriptor) {
 		super("tccs-overview", desc);
+		this.name = "TCCs";
 		this.refreshLabel();
 	}
 	// @overrides
@@ -591,15 +599,30 @@ class FolderOverviewItem extends OverviewItem {
 				}
 			}
 		} else {
-			this.files = [];
+			// this.files = [];
 			this.contextFolder = desc.contextFolder;
 			if (desc.fileDescriptors) {
 				const fnames: string[] = Object.keys(desc.fileDescriptors);
-				for (let i = 0; i < fnames.length; i++) {
-					const item: PvsFileItem = new PvsFileItem();
-					item.updateFileDescriptor(desc.fileDescriptors[fnames[i]]);
-					this.files.push(item);
+
+				if (this.files.length > 0) {
+					for (let i = 0; i < fnames.length; i++) {
+						for (let j = 0; j < this.files.length; j++){
+							if (this.files[j].path === fnames[i]) {
+								const item = this.files[j];
+								item.updateFileDescriptor(desc.fileDescriptors[fnames[i]]);
+								break;
+							}
+						}
+					}
+				} else {
+					for (let i = 0; i < fnames.length; i++) {
+						const item: PvsFileItem = new PvsFileItem();
+						item.updateFileDescriptor(desc.fileDescriptors[fnames[i]]);
+						this.files.push(item);
+					}
 				}
+
+
 				// this.sort();
 			}
 		}
@@ -760,6 +783,15 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
 		this.view = window.createTreeView(this.providerView, { treeDataProvider: this, showCollapseAll: false });
+
+		this.view.onDidExpandElement(e => {
+				e.element.collapsibleState = TreeItemCollapsibleState.Expanded;
+		});
+
+		this.view.onDidCollapseElement(e => {
+				e.element.collapsibleState = TreeItemCollapsibleState.Collapsed;
+		});
+		
 	}
 	
 	/**
