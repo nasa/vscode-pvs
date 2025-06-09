@@ -72,7 +72,7 @@ const fname_json_output: string = "../../common/nasalib-lookup-table.json";
 async function run () {
     const content: string = await fsUtils.readFile(fname_input);
     const declsOverview: DeclsOverview[] = JSON.parse(content);
-    // console.log(info);
+    // console.log(`[${fsUtils.generateTimestamp()}] `+info);
 
     // for each declaration, store info about the pvs file, the location of the decl, and the theory name
     // an array of pvs theories is used because the same declaration names can be declared in different theories
@@ -148,7 +148,7 @@ async function run () {
                     line: info.line,
                     character: info.character
                 };
-                // console.log(functions[name].length, name, theory);
+                // console.log(`[${fsUtils.generateTimestamp()}] `+functions[name].length, name, theory);
                 // for some reasons functions[name].push(theory) does not work
                 functions[name] = [ theory ].concat(functions[name]);
             }
@@ -203,7 +203,7 @@ async function run () {
             }        
         }
     }
-    console.log("nasalib", nasalib.stats);
+    console.log(`[${fsUtils.generateTimestamp()}] `+"nasalib", nasalib.stats);
     // create file content
     const json: string = JSON.stringify(nasalib, null, " ");
     const txt: string = `/**
@@ -217,7 +217,7 @@ export const nasalib_lookup_table: LookUpTable = ${json};`;
     // write output files
     fs.writeFileSync(fname_ts_output, txt);
     fs.writeFileSync(fname_json_output, json);
-    console.log(`output files ${fname_ts_output} and ${fname_json_output} created in ../../common!`);
+    console.log(`[${fsUtils.generateTimestamp()}] `+`output files ${fname_ts_output} and ${fname_json_output} created in ../../common!`);
 }
 
 run();

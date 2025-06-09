@@ -96,6 +96,7 @@ export function getDefaultContextFolder (): string {
 /**
  * Utility function, creates a default workspace folder
  */
+// #TODO deprecate @M3
  export async function createDefaultPvsWorkspacesDirectory (): Promise<string> {
     const workspaces: string = getConfiguration("pvs.pvsWorkspaces");
     if (workspaces) {
@@ -279,21 +280,19 @@ export async function showMarkdownContent (msg: string, contextFolder?: string):
  * @param msg error message
  * @param src software component that generated the error message -- useful for debugging purposes
  */
-export function showFailure (msg: string, src?: string): void {
+export function showFailure (msg: string, src?: string, log?: string): void {
     src = src || "";
-    const fileContent: string = `\n# PVS error ${src ? "(" + src + ")" : ""}\n`
-    + 'The following error occurred:\n\n'
-    + '```lisp\n' + msg + '\n```'
-    + '\n\nThis error may be caused by temporary files that PVS failed to update.\n\n'
-    + '[Recommended action](): If VSCode-PVS is not responding, use `M-x clean-bin` to clean all temporary files in the current workspace.\n\n'
-    + 'If the above action does not resolve the problem, please restart Visual Studio Code and make sure you are using the latest version of VSCode-PVS, PVS and NASALib.\n\n'
+    const fileContent: string = `\n# PVS error : ${msg} ${src ? "(" + src + ")" : ""}\n`
+    + 'This is an unrecoverable error. Reboot the PVS backend to keep using VSCode-PVS (M-x reboot-pvs).\n\n'
+    + (log? 'Below you can see a printout of the backend output.\n\n'
+            + '```lisp\n' + log + '\n```\n' : "No output info could be collected.")
     + `If the problem persists, please report the error on [github](https://github.com/nasa/vscode-pvs/issues) or on the [PVS group](https://groups.google.com/g/pvs-group), we will look into it.`;
 
     showMarkdownContent(fileContent);
 }
 
 /**
- * Shows an error messsage indicating a dependency error
+ * Shows an error message indicating a dependency error
  */
 export function showDependencyError (msg: string): void {
     const fileContent: string = `\n# Missing dependency\n`
@@ -386,7 +385,7 @@ export async function showInformationMessageWithOpenFile (msg: string, desc: Fil
         const timeout: number = opt.timeout || 3200;
         vscode.commands.executeCommand("vscode.show-statusbar-message", message);
         setTimeout(() => {
-            vscode.commands.executeCommand("vscode.show-statusbar-message");
+            vscode.commands.executeCommand("vscode.remove-statusbar-message", message);
         }, timeout);
     }
 }
@@ -394,14 +393,19 @@ export async function showInformationMessageWithOpenFile (msg: string, desc: Fil
  * Utility function, shows a dialog presenting an error message.
  */
 export function showErrorMessage (message: string, timeout?: number): void {
-    showInformationMessage(`${utils.icons.bang} ${message}`, { timeout: 6000 });
+    showInformationMessage(`${utils.icons.bang} ${message}`, { timeout: timeout || 6000 });
 }
 /**
  * Utility function, shows a dialog presenting a warning message.
  */
- export function showWarningMessage (message: string, timeout?: number): void {
+export function showWarningMessage (message: string, timeout?: number): void {
     vscode.window.showWarningMessage(`${utils.icons.sparkles} ${message}`);
-    // showInformationMessage(`${utils.icons.sparkles} ${message}`, { timeout: 4000 });
+}
+
+export async function showCriticalErrorMessage (message: string): Promise<void> {
+    await vscode.window.showInformationMessage(message, { modal: true });
+    vscode.commands.executeCommand("vscode.show-statusbar-failure", message);
+    // vscode.window.showErrorMessage(message);
 }
 
 /**
@@ -438,8 +442,21 @@ export async function clearPvsLibraryPath (): Promise<void> {
  */
 export function getPvsLibraryPath (): string {
     const pvsLibraryPath: string = getConfiguration("pvs.pvsLibraryPath").trim();
-    const currentWorkspace: string = getRootFolder();
-    return pvsLibraryPath ? currentWorkspace + ":" + pvsLibraryPath : currentWorkspace;
+    // #TODO @M3 why is currentWorkspace added to the libPaths? It's implicit in PVS...
+    // const currentWorkspace: string = getRootFolder();
+    // return pvsLibraryPath && ((pvsLibraryPath.endsWith('/')?pvsLibraryPath:pvsLibraryPath+'/') !== (currentWorkspace.endsWith('/')?currentWorkspace:currentWorkspace+'/')) ? 
+    // currentWorkspace + path.delimiter + pvsLibraryPath : 
+    // currentWorkspace;
+    return pvsLibraryPath;
+}
+/**
+ * 
+ * @returns Every non-empty path in pvs-library-path
+ */
+export function getPvsLibraryPaths (): string[] {
+    return getPvsLibraryPath().split(path.delimiter)
+           .map( elem => { return elem.trim(); })
+           .filter( elem => { return elem && elem !== ""; })
 }
 /**
  * Utility function, adds a folder to the list of folders in pvs.pvsLibraryPath
@@ -452,8 +469,8 @@ export async function addPvsLibraryFolder (folder: string): Promise<boolean> {
         if (!libs.includes(folder)) {
             const newPvsLibraryPath: string = fsUtils.createPvsLibraryPath(libs.concat([ folder ]));
             await vscode.workspace.getConfiguration().update("pvs.pvsLibraryPath", newPvsLibraryPath, vscode.ConfigurationTarget.Global);
-            return true;
         }
+        return true;
     }
     return false;
 }
@@ -1255,13 +1272,13 @@ export function getVisiblePvsEditors (): vscode.TextEditor[] {
  */
 export function getActivePvsEditor (): vscode.TextEditor {
     const activePvsEditor: vscode.TextEditor = vscode.window?.activeTextEditor;
-    if (activePvsEditor?.document?.languageId === "pvs") {
+    if (activePvsEditor?.document?.fileName?.endsWith("pvs")) {
         return activePvsEditor;
     }
     // else, return the first visible pvs editor
     const visiblePvsEditors: vscode.TextEditor[] = getVisiblePvsEditors();
     const visible: vscode.TextEditor = visiblePvsEditors?.length ? visiblePvsEditors[0] : null;
-    return visible?.document?.languageId === "pvs" ? visible : null;
+    return visible?.document?.fileName?.endsWith("pvs") ? visible : null;
 }
 
 /**
@@ -1299,12 +1316,12 @@ export function resetGlobals (): void {
 /**
  * Sets the editor language to pvs
  */
-export function setEditorLanguagetoPVS (): void {
+export function setEditorLanguageToPVS (): void {
     vscode.commands.executeCommand('setContext', "editorLangId", "pvs");
 }
 
 /**
- * Utilify function, maximizes the terminal
+ * Utility function, maximizes the terminal
  */
  export function maximizeIntegratedTerminal (): void {
     vscode.commands.executeCommand("workbench.action.toggleMaximizedPanel");
@@ -1358,9 +1375,9 @@ export async function annotateFormula (desc: PvsFormula, tag: Tag, opt?: TagOpti
 
         const formulaProved: string = `% ${tag} ${desc.formulaName} proved`;
         const author: string = getAuthorKey();
-        const bywho: string = author ? ` by ${author}` : "";
+        const byWho: string = author ? ` by ${author}` : "";
         const when: string = ` on ${new Date().toUTCString()}`;
-        let text: string = `${formulaProved}${bywho}${when}\n`;
+        let text: string = `${formulaProved}${byWho}${when}\n`;
 
         // check if the annotation is already present
         const docUp: string = document.getText(new vscode.Range(
@@ -1385,7 +1402,7 @@ export async function annotateFormula (desc: PvsFormula, tag: Tag, opt?: TagOpti
                 success = await document.save();
                 resolve(success);
             }, (error) => {
-                console.log("[vscode-utils] Warning: unable to annotate pvs file", error, desc);
+                console.log(`[${fsUtils.generateTimestamp()}] `+"[vscode-utils] Warning: unable to annotate pvs file", error, desc);
                 resolve(false);
             });
         }

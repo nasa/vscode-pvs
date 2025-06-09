@@ -65,12 +65,10 @@ export class PvsPackageManager {
      * List of approved patches for pvs
      */
     static readonly approvedPatches: { fname: string, description: string }[] = [
-        { fname: "patch-20210511.lisp", description: "Adds support for unicode in server commands" },
-        { fname: "patch-20210706.lisp", description: "Fix for 'the assertion (or (null ex) (place ex)) failed'" },
-        { fname: "patch-20210707.lisp", description: "Fix for prover not starting on judgements that are trivially true" },
-        { fname: "patch-20210715.lisp", description: "Fix for pvs-server breaking into lisp when imported library cannot be found" },
-        { fname: "patch-20210715a.lisp", description: "Fix for pvs-server breaking into lisp when opening a corrupted prf file" }
-    ];
+        { fname: "patch-20250530-avoids-debbuger-on-proving-session.lisp", description: "Avoids errors to trigger the debugger in a proof session" },
+        { fname: "patch-20250618-lisp-rule-no-quoted-string.lisp", description: "Prevents the lisp proof rule from returning quoted strings" },
+        { fname: "interface--pvs-emacs.lisp", description: "Ensures each log message starts in a new line and print also date of timestamp" },
+        ];
 
     /**
      * Installs PVS and provides progress feedback to the front-end.
@@ -86,14 +84,14 @@ export class PvsPackageManager {
             }
         }
         if (connection && req?.targetFolder && req?.shellCommand) {
-            const tmpFolder: string = req?.saveAndRestore ? path.join(os.tmpdir(), "iwp") : null;
+            const tmpFolder: string = req?.saveAndRestore ? path.join(os.tmpdir(), "iwp") : null; // iwp = install with progress
             let restoreFolder: boolean = false;
 
             // check if there's a sub-folder of targetFolder to be saved and restored after install (e.g., nasalib)
             if (req?.saveAndRestore && fsUtils.folderExists(req.saveAndRestore)) {
                 const res: InstallWithProgressResponse = {
                     progressInfo: true,
-                    stdOut: `Saving ${req.saveAndRestore}`
+                    stdOut: `Saving ${req.saveAndRestore}\n`
                 };
                 connection?.sendNotification(serverRequest.installWithProgress, { req, res });
                 fsUtils.deleteFolder(tmpFolder);
@@ -182,7 +180,8 @@ export class PvsPackageManager {
             // all done when we get to this point!
             if (success) {
                 const res: InstallWithProgressResponse = {
-                    progressInfo: true,
+					success,
+                    progressInfo: false,
                     stdOut: colorText(`Done!`, PvsColor.green)
                 };
                 connection?.sendNotification(serverRequest.installWithProgress, { req, res });
@@ -279,32 +278,20 @@ export class PvsPackageManager {
     }
 
     /**
-     * Utility function, installs required pvs patches
+     * @returns lisp code to load the PVS patches for VSCode-PVS 
      */
-    static async installPvsPatches (desc: { pvsPath: string }): Promise<boolean> {
-        if (desc?.pvsPath && fsUtils.folderExists(desc?.pvsPath)) {
-            const targetFolder: string = path.join(desc.pvsPath, "pvs-patches");
-            let successSummary: boolean = await fsUtils.createFolder(targetFolder);
-            if (successSummary) {
-                for (let i = 0; i < PvsPackageManager.approvedPatches.length; i++) {
-                    const fileName: string = PvsPackageManager.approvedPatches[i].fname;
-                    const fname: string = path.join(targetFolder, fileName);
-                    if (!fsUtils.fileExists(fname)) {
-                        const src: string = path.join(__dirname, "..", "..", "..", "pvs-patches", fileName);
-                        const fileContent: string = await fsUtils.readFile(src);
-                        const success: boolean = fileContent && await fsUtils.writeFile(fname, fileContent);
-                        if (!success) {
-                            console.warn(`[pvs-package-manager] Warning: could not install patch ${PvsPackageManager.approvedPatches[i]?.fname} (${PvsPackageManager.approvedPatches[i]?.description})`);
-                        }
-                        successSummary = successSummary && success;
-                    }
-                }
+    static generateLoadOwnPatchesCode(): string {
+        var result: string = "";
+        for (let i = 0; i < PvsPackageManager.approvedPatches.length; i++) {
+            const patchFileName: string = PvsPackageManager.approvedPatches[i].fname;
+            const src: string = path.join(__dirname, "..", "..", "..", "pvs-patches", patchFileName);
+            if (!fsUtils.fileExists(src)) {
+                console.warn(`[pvsPackageManager] Warning: expected patch not found ${src}`);
             } else {
-                console.warn(`[pvs-package-manager] Warning: could not install patches (folder ${targetFolder} could not be created)`);
+                result += `(format t "~&~%Loading VSCode-PVS patch ${src}") (load "${src}") (format t "~&~%VSCode-PVS patch ${src} LOADED~%~%")`;
             }
-            return successSummary;
         }
-        return false;
+        return result;
     }
 
     /**

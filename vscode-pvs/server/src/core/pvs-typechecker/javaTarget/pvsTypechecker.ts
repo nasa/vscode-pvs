@@ -55,21 +55,21 @@ export class PvsTypechecker {
                 resolve(diags);
             });
             worker.stderr.on("data", (data: string) => {
-                console.log("[pvs-typechecker] Error: ", data);
+                console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-typechecker] Error: ", data);
                 // resolve(false);
             });
             worker.on("error", (err: Error) => {
-                console.log("[pvs-typechecker] Process error ", err);
+                console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-typechecker] Process error ", err);
                 // console.dir(err, { depth: null });
             });
             worker.on("exit", (code: number, signal: string) => {
-                // console.log("[pvs-typechecker] Process exited with code ", code);
+                // console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-typechecker] Process exited with code ", code);
                 // file parsed successfully
                 resolve(null);
                 // console.dir({ code, signal });
             });
             worker.on("message", (message: any) => {
-                console.log("[pvs-typechecker] Process message", message);
+                console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-typechecker] Process message", message);
                 // console.dir(message, { depth: null });
             });
         });
@@ -81,7 +81,7 @@ export class PvsTypechecker {
      */
     async typecheckFile (desc: { fileName: string, fileExtension: string, contextFolder: string }): Promise<Diagnostic[]> {
         const fname: string = fsUtils.desc2fname(desc);
-        console.info(`[vscode-pvs-typechecker] Typechecking ${fname}`);
+        console.info(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-typechecker] Typechecking ${fname}`);
 
         let diagnostics: Diagnostic[] = [];
         const libFolder: string = path.join(__dirname, "../../../../out/core/lib");
@@ -93,14 +93,14 @@ export class PvsTypechecker {
             const stats: number = Date.now() - start;
             if (diags) {
                 diagnostics = JSON.parse(diags);
-                console.log(`[vscode-pvs-typechecker] File ${desc.fileName}${desc.fileExtension} typechecked with errors in ${stats}ms`);
+                console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-typechecker] File ${desc.fileName}${desc.fileExtension} typechecked with errors in ${stats}ms`);
             } else {
-                console.log(`[vscode-pvs-typechecker] File ${desc.fileName}${desc.fileExtension} typechecked successfully in ${stats}ms`);
+                console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-typechecker] File ${desc.fileName}${desc.fileExtension} typechecked successfully in ${stats}ms`);
             }
         } catch (typecheckError) {
-            console.log(typecheckError);
+            console.log(`[${fsUtils.generateTimestamp()}] `+typecheckError);
         } finally {
-            // console.log(`[vscode-pvs-typechecker] Sending diagnostics for ${desc.fileName}${desc.fileExtension}`);
+            // console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-typechecker] Sending diagnostics for ${desc.fileName}${desc.fileExtension}`);
             // if (diagnostics && diagnostics.length > 0) {
             //     console.dir(diagnostics, { depth: null });
             // }

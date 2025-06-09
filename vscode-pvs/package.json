@@ -1,8 +1,8 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.65",
-	"author": "Paolo Masci",
+	"version": "1.0.66-eta-202506090551",
+	"author": "NASA LaRC Formal Methods Team",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
 	"license": "NASA-1.3",
@@ -165,6 +165,16 @@
 						"type": "string",
 						"default": "",
 						"description": "PVSio-Web Widget library files (colon-separated list of paths to pvsio-web widget library files)."
+					},
+					"pvs.externalServer": {
+						"type": "boolean",
+						"default": false,
+						"description": "Don't start PVS server automatically, if true, the user is responsible to start PVS (default: false)"
+					},
+					"pvs.initialPortNumber": {
+						"type": "number",
+						"default": 23456,
+						"description": "Port number to use to communicate with the PVS server (default: 23456). If you change this value, the new port number will be used the next time the PVS server is restarted. Tip: you can restart the server using 'M-x reboot-server'"
 					}
 				}
 			}
@@ -192,19 +202,22 @@
 					"id": "workspace-explorer-view",
 					"name": "PVS Workspace Explorer",
 					"when": "pvs-server-active",
-					"visibility": "visible"
+					"visibility": "visible",
+					"icon": "$(engines)"
 				},
 				{
 					"id": "proof-explorer-view",
 					"name": "PVS Proof Explorer",
 					"when": "pvs-server-active && proof-explorer.visible",
-					"visibility": "visible"
+					"visibility": "visible",
+					"icon": "$(engines)"
 				},
 				{
 					"id": "proof-mate-view",
 					"name": "PVS Proof Mate",
 					"when": "pvs-server-active && proof-mate.visible",
-					"visibility": "collapsed"
+					"visibility": "collapsed",
+					"icon": "$(engines)"
 				}
 			],
 			"explorer": []
@@ -257,25 +270,25 @@
 			{
 				"command": "vscode-pvs.insert-prooflite-script",
 				"title": "Insert Prooflite Script at Cursor Position",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.status-proofchain",
 				"title": "Status Proof-Chain",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.comment-prooflite-line",
 				"title": "Add prooflite comment %|-",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.typecheck-file",
 				"title": "Typecheck File",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": {
 					"light": "icons/svg-typecheck-file-black-icon.svg",
@@ -284,9 +297,42 @@
 				"vscode-icon": "$(tools)"
 			},
 			{
+				"command": "vscode-pvs.latex-file",
+				"title": "Generate LaTeX For File",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
+				"category": "pvs",
+				"icon": {
+					"light": "icons/tex-logo-black.svg",
+					"dark": "icons/tex-logo-white.svg"
+				},
+				"vscode-icon": "$(tools)"
+			},
+			{
+				"command": "vscode-pvs.latex-theory",
+				"title": "Generate LaTeX For Theory",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
+				"category": "pvs",
+				"icon": {
+					"light": "icons/tex-logo-black.svg",
+					"dark": "icons/tex-logo-white.svg"
+				},
+				"vscode-icon": "$(tools)"
+			},
+			{
+				"command": "vscode-pvs.latex-importchain",
+				"title": "Generate LaTeX For Import Chain",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
+				"category": "pvs",
+				"icon": {
+					"light": "icons/tex-logo-black.svg",
+					"dark": "icons/tex-logo-white.svg"
+				},
+				"vscode-icon": "$(tools)"
+			},
+			{
 				"command": "vscode-pvs.search-nasalib",
 				"title": "Search NASALib",
-				"enablement": "pvs-server-active == true && nasalib-present",
+				"enablement": "pvs-server-active",
 				"category": "pvs",
 				"icon": {
 					"light": "icons/svg-nasa-meatball-icon.svg",
@@ -296,7 +342,7 @@
 			{
 				"command": "vscode-pvs.x-show-proof",
 				"title": "Show Proof Tree",
-				"enablement": "pvs-server-active == true && proof-explorer.visible",
+				"enablement": "pvs-server-active && proof-explorer.visible",
 				"category": "pvs",
 				"icon": {
 					"light": "icons/svg-tree-black-icon.svg",
@@ -306,7 +352,7 @@
 			{
 				"command": "proof-explorer.show-proof",
 				"title": " Show Proof Tree",
-				"enablement": "pvs-server-active == true && proof-explorer.visible",
+				"enablement": "pvs-server-active && proof-explorer.visible",
 				"category": "pvs",
 				"icon": {
 					"light": "icons/svg-tree-black-icon.svg",
@@ -316,13 +362,13 @@
 			{
 				"command": "vscode-pvs.prove-theory",
 				"title": "Re-run All Proofs",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
+				"enablement": "pvs-server-active && !in-checker && !autorun && viewItem != workspace-overview",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.prove-theory-inline",
 				"title": "Prove Theory",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
+				"enablement": "pvs-server-active && !in-checker && !autorun && viewItem != workspace-overview",
 				"category": "pvs",
 				"icon": {
 					"dark": "icons/svg-play-circle-icon.svg",
@@ -332,13 +378,13 @@
 			{
 				"command": "vscode-pvs.prove-workspace",
 				"title": "Re-run All Proofs",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem == workspace-overview",
+				"enablement": "pvs-server-active && !in-checker && !autorun && viewItem == workspace-overview",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.prove-workspace-inline",
 				"title": "Prove Workspace",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem == workspace-overview",
+				"enablement": "pvs-server-active && !in-checker && !autorun && viewItem == workspace-overview",
 				"category": "pvs",
 				"icon": {
 					"dark": "icons/svg-play-circle-icon.svg",
@@ -348,67 +394,67 @@
 			{
 				"command": "vscode-pvs.prove-importchain",
 				"title": "Re-run ImportChain",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun && viewItem != workspace-overview",
+				"enablement": "pvs-server-active && !in-checker && !autorun && viewItem != workspace-overview",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.interrupt-prover",
 				"title": "Interrupt Prover",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.show-proof-summary",
 				"title": "Show Proof Summary",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.generate-tccs",
 				"title": "Generate TCCs",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.show-tccs",
 				"title": "Show Typecheck Conditions (TCCs)",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.show-tccs-alt",
 				"title": "Show",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.parse-file",
 				"title": "Parse File",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.x-prove",
 				"title": "Prove Formula At Cursor Position",
-				"enablement": "pvs-server-active == true && !autorun",
+				"enablement": "pvs-server-active && !autorun",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.new-pvs-file",
 				"title": "New PVS File",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.open-pvs-file-or-folder",
 				"title": "Open PVS File...",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.open-pvs-workspace",
 				"title": "Open Workspace...",
-				"enablement": "pvs-server-active == true && !in-checker",
+				"enablement": "pvs-server-active && !in-checker",
 				"category": "pvs",
 				"icon": {
 					"dark": "icons/svg-open-workspace.svg",
@@ -418,26 +464,26 @@
 			{
 				"command": "workspace-explorer.collapse-all-theories",
 				"title": "Collapse Theories",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs",
 				"icon": "$(collapse-all)"
 			},
 			{
 				"command": "vscode-pvs.view-prelude-file",
 				"title": "View Prelude File",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.view-pvs-library-path",
 				"title": "View PVS Library Path",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.clean-pvs-workspace",
 				"title": "Clean Workspace",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
@@ -478,31 +524,31 @@
 			{
 				"command": "vscode-pvs.parse-workspace",
 				"title": "Parse Workspace",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.typecheck-workspace",
 				"title": "Typecheck Workspace",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.typecheck-workspace-inline",
 				"title": "Typecheck",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.hp2pvs",
 				"title": "Generate PVS file",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.prove-formula",
 				"title": "Prove Formula",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": {
 					"dark": "icons/svg-play-circle-icon.svg",
@@ -512,20 +558,20 @@
 			{
 				"command": "vscode-pvs.prove-formula-at-cursor-position",
 				"title": "Prove Formula At Cursor Position",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": "$(play-circle)"
 			},
 			{
 				"command": "vscode-pvs.command-palette",
 				"title": "Command Palette...",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "vscode-pvs.discharge-tccs-explorer",
 				"title": "Discharge",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": {
 					"dark": "icons/svg-play-circle-icon.svg",
@@ -535,7 +581,7 @@
 			{
 				"command": "vscode-pvs.discharge-tccs",
 				"title": "Discharge All TCCs",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": {
 					"dark": "icons/svg-play-circle-icon.svg",
@@ -545,7 +591,7 @@
 			{
 				"command": "vscode-pvs.discharge-matching-tccs",
 				"title": "Discharge Matching TCCs",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": {
 					"dark": "icons/svg-play-circle-icon.svg",
@@ -555,7 +601,7 @@
 			{
 				"command": "vscode-pvs.io",
 				"title": "Evaluate Theory",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": {
 					"light": "icons/debug-line-by-line-black.svg",
@@ -566,7 +612,7 @@
 			{
 				"command": "vscode-pvs.pvsio-evaluator",
 				"title": "Evaluate in PVSio",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": {
 					"light": "icons/svg-pvsio-black-icon.svg",
@@ -576,7 +622,7 @@
 			{
 				"command": "vscode-pvs.pvsio-web",
 				"title": "Build Prototype in PVSio-web",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs",
 				"icon": {
 					"light": "icons/svg-origami-black-icon.svg",
@@ -586,27 +632,27 @@
 			{
 				"command": "vscode-pvs.plot-expression",
 				"title": "Plot Selected Expression",
-				"enablement": "pvs-server-active == true && !in-checker && !autorun",
+				"enablement": "pvs-server-active && !in-checker && !autorun",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-mate.delete-sketchpad",
 				"title": " x Delete sketchpad content",
-				"enablement": "pvs-server-active == true && proof-mate.sketchpad-empty == false",
+				"enablement": "pvs-server-active && proof-mate.sketchpad-empty == false",
 				"icon": "$(trash)",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-mate.clear-sketchpad",
 				"title": "o Clear sketchpad marks",
-				"enablement": "pvs-server-active == true && proof-mate.sketchpad-empty == false",
+				"enablement": "pvs-server-active && proof-mate.sketchpad-empty == false",
 				"icon": "$(activate-breakpoints)",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-mate.delete-sketch",
 				"title": " Delete sketch",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"icon": "$(trash)",
 				"category": "pvs"
 			},
@@ -633,7 +679,7 @@
 			{
 				"command": "proof-mate.run-sketchpad",
 				"title": "Run-all",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
@@ -649,13 +695,13 @@
 			{
 				"command": "proof-explorer.delete-node",
 				"title": "Delete",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true",
+				"enablement": "view == proof-explorer-view && pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.trim-node",
 				"title": "Trim",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true",
+				"enablement": "view == proof-explorer-view && pvs-server-active",
 				"category": "pvs"
 			},
 			{
@@ -674,7 +720,7 @@
 			{
 				"command": "proof-explorer.jump-here",
 				"title": "Jump here",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true",
+				"enablement": "view == proof-explorer-view && pvs-server-active",
 				"category": "pvs"
 			},
 			{
@@ -687,19 +733,19 @@
 			{
 				"command": "proof-explorer.trim-unused",
 				"title": "Remove unused commands",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true",
+				"enablement": "view == proof-explorer-view && pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.new-proof-branch",
 				"title": "Append new proof branch",
-				"enablement": "view == proof-explorer-view && viewItem != proof-branch && pvs-server-active == true",
+				"enablement": "view == proof-explorer-view && viewItem != proof-branch && pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.new-proof-command",
 				"title": "Add new proof command",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true",
+				"enablement": "view == proof-explorer-view && pvs-server-active",
 				"category": "pvs"
 			},
 			{
@@ -718,7 +764,7 @@
 			{
 				"command": "proof-explorer.show-sequent",
 				"title": "Show sequent",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true",
+				"enablement": "view == proof-explorer-view && pvs-server-active",
 				"icon": {
 					"dark": "icons/browser-arrow-icon.png",
 					"light": "icons/browser-arrow-icon.png"
@@ -728,7 +774,7 @@
 			{
 				"command": "proof-explorer.edit-node",
 				"title": "Edit",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"icon": "$(edit)",
 				"category": "pvs"
 			},
@@ -742,19 +788,19 @@
 			{
 				"command": "proof-explorer.copy-node",
 				"title": "Copy",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true && viewItem != root",
+				"enablement": "view == proof-explorer-view && pvs-server-active && viewItem != root",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.cut-node",
 				"title": "Cut",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true && viewItem != root",
+				"enablement": "view == proof-explorer-view && pvs-server-active && viewItem != root",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.paste-node",
 				"title": "Paste",
-				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-node && pvs-server-active == true",
+				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-node && pvs-server-active",
 				"category": "pvs"
 			},
 			{
@@ -778,19 +824,19 @@
 			{
 				"command": "proof-explorer.cut-subtree",
 				"title": "Cut subtree",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true",
+				"enablement": "view == proof-explorer-view && pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.copy-subtree",
 				"title": "Copy subtree",
-				"enablement": "view == proof-explorer-view && pvs-server-active == true",
+				"enablement": "view == proof-explorer-view && pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.paste-subtree",
 				"title": "Paste subtree",
-				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-tree && pvs-server-active == true",
+				"enablement": "view == proof-explorer-view && proof-explorer.clipboard-contains-tree && pvs-server-active",
 				"category": "pvs"
 			},
 			{
@@ -814,49 +860,49 @@
 			{
 				"command": "proof-explorer.export-prooflite",
 				"title": "Export ProofLite (.prl)",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.new-proof",
 				"title": "New Proof",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.open-proof",
 				"title": "Open Proof...",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.restore-from-jprf",
 				"title": "Restore Proof",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.import-proof",
 				"title": "Import from Formula",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.import-prooflite",
 				"title": "Import from ProofLite",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.import-jprf",
 				"title": "Import from J-PRF",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
 				"command": "proof-explorer.quit-proof",
 				"title": "Quit Proof",
-				"enablement": "pvs-server-active == true",
+				"enablement": "pvs-server-active",
 				"category": "pvs"
 			},
 			{
@@ -1005,48 +1051,70 @@
 				},
 				{
 					"command": "vscode-pvs.typecheck-file",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true || resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active || resourceScheme == file && resourceExtname == .tccs && pvs-server-active || resourceScheme == file && resourceExtname == .summary && pvs-server-active || resourceExtname == .pvs && editorLangId == pvs || resourceExtname == .hpvs && editorLangId == pvs",
 					"group": "y-group1-commands"
 				},
 				{
 					"command": "vscode-pvs.typecheck-workspace",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || explorerResourceIsFolder && pvs-server-active == true && editorLangId == pvs",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active || explorerResourceIsFolder && pvs-server-active && editorLangId == pvs",
 					"group": "y-group1-commands"
 				},
 				{
 					"command": "vscode-pvs.show-tccs",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active || resourceScheme == file && resourceExtname == .tccs && pvs-server-active || resourceScheme == file && resourceExtname == .summary && pvs-server-active",
 					"group": "y-group2-commands"
 				},
 				{
 					"command": "vscode-pvs.show-proof-summary",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active || resourceScheme == file && resourceExtname == .tccs && pvs-server-active || resourceScheme == file && resourceExtname == .summary && pvs-server-active",
 					"group": "y-group2-commands"
 				},
 				{
 					"command": "vscode-pvs.x-prove",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active || resourceScheme == file && resourceExtname == .tccs && pvs-server-active || resourceScheme == file && resourceExtname == .summary && pvs-server-active",
 					"group": "y-group2.1-commands"
 				},
 				{
 					"command": "vscode-pvs.prove-theory",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active || resourceScheme == file && resourceExtname == .tccs && pvs-server-active || resourceScheme == file && resourceExtname == .summary && pvs-server-active",
 					"group": "y-group3-commands"
 				},
 				{
 					"command": "vscode-pvs.prove-importchain",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active || resourceScheme == file && resourceExtname == .tccs && pvs-server-active || resourceScheme == file && resourceExtname == .summary && pvs-server-active",
 					"group": "y-group3-commands"
 				},
 				{
 					"command": "vscode-pvs.discharge-tccs",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active || resourceScheme == file && resourceExtname == .tccs && pvs-server-active || resourceScheme == file && resourceExtname == .summary && pvs-server-active",
 					"group": "y-group4-commands"
 				},
 				{
-					"command": "vscode-pvs.pvsio-evaluator",
-					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active == true || resourceScheme == file && resourceExtname == .tccs && pvs-server-active == true || resourceScheme == file && resourceExtname == .summary && pvs-server-active == true",
+					"command": "vscode-pvs.latex-file",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active",
 					"group": "y-group5-commands"
+				},
+				{
+					"command": "vscode-pvs.pvsio-evaluator",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active",
+					"group": "y-group5-commands"
+				}
+			],
+			"vscode-pvs.latex": [
+				{
+					"command": "vscode-pvs.latex-file",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active",
+					"group": "latex-spec"
+				},
+				{
+					"command": "vscode-pvs.latex-theory",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active",
+					"group": "latex-spec"
+				},
+				{
+					"command": "vscode-pvs.latex-importchain",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active",
+					"group": "latex-spec"
 				}
 			],
 			"view/item/context": [
@@ -1462,8 +1530,13 @@
 					"group": "navigation@7"
 				},
 				{
-					"command": "vscode-pvs.open-pvs-workspace",
+					"command": "vscode-pvs.latex-file",
+					"when": "editorLangId == pvs",
 					"group": "navigation@8"
+				},
+				{
+					"command": "vscode-pvs.open-pvs-workspace",
+					"group": "navigation@9"
 				}
 			],
 			"editor/title/context": [
@@ -1582,6 +1655,11 @@
 				{
 					"command": "vscode-pvs.plot-expression",
 					"when": "resourceScheme == file && resourceExtname == .pvs && editorLangId == pvs",
+					"group": "y-group5-commands"
+				},
+				{
+					"submenu": "vscode-pvs.latex",
+					"when": "resourceScheme == file && resourceExtname == .pvs && pvs-server-active",
 					"group": "y-group5-commands"
 				}
 			],
@@ -1808,6 +1886,13 @@
 				}
 			]
 		},
+		"submenus": [
+			{
+				"id": "vscode-pvs.latex",
+				"command": "vscode-pvs.latex",
+				"label": "Generate LaTeX"
+			}
+		],
 		"keybindings": [
 			{
 				"key": "alt+x",
@@ -1828,8 +1913,7 @@
 				"when": "resourceLangId == pvs"
 			},
 			{
-				"key": "shift+alt+t",
-				"note": "ctrl+alt+t should be avoided because it is used to open a terminal in Ubuntu Linux",
+				"key": "ctrl+alt+t",
 				"command": "vscode-pvs.typecheck-file",
 				"when": "resourceLangId == pvs"
 			},
@@ -1972,7 +2056,7 @@
 		}
 	},
 	"dependencies": {
-		"typescript": "^5.4.3",
+		"typescript": "^5.8.3",
 		"xmlrpc": "^1.3.2"
 	},
 	"devDependencies": {
@@ -1982,7 +2066,7 @@
 		"@types/vscode": "^1.76.0",
 		"@typescript-eslint/eslint-plugin": "^5.10.0",
 		"@typescript-eslint/parser": "^5.10.0",
-		"@vscode/vsce": "^2.26.0",
+		"@vscode/vsce": "^2.32.0",
 		"assert": "^2.0.0",
 		"chai": "^4.3.4",
 		"eslint": "^8.7.0",

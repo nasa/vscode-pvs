@@ -72,7 +72,7 @@ export class PvsDefinitionProvider {
 	 */
 	protected printInfo (msg: string) {
 		if (this.connection) {
-			this.connection.console.info(`[pvs-definition-provider] ${msg}`);
+			this.connection.console.info(`[${fsUtils.generateTimestamp()}] `+`[pvs-definition-provider] ${msg}`);
 		}
 	}
 
@@ -311,7 +311,7 @@ export class PvsDefinitionProvider {
 	async getDefinition(document: { uri: string, txt: string, position: Position }, token?: CancellationToken): Promise<{ symbolName: string, definitions: PvsDefinition[] }> {
 		if (document && document.uri && document.txt && document.position) {
 			const symbolRange: Range = getWordRange(document.txt, document.position);
-			// console.log(`Provide definition`, symbolRange);
+			// console.log(`[${fsUtils.generateTimestamp()}] `+`Provide definition`, symbolRange);
 			// sanity check
 			if (symbolRange?.end && symbolRange?.start && symbolRange.end.character > document.position.character) {
 				const symbolName: string = fsUtils.getText(document.txt, symbolRange);
@@ -320,7 +320,7 @@ export class PvsDefinitionProvider {
 					const character: number = symbolRange.start.character;
 					// const fileName: string = document.uri;
 					// const theoryName: string = this.findTheory(document, line);
-					// console.log("(line, character) ", line, character);
+					// console.log(`[${fsUtils.generateTimestamp()}] `+"(line, character) ", line, character);
 					// await this.getTermAt(document, { line, character });
 
 					const definitions: PvsDefinition[] = await this.findSymbolDefinition(document.uri, symbolName, { line: line, character: character });

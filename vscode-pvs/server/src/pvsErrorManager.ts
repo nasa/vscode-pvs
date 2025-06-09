@@ -24,10 +24,15 @@ export class PvsErrorManager {
         taskId: string,
         autorun?: boolean
     }): void {
-        console.error(desc?.response);
+        // PVS is returning error messages with different structures. @M3 #TODO fix me
+        const msg: string = desc.response.error.message 
+        + (desc.response.error.data? 
+            " - " + (typeof desc.response.error.data === "string"? desc.response.error.data : desc.response.error.data.error_string) : 
+            "");
+        console.error(`[pvsErrorManager.handleProveFormulaError] PVS reported an error: ${msg}`);
         const evt: ProofExecDidFailToStartProof = {
             action: "did-fail-to-start-proof",
-            msg: desc?.response?.error?.message
+            msg: msg
         };
         this.connection?.sendNotification(serverEvent.proverEvent, evt);
         if (desc?.autorun) {
@@ -48,12 +53,31 @@ export class PvsErrorManager {
             if (desc.taskId) {
                 const msg: string = `Typecheck errors in ${desc.request.fileName}${desc.request.fileExtension}.\nPlease fix the typecheck errors before trying to start the evaluator on theory ${desc.request.theoryName}.`;
                 // this.connection?.sendRequest(serverEvent.closeDontSaveEvent, { args: desc.request, msg });
-                this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg });
+                this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg, showProblemsPanel: true });
             } else {
                 const msg: string = (desc.response.error && desc.response.error.message) ? desc.response.error.message 
                 : `Error: PVSio crashed into Lisp. Please start a new evaluator session.`;
                 this.notifyError({ msg });
                 console.error(`[pvs-language-server] ${msg}`);
+            }
+        }
+    }
+    /**
+     * Handler for latex generation errors
+     */
+    handleLatexFileError (desc: {
+        request: { fileName: string, fileExtension: string, contextFolder: string },
+        response: PvsError,
+        taskId?: string
+    }): void {
+        if (desc && desc.response && desc.response.error) {
+            if (desc.response.error.data) {
+                const fname: string = (desc.response.error.data.file_name) ? desc.response.error.data.file_name : fsUtils.desc2fname(desc.request);
+                const msg: string = desc.response.error.data.error_string || desc.response.error.data;
+                if (desc.taskId) 
+                    this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `${msg}`, showProblemsPanel: false });
+            } else if (desc.response.error.message) {
+                this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: desc.response.error.message, showProblemsPanel: false });
             }
         }
     }
@@ -71,14 +95,14 @@ export class PvsErrorManager {
                 const msg: string = desc.response.error.data.error_string || "";
                 if (desc.taskId) {
                     if (fname === fsUtils.desc2fname(desc.request)) {
-                        this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `Typecheck errors in ${desc.request.fileName}${desc.request.fileExtension}: ${msg}` });
+                        this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `Typecheck errors in ${desc.request.fileName}${desc.request.fileExtension}: ${msg}`, showProblemsPanel: true });
                     } else {
-                        this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `File ${fsUtils.getFileName(fname)}${fsUtils.getFileExtension(fname)} imported by ${desc.request.fileName}${desc.request.fileExtension} contains typecheck errors.` });
+                        this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: `File ${fsUtils.getFileName(fname)}${fsUtils.getFileExtension(fname)} imported by ${desc.request.fileName}${desc.request.fileExtension} contains typecheck errors.`, showProblemsPanel: true });
                     }
                 }
             } else if (desc.response.error.message) {
                 // this is typically an error thrown by pvs-server, not an error in the PVS spec
-                this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: desc.response.error.message });
+                this.notifyEndImportantTaskWithErrors({ id: desc.taskId, msg: desc.response.error.message, showProblemsPanel: true });
             }
         }
     }
@@ -92,7 +116,7 @@ export class PvsErrorManager {
             const msg: string = (desc?.response?.error) ? JSON.stringify(desc.response.error)
                 : `Error: tccs could not be generated (please check pvs-server output for details)`;
             this.notifyError({ msg });
-            console.error(`[pvs-language-server.showTccs] Error: tccs could not be generated`, desc.response);
+            console.error(`[pvsErrorManager.handleShowTccsError] Error: tccs could not be generated`, desc.response);
         }
     }
     // handleParseFileError (desc: {
@@ -123,13 +147,17 @@ export class PvsErrorManager {
                 // nothing to do
                 break;
             }
-            case ProcessCode.PVSNOTFOUND: {
+            case ProcessCode.PVS_NOT_FOUND: {
                 this.connection?.sendRequest(serverEvent.pvsNotFound);
                 break;
             }
-            case ProcessCode.UNSUPPORTEDPLATFORM: {
+            case ProcessCode.UNSUPPORTED_PLATFORM: {
                 const platform: string = process.platform;
                 this.connection?.sendRequest(serverEvent.pvsServerFail, { msg: `Error: Unsupported platform '${platform}'.`});
+                break;
+            }
+            case ProcessCode.PVS_START_FAIL: {
+                this.connection?.sendRequest(serverEvent.pvsServerFail, { msg: `Error: Couldn't start PVS process.\nDouble check PVS installation and try again.`});
                 break;
             }
             default: {
@@ -140,11 +168,10 @@ export class PvsErrorManager {
     }
     
     // additional utility functions for notifying errors to the client
-    notifyEndImportantTaskWithErrors (desc: { id: string, msg: string }) {
+    notifyEndImportantTaskWithErrors (desc: { id: string, msg: string, showProblemsPanel: boolean }) {
         this.connection?.sendNotification(`server.status.end-important-task-${desc.id}-with-errors`, desc);
 	}
-	notifyPvsFailure (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src: string }): void {
-		// error will be shown in a dialogue box
+	notifyPvsFailure (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src: string, log?: string }): void {
         this.connection?.sendNotification("server.status.pvs-failure", opt);
 	}
 	notifyError (desc: { msg: string }): void {

@@ -118,6 +118,8 @@ export class VSCodePvsPlotter {
             if (desc && desc.expr) {
                 const expr: string = desc.expr;
                 const label: string = expr.length > MAX_INNER_LABEL_LEN ? expr.substring(0, MAX_TAB_LABEL_LEN) + "..." : expr;
+                // @M3 The plotter needs the result not to be expressed as decimals (as is the default now in PVSio)
+                desc.expr = "push[bool](PP_RATIONALS,false); " + desc.expr;
                 // create webview
                 this.panel = vscode.window.createWebviewPanel(
                     'vscode-pvs.plot-expression', // Identifies the type of the webview. Used internally
@@ -141,10 +143,13 @@ export class VSCodePvsPlotter {
                     req: PvsioEvaluatorCommand,
                     res: PvsResponse
                 }) => {
+                    var data: string = desc?.res?.result || desc?.res?.error;
+                    // remove output prompts and new lines @M3
+                    data = data?.replace(/\n/g, '').replace(/==>/g, '');
                     // update plot
                     this.panel.webview.html = this.createContent({
                         expr,
-                        data: desc?.res?.result || desc?.res?.error
+                        data: data
                     });
                     resolve(true);
                 });
@@ -209,7 +214,7 @@ export class VSCodePvsPlotter {
                             type: opt.yScale || "linear",
                             autorange: true
                         },
-                        title: "${title?.length > 32 ? title?.substr(0,32) + "..." : title}"
+                        title: "${title?.length > 32 ? title?.substring(0,32) + "..." : title}"
                     }, {
                         editable: true,
                         scrollZoom: true,

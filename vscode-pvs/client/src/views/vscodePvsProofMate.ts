@@ -41,7 +41,7 @@ import * as vscode from 'vscode';
 import * as vscodeUtils from "../utils/vscode-utils";
 import * as path from 'path';
 import { Explorer, ProofBranch, ProofCommand, ProofItem, RootNode } from "./vscodePvsProofExplorer";
-import { ProofEditCopyNode, ProofEditCopyTree, ProofMateProfile, ProofNode, ProofNodeType, ProofNodeX, PvsFormula, PvsProofCommand, SequentDescriptor, serverEvent, serverRequest, SFormula } from "../common/serverInterface";
+import { ProofEditCopyNode, ProofEditCopyTree, ProofMateProfile, ProofNode, ProofNodeType, ProofNodeX, PvsFormula, PvsProofCommand, PvsProofState, serverEvent, serverRequest, SFormula } from "../common/serverInterface";
 import { openSketchpad, saveSketchpad } from "../common/fsUtils";
 import { proverCommands } from "../common/languageUtils";
 import { TreeItem, TreeItemCollapsibleState } from "vscode";
@@ -470,8 +470,8 @@ abstract class ProofMateItem extends ProofItem {
 			this.iconPath = new vscode.ThemeIcon("circle-filled");// star-full, new vscode.ThemeColor("pvs.orange"));
 		} else if (this.activeFlag) {
 			this.iconPath = {
-				light: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg"),
-				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg")
+				light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg")),
+				dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-orange-diamond.svg"))
 			};	
 		}
 	}
@@ -1395,7 +1395,7 @@ export class VSCodePvsProofMate extends Explorer {
 							seq: res.seq
 						}
 					};
-					console.log(`[proof-mate] Copy tree rooted at ${resource.name} (${resource.nodeId})`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[proof-mate] Copy tree rooted at ${resource.name} (${resource.nodeId})`);
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			} else {
@@ -1414,7 +1414,7 @@ export class VSCodePvsProofMate extends Explorer {
 						seq
 					}
 				};
-				console.log(`[proof-mate] Copy node ${resource.name} (${resource.nodeId})`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[proof-mate] Copy node ${resource.name} (${resource.nodeId})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			} else {
 				console.warn(`[proof-mate] Warning: action exec-proof-command is trying to use null resource`);
@@ -1545,7 +1545,7 @@ export class VSCodePvsProofMate extends Explorer {
 	/**
 	 * Utility function, updates the recommendations shown in proof mate
 	 */
-	updateRecommendations (proofState: SequentDescriptor): void {
+	updateRecommendations (proofState: PvsProofState): void {
 		if (proofState) {
 			if (this.enabled) {
 				this.resetView();
@@ -1564,9 +1564,9 @@ export class VSCodePvsProofMate extends Explorer {
 		}
 	}
 	/**
-	 * Utility function, returns the recommendated proof commands based on the given sequent and the set of rules of the recommendation
+	 * Utility function, returns the recommended proof commands based on the given sequent and the set of rules of the recommendation
 	 */
-	getRecommendations (proofState: SequentDescriptor): { cmd: string, tooltip?: string }[] {
+	getRecommendations (proofState: PvsProofState): { cmd: string, tooltip?: string }[] {
 		const ans: { cmd: string, tooltip?: string }[] = [];
 		if (proofState && proofState.sequent) {
 			for (let i in this.recommendationRules) {

@@ -41,15 +41,15 @@ import * as os from 'os';
 import * as path from 'path';
 import { ChildProcess, exec, execSync } from 'child_process';
 import * as crypto from 'crypto';
-import { 
-	FileDescriptor, FileList, FormulaDescriptor, Position, ProofDescriptor, 
-	ProofFile, ProofNode, ProofStatus, PvsContextDescriptor, PvsDownloadDescriptor, 
-	pvsDownloadUrl, PvsFileDescriptor, 
-	PvsFormula, PvsTheory, TheoryDescriptor, Downloader, ShellCommand, LookUpTable, PvsTypeDecl, PvsFile, SequentDescriptor, SFormula
+import {
+	FileDescriptor, FileList, FormulaDescriptor, Position, ProofDescriptor,
+	ProofFile, ProofNode, ProofStatus, PvsContextDescriptor, PvsDownloadDescriptor,
+	pvsDownloadUrl, PvsFileDescriptor,
+	PvsFormula, PvsTheory, TheoryDescriptor, Downloader, ShellCommand, LookUpTable, PvsTypeDecl, PvsFile, PvsProofState, SFormula
 } from '../common/serverInterface';
-import { 
-	commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon, 
-	icons, isInvalidCommand, isProved, proofliteDeclRegexp, proofliteRegexp, pvsSyntaxHighlighting, sanitizeForRegEx, theoremParamsRegexp, theoremRegexp, theoryOrDatatypeRegexp, theoryRegexp, typesRegexp, validTermRegExp 
+import {
+	commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon,
+	icons, isInvalidCommand, isProved, isQEDCommand, proofliteDeclRegexp, proofliteRegexp, pvsSyntaxHighlighting, sanitizeForRegEx, theoremParamsRegexp, theoremRegexp, theoryOrDatatypeRegexp, theoryRegexp, typesRegexp, validTermRegExp, isQEDProofState
 } from './languageUtils';
 import { execFileSync } from 'child_process';
 import { PrettyPrinter } from './xtermInterface';
@@ -230,16 +230,16 @@ export async function cleanTccs(contextFolder: string, opt?: {
 	try {
 		if (contextFolder) {
 			contextFolder = tildeExpansion(contextFolder);
-			// console.log(`reading folder ${contextFolder}`);
+			// console.log(`[${generateTimestamp()}] `+`reading folder ${contextFolder}`);
 			const files: string[] = fs.readdirSync(contextFolder);
 			if (files) {
-				// console.log(files);
+				// console.log(`[${generateTimestamp()}] `+files);
 				// remove .tccs files
 				files.filter(name => {
-					// console.log(name);
+					// console.log(`[${generateTimestamp()}] `+name);
 					return name.endsWith(".tccs");
 				}).forEach(file => {
-					// console.log(`deleting ${file}`);
+					// console.log(`[${generateTimestamp()}] `+`deleting ${file}`);
 					deleteFile(path.join(contextFolder, file));
 				});
 				nCleaned++;
@@ -276,33 +276,33 @@ export async function cleanBin(contextFolder: string, opt?: {
 	opt = opt || {};
 	let nCleaned: number = 0;
 	try {
-		// console.log(`Deleting cache for context ${contextFolder}`);
+		// console.log(`[${generateTimestamp()}] `+`Deleting cache for context ${contextFolder}`);
 		if (contextFolder) {
 			contextFolder = tildeExpansion(contextFolder);
-			// console.log(`Deleting cache for context ${contextFolder}`);
+			// console.log(`[${generateTimestamp()}] `+`Deleting cache for context ${contextFolder}`);
 			const pvsbinFolder: string = path.join(contextFolder, "pvsbin");
 			deleteBinFiles(pvsbinFolder, opt);
-			// console.log(`removing ${path.join(contextFolder, ".pvscontext")}`);
+			// console.log(`[${generateTimestamp()}] `+`removing ${path.join(contextFolder, ".pvscontext")}`);
 			deleteFile(path.join(contextFolder, ".pvscontext"));
-			// console.log(`reading folder ${contextFolder}`);
+			// console.log(`[${generateTimestamp()}] `+`reading folder ${contextFolder}`);
 			const files: string[] = fs.readdirSync(contextFolder);
 			if (files) {
 				// remove .prlite files
 				files.filter(name => {
-					// console.log(name);
+					// console.log(`[${generateTimestamp()}] `+name);
 					return name.endsWith(".prlite") || name.endsWith(".log") || name.endsWith("~");
 				}).forEach(file => {
-					// console.log(`deleting ${file}`);
+					// console.log(`[${generateTimestamp()}] `+`deleting ${file}`);
 					deleteFile(path.join(contextFolder, file));
 				});
 				// remove .tccs files
 				if (!opt.keepTccs) {
-					// console.log(files);
+					// console.log(`[${generateTimestamp()}] `+files);
 					files.filter(name => {
-						// console.log(name);
+						// console.log(`[${generateTimestamp()}] `+name);
 						return name.endsWith(".tccs");
 					}).forEach(file => {
-						// console.log(`deleting ${file}`);
+						// console.log(`[${generateTimestamp()}] `+`deleting ${file}`);
 						deleteFile(path.join(contextFolder, file));
 					});
 				}
@@ -789,8 +789,8 @@ export function getOs (): OsVersion {
 		}
 		return { version: process.platform };
 	} catch (err) {
-		const error: string = err.message + "Unable to detect OS version. This problem is likey due to missing dependency 'node' (please download node from https://nodejs.org/)";
-		console.log(`[pvs-server] ${error}`);
+		const error: string = err.message + "Unable to detect OS version. This problem is likely due to missing dependency 'node' (please download node from https://nodejs.org/)";
+		console.log(`[${generateTimestamp()}] `+`[pvs-server] ${error}`);
 		return { error };
 	}
 }
@@ -798,11 +798,12 @@ export function getOs (): OsVersion {
 /**
  * Utility function, creates the 'git clone' / 'git pull' for nasalib
  */
-export function cloneNASALibCommand (url: string, opt?: { update?: boolean, branch?: string, basePath }): ShellCommand {
+export function cloneNASALibCommand (url: string, opt?: { update?: boolean, branch?: string, basePath?: string }): ShellCommand {
+	const basePath: string = opt?.basePath ? tildeExpansion(opt.basePath) : null
 	const shellCommand: ShellCommand = {
 		cmd: "git",
 		args: (opt?.update) ? [ "pull" ] : [ `clone "${url}" "nasalib"` ],
-		cwd: (opt?.update) ? path.join(opt.basePath, "nasalib") : opt.basePath
+		cwd: (opt?.update && basePath) ? path.join(basePath, "nasalib") : basePath
 	};
 	if (opt.branch && !opt.update) {
 		shellCommand.args.push(`-b "${opt.branch}"`);
@@ -858,7 +859,7 @@ export function execShellCommand (req: ShellCommand, opt?: {
 }): ChildProcess {
 	if (req?.cmd) {
 		const cmd: string = req.args ? `${req.cmd} ${req.args?.join(" ")}` : req.cmd;
-		const shellProcess: ChildProcess = exec(cmd, { cwd: req?.cwd });
+		const shellProcess: ChildProcess = exec(cmd, { cwd: req?.cwd, env: req?.env });
 		
 		// spawn(req.cmd, req.args || [], { cwd: req?.cwd });
         shellProcess.stdout.setEncoding("utf8");
@@ -879,7 +880,7 @@ export function execShellCommand (req: ShellCommand, opt?: {
 			opt?.callback(code === 0);
 		});
 		shellProcess.on("message", (message: any) => {
-			console.log(message);
+			console.log(`[${generateTimestamp()}] `+message);
 		});
 		return shellProcess;
 	}
@@ -892,7 +893,7 @@ export function execShellCommand (req: ShellCommand, opt?: {
 // 		const buf: Buffer = execSync(cmd);
 // 		if (buf) {
 // 			const info: string = buf.toLocaleString();
-// 			console.log(`[pvs-server] ${cmd}\n `, info);
+// 			console.log(`[${generateTimestamp()}] `+`[pvs-server] ${cmd}\n `, info);
 // 			const match: RegExpMatchArray = /(v?[\d\.]+)/g.exec(info);
 // 			if (match && match.length > 1) {
 // 				return { version: match[1] };
@@ -900,10 +901,10 @@ export function execShellCommand (req: ShellCommand, opt?: {
 // 				return { error: info };
 // 			}
 // 		} else {
-// 			console.log("[pvs-server] Missing dependency: node (please download node from https://nodejs.org/)");
+// 			console.log(`[${generateTimestamp()}] `+"[pvs-server] Missing dependency: node (please download node from https://nodejs.org/)");
 // 		}
 // 	} catch (error) {
-// 		console.log("[pvs-server]", error);
+// 		console.log(`[${generateTimestamp()}] `+"[pvs-server]", error);
 // 		return { error };
 // 	}
 // 	return null;
@@ -940,7 +941,7 @@ export function findTheoryName(fileContent: string, line: number): string | null
 
 		// keep searching theory names -- the first element in candidates will be the closest to the current line number
 		txt = txt.split("\n").slice(0, line).join("\n");
-		// console.log({ line, txt: txt.split("\n") });
+		// console.log(`[${generateTimestamp()}] `+{ line, txt: txt.split("\n") });
 		let match: RegExpMatchArray = regexp.exec(txt);
 		const maxIterations: number = 64;
 		// while (match) {
@@ -960,7 +961,7 @@ export function findTheoryName(fileContent: string, line: number): string | null
 					candidates = [ theoryName ].concat(candidates);
 					match = regexp.exec(txt);
 				}
-				// console.log("match", { theoryName, candidates });
+				// console.log(`[${generateTimestamp()}] `+"match", { theoryName, candidates });
 			} else {
 				match = regexp.exec(txt);
 			}
@@ -997,18 +998,18 @@ export async function listPvsFiles (contextFolder: string): Promise<FileList> {
  * @param desc Descriptor indicating filename, file extension, context folder, and file content
  */
 export function listTheories(desc: { fileName: string, fileExtension: string, contextFolder: string, fileContent: string, prelude?: boolean }): TheoryDescriptor[] {
-	// console.log(`[language-utils] Listing theorems in file ${desc.fileName}${desc.fileExtension}`);
+	// console.log(`[${generateTimestamp()}] `+`[language-utils] Listing theorems in file ${desc.fileName}${desc.fileExtension}`);
 	let ans: TheoryDescriptor[] = [];
 	if (desc && desc.fileContent) {
 		let txt: string = desc.fileContent.replace(commentRegexp, "");
-		// console.log(txt);
+		// console.log(`[${generateTimestamp()}] `+txt);
 		const start: number = Date.now();
 		const regexp: RegExp = new RegExp(theoryOrDatatypeRegexp);
 		// let lastIndex: number = 0;
 		let match: RegExpMatchArray = new RegExp(regexp).exec(txt);
 		let lineOffset: number = 0;
 		while (match) {
-			// console.log(`[language-utils] Found ${match[0]}`);
+			// console.log(`[${generateTimestamp()}] `+`[language-utils] Found ${match[0]}`);
 			if (match.length > 1 && match[1]) {
 				const theoryName: string = match[1];
 
@@ -1026,7 +1027,7 @@ export function listTheories(desc: { fileName: string, fileExtension: string, co
 					lineOffset += fullClip.split("\n").length - 1;
 
 					ans.push({
-						theoryName: desc.fileExtension === ".tccs" && theoryName.endsWith("_TCCS") ? theoryName.substr(0, theoryName.length - 5) : theoryName,
+						theoryName: desc.fileExtension === ".tccs" && theoryName.endsWith("_TCCS") ? theoryName.substring(0, theoryName.length - 5) : theoryName,
 						position: {
 							line: line,
 							character: character
@@ -1043,10 +1044,10 @@ export function listTheories(desc: { fileName: string, fileExtension: string, co
 			} else {
 				match = regexp.exec(txt);
 			}
-			// console.log(match);
+			// console.log(`[${generateTimestamp()}] `+match);
 		}
 		const stats: number = Date.now() - start;
-		// console.log(`[languageUtils] listTheories(${desc.fileName}) completed in ${stats}ms`);
+		// console.log(`[${generateTimestamp()}] `+`[languageUtils] listTheories(${desc.fileName}) completed in ${stats}ms`);
 	}
 	return ans;
 }
@@ -1088,7 +1089,7 @@ export function listTheoryNames (fileContent: string): string[] {
  * @param fname Path to a pvs file
  */
 export async function listTheoriesInFile (fname: string, opt?: { content?: string }): Promise<TheoryDescriptor[]> {
-	// console.log(`listing theories in file ${fname}`);
+	// console.log(`[${generateTimestamp()}] `+`listing theories in file ${fname}`);
 	opt = opt || {};
 	if (fname) {
 		const fileName: string = getFileName(fname);
@@ -1230,7 +1231,7 @@ export async function typesLookUpTable (cdesc: PvsContextDescriptor): Promise<{ 
 				}
 			}
 		}
-		// console.log(lookupTable);
+		// console.log(`[${generateTimestamp()}] `+lookupTable);
 		return lookupTable;
 	}
 	return null;
@@ -1678,14 +1679,14 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 							formulaDescriptors.push(fdesc);
 						}
 						// const matchTime: number = Date.now() - startMatch;
-						// console.log(`[languageUtils] listTheorems(${desc.fileName}${desc.fileExtension}.${match[0]?.trim()}) completed in ${matchTime}ms`);			
+						// console.log(`[${generateTimestamp()}] `+`[languageUtils] listTheorems(${desc.fileName}${desc.fileExtension}.${match[0]?.trim()}) completed in ${matchTime}ms`);			
 					}
 				} else {
 					console.error("Error while finding theory names :/");
 				}
 			}
 			// const time: number = Date.now() - start;
-			// console.log(`[languageUtils] listTheorems(${desc.fileName}${desc.fileExtension}) completed in ${time}ms`);
+			// console.log(`[${generateTimestamp()}] `+`[languageUtils] listTheorems(${desc.fileName}${desc.fileExtension}) completed in ${time}ms`);
 			return formulaDescriptors;
 		}
 	}
@@ -1730,7 +1731,7 @@ export function findProofObligation(formulaName: string, txt: string): number {
 	const regexp: RegExp = new RegExp(`\\b${formula}:\\s*OBLIGATION\\b`, "g");
 	let match: RegExpMatchArray = regexp.exec(txt);
 	if (match) {
-		const trim: string = txt.substr(0, match.index);
+		const trim: string = txt.substring(0, match.index);
 		if (trim && trim.length > 0) {
 			return trim.split("\n").length;
 		}
@@ -1743,7 +1744,7 @@ export function findProofObligation(formulaName: string, txt: string): number {
  */
  export async function getContextDescriptor (contextFolder: string, opt?: { listTheorems?: boolean, includeTccs?: boolean, prelude?: boolean }): Promise<PvsContextDescriptor> {
 	if (contextFolder) {
-		// console.log(`[language-utils] Generating context descriptor for ${contextFolder}...`);
+		// console.log(`[${generateTimestamp()}] `+`[language-utils] Generating context descriptor for ${contextFolder}...`);
 		const response: PvsContextDescriptor = {
 			fileDescriptors: {},
 			contextFolder
@@ -1751,11 +1752,11 @@ export function findProofObligation(formulaName: string, txt: string): number {
 		const fileList: FileList = await listPvsFiles(contextFolder);
 		for (let i = 0; i < fileList?.fileNames?.length; i++) {
 			const fname: string = path.join(contextFolder, fileList.fileNames[i]);
-			// console.log(`[language-utils] Processing file ${fname}`);
+			// console.log(`[${generateTimestamp()}] `+`[language-utils] Processing file ${fname}`);
 			const desc: PvsFileDescriptor = await getFileDescriptor(fname, opt);
 			response.fileDescriptors[fname] = desc;
 		}
-		// console.log("[language-utils] Done");
+		// console.log(`[${generateTimestamp()}] `+"[language-utils] Done");
 		return response;
 	}
 	return null;
@@ -1778,10 +1779,10 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 	};
 	const pvsFileContent: string = await readFile(fname);
 	const tccsFileContent: string = (opt.includeTccs) ? await readFile(path.join(contextFolder, `${fileName}.tccs`)) : null;
-	// console.log(`[languageUtils.getFileDescriptor] listTheories(${fileName})`);
+	// console.log(`[${generateTimestamp()}] `+`[languageUtils.getFileDescriptor] listTheories(${fileName})`);
 	const theories: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent });
 	if (theories) {
-		// if (opt.listTheorems) { console.log(`[languageUtils.getFileDescriptor] listTheorems(${fileName})`);	}
+		// if (opt.listTheorems) { console.log(`[${generateTimestamp()}] `+`[languageUtils.getFileDescriptor] listTheorems(${fileName})`);	}
 		const lemmas: FormulaDescriptor[] = 
 			(opt.listTheorems) 
 				? await listTheorems({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent, prelude: opt?.prelude, cache: { theories } })
@@ -1791,10 +1792,10 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 				? await listTheorems({ fileName, fileExtension: ".tccs", contextFolder, fileContent: tccsFileContent, prelude: opt?.prelude })
 					: [];
 		const descriptors: FormulaDescriptor[] = lemmas.concat(tccs);
-		// console.log(`[language-utils] Processing ${theories.length} theories`);
+		// console.log(`[${generateTimestamp()}] `+`[language-utils] Processing ${theories.length} theories`);
 		for (let i = 0; i < theories.length; i++) {
 			const theoryName: string = theories[i].theoryName;
-			// console.log(`[language-utils] Processing theory ${theoryName}`);
+			// console.log(`[${generateTimestamp()}] `+`[language-utils] Processing theory ${theoryName}`);
 			const position: Position = theories[i].position;
 			const theoryDescriptor: TheoryDescriptor = {
 				fileName, fileExtension, contextFolder, theoryName, position, 
@@ -1802,13 +1803,13 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 					return desc.theoryName === theoryName;
 				}) : []
 			};
-			// console.log(`[language-utils] Done`);
+			// console.log(`[${generateTimestamp()}] `+`[language-utils] Done`);
 			response.theories.push(theoryDescriptor);
 		}
 	}
 	// timing stats, collected for debugging purposes
 	const stats: number = Date.now() - start;
-	// console.log(`[languageUtils.getFileDescriptor] File descriptor for ${fname} created in ${stats}ms`);
+	// console.log(`[${generateTimestamp()}] `+`[languageUtils.getFileDescriptor] File descriptor for ${fname} created in ${stats}ms`);
 	return response;
 }
 
@@ -2102,7 +2103,6 @@ export function createPvsLibraryPath (libs: string[]): string {
 	}
 	return "";
 }
-
 /**
  * Utility function, appends a proof summary at the end of a given file
  * @param fname Name of the summary file
@@ -2301,7 +2301,7 @@ function tryPrettyPrintFormula (formula: string, pp: PrettyPrinter): string {
                 fmla = formula;
             }
         } catch (err) {
-            console.log(`[language-utils] Error while trying to use external prettyprinter (${pp.cmd} ${args.join(" ")})`, err);
+            console.log(`[${generateTimestamp()}] `+`[language-utils] Error while trying to use external prettyprinter (${pp.cmd} ${args.join(" ")})`, err);
             // restore original output
             fmla = formula;
         }
@@ -2348,11 +2348,17 @@ export function commentaryToString (commentary: string | string[], opt?: {
     colorTheme?: XTermColorTheme,
     htmlEncoding?: boolean
 }): string {
+	function looksLikeASequent(msg: string): boolean {
+		let lines: string[] = msg.split('\n');
+		return /[a-z_\d]+[\d\.]*(?: \(TCC\))? :/i.test(lines[0]) && lines.some((l)=>{return /\|-------/.test(l)});
+	}
+
 	let res = "";
     if (commentary) {
         const colorTheme: XTermColorTheme = opt.colorTheme || "dark";
         const gray: PvsColor = getColor(PvsColor.gray, colorTheme);
         const yellow: PvsColor = getColor(PvsColor.yellow, colorTheme);
+        const green: PvsColor = getColor(PvsColor.green, colorTheme);
         if (typeof commentary === "string") {
             commentary = commentary.trim().endsWith(",") ? commentary.trim().slice(0, -1) : commentary.trim();
             res += opt.htmlEncoding ? `<br>${commentary}<br>` 
@@ -2362,12 +2368,23 @@ export function commentaryToString (commentary: string | string[], opt?: {
             res += opt.htmlEncoding ? "<br>" : "\n";
             for (let i = 0; i < commentary.length; i++) {
                 let line: string = commentary[i];
-                if (i === commentary.length - 1) {
-                    line = line.trim().endsWith(",") ? line.trim().slice(0, -1) : line.trim();
-                }
-                res += opt.htmlEncoding ? `${line}<br>` 
-                    : opt.useColors ? `${colorText(`${line}`, line.includes("This completes the proof") ? yellow : gray)}\n`
-                        : `${line}\n`;
+
+								if(looksLikeASequent(line)) {
+									if (i === commentary.length - 1 || i == 0 || looksLikeASequent(commentary[i-1]))
+									// Ignore the last commentary if it looks like a sequent,
+									// because it's the same sequent being informed in the 
+									// proof status @M3.
+										line = null;
+								} else {
+								  if (i === commentary.length - 1)	
+										line = line.trim().endsWith(",") ? line.trim().slice(0, -1) : line.trim();
+								}
+								if (line)
+                	res += opt.htmlEncoding ? `${line}<br>` 
+                  	  : opt.useColors ? `${colorText(`${line}`, 
+											line.includes("This completes the proof") ? yellow :
+											line.includes("Q.E.D.") ? green : gray)}\n`
+                      	  : `${line}\n`;
             }
         }
     }
@@ -2382,7 +2399,7 @@ export function formatPvsIoState (pvsioState: string, opt?: { useColors?: boolea
 	return pvsioState;
 }
 
-export function formatHiddenFormulas (proofState: SequentDescriptor, opt?: { 
+export function formatHiddenFormulas (proofState: PvsProofState, opt?: { 
     useColors?: boolean, 
     showAction?: boolean,
     colorizeParens?: boolean
@@ -2416,7 +2433,7 @@ export function formatHiddenFormulas (proofState: SequentDescriptor, opt?: {
 /**
  * Utility function, converts sequent formulas into a string
  */
-export function sformulas2string (desc: SequentDescriptor): string {
+export function sformulas2string (desc: PvsProofState): string {
 	let res: string = "";
 	if (desc?.sequent) { // print label and comment only if the sequent is non-empty (sequent empty means proof completed)
 		if (desc.sequent.antecedents) {
@@ -2434,15 +2451,15 @@ export function sformulas2string (desc: SequentDescriptor): string {
 /**
  * Prettyprints sequents. Syntax highlighting is introduced as ansi codes when option useColors is true.
  */
-export function formatSequent (desc: SequentDescriptor, opt?: {
+export function formatSequent (desc: PvsProofState, opt?: {
 	useColors?: boolean,
-    colorizeParens?: boolean,
-    colorTheme?: XTermColorTheme,
+  colorizeParens?: boolean,
+  colorTheme?: XTermColorTheme,
 	showAction?: boolean,
 	htmlEncoding?: boolean,
 	formulasOnly?: boolean,
-    ignoreCommentary?: boolean,
-    prettyPrinter?: PrettyPrinter
+  ignoreCommentary?: boolean,
+  prettyPrinter?: PrettyPrinter
 }): string {
 	if (desc) {
 		opt = opt || {};
@@ -2456,10 +2473,11 @@ export function formatSequent (desc: SequentDescriptor, opt?: {
 				res += commentaryToString(desc.commentary, opt);
 			}
 		}
-        // print label and comment only if 
-        // - the sequent is non-empty (sequent empty means proof completed)
-        // - the commentary string does not indicate error
-		if (desc.sequent && (opt.ignoreCommentary || !isInvalidCommand(desc))) {
+		let deemedAsQED: boolean = isQEDProofState(desc);
+		// print sequent, label and comment only if 
+		// - the sequent is non-empty (sequent empty means proof completed)
+		// - the commentary string does not indicate error
+		if (desc.sequent && !deemedAsQED && (opt.ignoreCommentary || !isInvalidCommand(desc))) {
 			if (desc.label) {
 				res += labelToString(desc.label, opt);
 			}
@@ -2482,13 +2500,72 @@ export function formatSequent (desc: SequentDescriptor, opt?: {
 	}
 	return null;
 }
+/**
+ * @assumes folderExists(libPath)
+ * @param libPath a path assumed to exists in the file system
+ * @returns true if NASALib can be identified in the give path
+ */
+export function containsNasalib(libPath: string): boolean {
+	const pvsLibIdRE : RegExp = /id: *([\w]+)/gi;
+	const pvsLibVersionRE : RegExp = /version: *([\w\.]+)/gi;
+
+	const pvsLibFileName: string = path.join(libPath, '.pvslib');
+	const pvsLibFile : string = readFile(pvsLibFileName);
+	let match : RegExpMatchArray = pvsLibIdRE.exec(pvsLibFile);
+	if(match && match.length > 0 && match[1] === 'NASALib') {
+			match = pvsLibVersionRE.exec(pvsLibFile);
+			return (match && match.length > 0 && match[1] === '8.0')
+	}
+	return false;
+}
+
+/**
+ * From a string representing the pvs-library-paths, returns the path corresponding to NASALib (undefined if there is no such path)
+ * 
+ * Example: 
+ *   isNasalibInPvsLibraryPath(process.env["PVS_LIBRARY_PATH"])
+ * 	 returns true if NASALib is in one of t	he paths in the environment 
+ *   variable PVS_LIBRARY_PATH 
+ * 
+ * @param pvsLibraryPath a string representation of a list of paths, separated by
+ *                       the character path.delimiter.
+ * @returns true if NASALib is located in one of the paths in pvsLibraryPath
+ */
+export function getNasalibPath(pvsLibraryPath: string): string | undefined {
+	let result: string | undefined = undefined;
+	if (pvsLibraryPath) {
+		pvsLibraryPath.split(path.delimiter).forEach( (libPath) => {
+				libPath = tildeExpansion(libPath);
+				if(folderExists(libPath) && containsNasalib(libPath)){
+					result = libPath;
+					console.log(`[${generateTimestamp()}] `+`[getNasalibPath] NASALib v8.0 found at ${libPath}`);
+				} // else console.log(`[${generateTimestamp()}] `+`[nasalibInstallationWizard] omitting ${libPath} from PVS_LIBRARY_PATH (folder not found)`);
+		});
+	}
+	return result;
+}
+
+export function prunePvsLibraryPath(pvsLibraryPath: string): string {
+	let result: string = pvsLibraryPath;
+	if (pvsLibraryPath) {
+		let paths: string[] = pvsLibraryPath.split(path.delimiter);
+		paths.forEach( (libPath: string, idx: number) => {
+				libPath = tildeExpansion(libPath);
+				if(!folderExists(libPath)){
+					paths[idx] = undefined;
+				} 
+		});
+		result = paths.filter(Boolean).join(path.delimiter);
+	}
+	return result;
+}
 
 /**
  * Utility function, shows username, uid and gid
  */
 export function getUserInfo (): os.UserInfo<string> {
 	const userInfo: os.UserInfo<string> = os.userInfo();
-	console.log({ username: userInfo.username, uid: userInfo.uid, gid: userInfo.gid });
+	console.log(`[${generateTimestamp()}] `+{ username: userInfo.username, uid: userInfo.uid, gid: userInfo.gid });
 	return userInfo;
 }
 
@@ -2505,22 +2582,22 @@ export function chown (contextFolder: string, opt?: { uid?: number, gid?: number
 			contextFolder = tildeExpansion(contextFolder);
 			if (fs.existsSync(contextFolder)) {
 				try {
-					console.log(`[fsUtils] chown `, { contextFolder, uid, gid, files: opt?.fileExtension || "*.*" });
+					console.log(`[${generateTimestamp()}] `+`[fsUtils] chown `, { contextFolder, uid, gid, files: opt?.fileExtension || "*.*" });
 					// chown the folder
-					console.log(`[fsUtils] chown(${uid}:${gid}, ${contextFolder})`);
+					console.log(`[${generateTimestamp()}] `+`[fsUtils] chown(${uid}:${gid}, ${contextFolder})`);
 					fs.chownSync (contextFolder, uid, gid);
 					let files: string[] = fs.readdirSync(contextFolder);
 					if (files?.length) {
 						// filter files if needed
 						files = files.filter(name => {
-							// console.log(name);
+							// console.log(`[${generateTimestamp()}] `+name);
 							return (opt?.fileExtension) ? name.endsWith(opt.fileExtension)
 								: (isPvsFile(name) || isProofFile(name));
 						});
 						// chown all files
 						for (let i = 0; i < files.length; i++) {
 							const fname: string = path.join(contextFolder, files[i]);
-							console.log(`[fsUtils] chown(${uid}:${gid}, ${fname})`);
+							console.log(`[${generateTimestamp()}] `+`[fsUtils] chown(${uid}:${gid}, ${fname})`);
 							fs.chownSync (fname, uid, gid);
 						}
 					}
@@ -2532,4 +2609,17 @@ export function chown (contextFolder: string, opt?: { uid?: number, gid?: number
 		}
 	}
 	return false;
+}
+
+export function generateTimestamp(): string {
+	const now = new Date();
+
+	const year = now.getFullYear();
+	const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+	const day = String(now.getDate()).padStart(2, '0');
+	const hours = String(now.getHours()).padStart(2, '0');
+	const minutes = String(now.getMinutes()).padStart(2, '0');
+	const seconds = String(now.getSeconds()).padStart(2, '0');
+
+	return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
 }

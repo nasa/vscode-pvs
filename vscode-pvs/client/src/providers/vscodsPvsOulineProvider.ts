@@ -79,6 +79,7 @@ export class VSCodePvsFileOutlineProvider implements vscode.DocumentSymbolProvid
             const fileExtension: string = fsUtils.getFileExtension(document.fileName);
             this.client.sendRequest(serverRequest.getFileDescriptor, { contextFolder, fileName, fileExtension });
             this.client.onRequest(serverEvent.getFileDescriptorResponse, async (fdesc: PvsFileDescriptor) => {
+                console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsOulineProvider] responding request ${serverEvent.getFileDescriptorResponse} - param: ${JSON.stringify(fdesc)}`); // #DEBUG
                 const dsym: vscode.DocumentSymbol[] = [];
                 if (fdesc) {
                     if (fdesc.theories && fdesc.fileName === fileName && fdesc.contextFolder === contextFolder && fdesc.fileExtension === fileExtension) {

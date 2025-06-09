@@ -54,7 +54,7 @@ export class DdlParser {
         const ofname: string = (opt && opt.output) ? opt.output : "";
 
         const ifname: string = fsUtils.desc2fname(desc);
-        console.info(`[ddl-parser] Parsing ${ifname}`);
+        console.info(`[${fsUtils.generateTimestamp()}] `+`[ddl-parser] Parsing ${ifname}`);
 
         let diags: ParserDiagnostics = null;
         const libFolder: string = path.join(__dirname, "../../../../out/core/lib");
@@ -62,7 +62,7 @@ export class DdlParser {
         // const start: number = Date.now();
         let cmd: string = `cd ${libFolder} && java -jar DdlParser.jar ${ifname}`; // this command will produce a JSON object of type Diagnostic[] on stdout
         if (ofname) {
-            console.log(`[ddl-parser] Writing file ${ofname}`);
+            console.log(`[${fsUtils.generateTimestamp()}] `+`[ddl-parser] Writing file ${ofname}`);
             cmd += ` -out ${ofname};`;
         }
         try {
@@ -75,18 +75,18 @@ export class DdlParser {
                     if (diags && diags.errors && diags.errors.length > 0) {
                         let msg: string = `File ${desc.fileName}${desc.fileExtension} parsed with errors`;
                         if (diags["parse-time"]) { msg += ` in ${diags["parse-time"].ms}ms`; }
-                        console.log(`[vscode-pvs-parser] ${msg}`);
+                        console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-parser] ${msg}`);
                     } else {
                         let msg: string = `File ${desc.fileName}${desc.fileExtension} parsed successfully`;
                         if (diags && diags["parse-time"]) { msg += ` in ${diags["parse-time"].ms}ms`; }
-                        console.log(`[vscode-pvs-parser] ${msg}`);
+                        console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-parser] ${msg}`);
                     }
                 }
             }
         } catch (parserError) {
-            console.log(parserError);
+            console.log(`[${fsUtils.generateTimestamp()}] `+parserError);
         } finally {
-            // console.log(`[vscode-pvs-parser] Sending diagnostics for ${desc.fileName}${desc.fileExtension}`);
+            // console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-pvs-parser] Sending diagnostics for ${desc.fileName}${desc.fileExtension}`);
             // if (diagnostics && diagnostics.length > 0) {
             //     console.dir(diagnostics, { depth: null });
             // }
@@ -100,7 +100,7 @@ export class DdlParser {
      */
     async prettyPrint (desc: { fileName: string, fileExtension: string, contextFolder: string, expr: string }): Promise<string> {
         if (desc && desc.expr) {
-            console.info(`[ddl-parser] Pretty printing pvs expression ${desc.expr}`);
+            console.info(`[${fsUtils.generateTimestamp()}] `+`[ddl-parser] Pretty printing pvs expression ${desc.expr}`);
 
             const ddlFile: string = path.join(os.tmpdir(), "ddlFile.tmp");
             fsUtils.writeFile(ddlFile, desc.expr);

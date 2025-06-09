@@ -74,7 +74,7 @@ export type ShowTCCsResult = {
   comment?: string[];
   definition?: string;
   "from-decl"?: string; // declaration associated with the tcc
-  proved?: null | boolean; // this should be a string, e.g., "proved", "unfinished", etc.
+  proved: string;
   theory: string;
 }[];
 export declare interface DischargeTccsResult {
@@ -153,7 +153,7 @@ export interface PvsError {
   [k: string]: any;
 }
 /**
- * An error response
+ * An non-error response
  */
 export interface PvsResult {
   jsonrpc: "2.0";

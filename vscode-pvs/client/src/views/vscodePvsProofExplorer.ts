@@ -52,8 +52,8 @@ import {
 	ProofEditDidDeactivateCursor, ProofEditDidUpdateProofStatus, ProofExecDidUpdateSequent, 
 	ProofEditTrimUnused, ServerMode, ProofEditExportProof, ProofExecOpenProof, 
 	ProofExecStartNewProof, ProofExecQuitAndSave, ProofNodeType, ProofExecImportProof, 
-	FileDescriptor, ProofExecRewind, ProofExecInterruptProver, SequentDescriptor, ProofEditJumpHere, 
-	ProofEditDidUpdateDirtyFlag, ProofExecRunSubtree
+	FileDescriptor, ProofExecRewind, ProofExecInterruptProver, ProofEditJumpHere, 
+	ProofEditDidUpdateDirtyFlag, ProofExecRunSubtree, PvsProofState
 } from '../common/serverInterface';
 import * as fsUtils from '../common/fsUtils';
 import { formatSequent } from '../common/fsUtils';
@@ -360,7 +360,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 		if (desc) {
 			this.dirtyFlag = desc.flag;
 		} else {
-			console.log("[vscode-proof-explorer] Warning: dirty flag is null");
+			console.log(`[${fsUtils.generateTimestamp()}] `+"[vscode-proof-explorer] Warning: dirty flag is null");
 		}
 	}
 
@@ -414,7 +414,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 			// fast forward proof to a given proof command
 			this.fft = { id: resource.id, name: resource.name };
 			const action: ProofExecFastForward = { action: "fast-forward", selected: this.fft };
-			console.log(`[vscode-proof-explorer] Fast forward to ${resource.name} (${resource.id})`);
+			console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Fast forward to ${resource.name} (${resource.id})`);
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}
 	}
@@ -429,7 +429,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 			// rewind to a given proof command
 			this.fft = { id: resource.id, name: resource.name };
 			const action: ProofExecRewind = { action: "rewind", selected: this.fft };
-			console.log(`[vscode-proof-explorer] Rewinding to ${resource.name} (${resource.id})`);
+			console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Rewinding to ${resource.name} (${resource.id})`);
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}
 	}
@@ -444,7 +444,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 			// run subtree of a given proof command
 			this.fft = { id: resource.id, name: resource.name };
 			const action: ProofExecRunSubtree = { action: "run-subtree", selected: this.fft };
-			console.log(`[vscode-proof-explorer] Running subtree ${resource.name} (${resource.id})`);
+			console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Running subtree ${resource.name} (${resource.id})`);
 			this.client.sendRequest(serverRequest.proverCommand, action);
 		}
 	}
@@ -593,7 +593,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 		const collapseAux = (node: ProofItem): void => {
 			if (node) {
 				if (node.isComplete() && node?.children?.length) {
-					console.log(`[vscode-proof-explorer] Folding branch ${node.name}`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Folding branch ${node.name}`);
 					this.collapseNode({ id: node.nodeId , name: node.name });
 				} else {
 					for (let i = 0; i < node?.children?.length; i++) {
@@ -869,7 +869,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 				item.parent.deleteChild(item);
 				delete this.searchCache[desc.selected.id];
 				this.refreshView({ source: "did-delete-node" });
-				console.log(`[vscode-proof-explorer] Did delete ${desc.selected.name} (${desc.selected.id})`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Did delete ${desc.selected.name} (${desc.selected.id})`);
 			} else {
 				console.warn(`[vscode-proof-explorer] Warning: could not find item ${desc.selected.name} necessary for proofEdit/deleteNode (${desc.selected.id})`)
 			}
@@ -897,7 +897,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 					parent.id = fsUtils.get_fresh_id();
 				}
 				this.refreshView({ source: "did-append-node" });
-				console.log(`[vscode-proof-explorer] Did append ${desc.elem.name} (${desc.elem.id})`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Did append ${desc.elem.name} (${desc.elem.id})`);
 			} else {
 				console.warn(`[vscode-proof-explorer] Warning: could not find parent ${desc.elem.parent} necessary for proofEdit/appendNode (${desc.elem.name})`);
 			}
@@ -953,7 +953,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 	/**
 	 * Utility function, sets the initial sequent.
 	 */
-	didLoadSequent (sequent: SequentDescriptor): void {
+	didLoadSequent (sequent: PvsProofState): void {
 		// this.proofState = sequent;
 		if (this.activeNode) {
 			this.activeNode.updateSequent(sequent);
@@ -1461,7 +1461,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 				const actionConfirmed: boolean = await this.queryConfirmation(msg);
 				if (actionConfirmed) {
 					const action: ProofExecStartNewProof = { action: "start-new-proof", formula: this.formula };
-					console.log(`[vscode-proof-explorer] Starting new proof for ${this.formula.formulaName}`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Starting new proof for ${this.formula.formulaName}`);
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			}
@@ -1565,7 +1565,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 				vscode.commands.executeCommand("xterm.showFeedbackWhileExecuting", { cmd: "fast-forward", target: resource.name });
 			}
 			// const action: ProofExecFastForward = { action: "fast-forward", selected: { id: resource.id, name: resource.name } };
-			// console.log(`[vscode-proof-explorer] Fast forward to ${resource.name} (${resource.id})`);
+			// console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Fast forward to ${resource.name} (${resource.id})`);
 			// this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.run-subtree", (resource?: ProofItem) => {
@@ -1581,7 +1581,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 				vscode.commands.executeCommand("xterm.showFeedbackWhileExecuting", { cmd: "rewind", target: resource.name });
 			}
 			// const action: ProofExecRewind = { action: "rewind", selected: { id: resource.id, name: resource.name } };
-			// console.log(`[vscode-proof-explorer] Rewinding to ${resource.name} (${resource.id})`);
+			// console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Rewinding to ${resource.name} (${resource.id})`);
 			// this.client.sendRequest(serverRequest.proverCommand, action);
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.run-proof", async (opt?: { force?: boolean }) => {
@@ -1605,7 +1605,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 			// copy selected node
 			if (resource) {
 				const action: ProofEditCopyNode = { action: "copy-node", selected: { id: resource.nodeId, name: resource.name } };
-				console.log(`[vscode-proof-explorer] Copy node ${resource.name} (${resource.nodeId})`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Copy node ${resource.name} (${resource.nodeId})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
@@ -1613,7 +1613,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 			// copy selected node
 			if (resource) {
 				const action: ProofEditCopyTree = { action: "copy-tree", selected: { id: resource.nodeId, name: resource.name } };
-				console.log(`[vscode-proof-explorer] Copy tree rooted at ${resource.name} (${resource.nodeId})`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Copy tree rooted at ${resource.name} (${resource.nodeId})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
@@ -1623,14 +1623,14 @@ export class VSCodePvsProofExplorer extends Explorer {
 		context.subscriptions.push(commands.registerCommand("proof-explorer.paste-node", (resource?: ProofItem) => {
 			if (resource) {
 				const action: ProofEditPasteNode = { action: "paste-node", selected: { id: resource.nodeId, name: resource.name } };
-				console.log(`[vscode-proof-explorer] Pasting clipboard content at ${resource.name} (${resource.nodeId})`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Pasting clipboard content at ${resource.name} (${resource.nodeId})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
 		context.subscriptions.push(commands.registerCommand("proof-explorer.paste-subtree", (resource?: ProofItem) => {
 			if (resource) {
 				const action: ProofEditPasteTree = { action: "paste-tree", selected: { id: resource.nodeId, name: resource.name } };
-				console.log(`[vscode-proof-explorer] Pasting clipboard content at ${resource.name} (${resource.nodeId})`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Pasting clipboard content at ${resource.name} (${resource.nodeId})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
@@ -1641,7 +1641,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 				const actionConfirmed: boolean = await this.queryConfirmation(msg);
 				if (actionConfirmed) {
 					const action: ProofEditDeleteNode = { action: "delete-node", selected: { id: resource.nodeId, name: resource.name } };
-					console.log(`[vscode-proof-explorer] Deleting node ${resource.name} (${resource.nodeId})`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Deleting node ${resource.name} (${resource.nodeId})`);
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			}
@@ -1654,7 +1654,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 				const actionConfirmed: boolean = await this.queryConfirmation(msg);
 				if (actionConfirmed) {
 					const action: ProofEditTrimNode = { action: "trim-node", selected: { id: resource.nodeId, name: resource.name } };
-					console.log(`[vscode-proof-explorer] Trimming node ${resource.name} (${resource.nodeId})`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Trimming node ${resource.name} (${resource.nodeId})`);
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			}
@@ -1666,7 +1666,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 					const actionConfirmed: boolean = await this.queryConfirmation(msg);
 					if (actionConfirmed) {
 						const action: ProofEditJumpHere = { action: "jump-here", selected: { id: resource.nodeId, name: resource.name } };
-						console.log(`[vscode-proof-explorer] Jumping from ${this.activeNode.name} to ${resource.name} (${resource.nodeId})`);
+						console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Jumping from ${this.activeNode.name} to ${resource.name} (${resource.nodeId})`);
 						this.client.sendRequest(serverRequest.proverCommand, action);
 					}
 				} else {
@@ -1681,7 +1681,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 				const actionConfirmed: boolean = await this.queryConfirmation(msg);
 				if (actionConfirmed) {
 					const action: ProofEditDeleteTree = { action: "delete-tree", selected: { id: resource.nodeId, name: resource.name } };
-					console.log(`[vscode-proof-explorer] Deleting tree rooted at ${resource.name} (${resource.nodeId})`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Deleting tree rooted at ${resource.name} (${resource.nodeId})`);
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			}
@@ -1689,7 +1689,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 		context.subscriptions.push(commands.registerCommand("proof-explorer.cut-node", (resource?: ProofItem) => {
 			if (resource) {
 				const action: ProofEditCutNode = { action: "cut-node", selected: { id: resource.nodeId, name: resource.name } };
-				console.log(`[vscode-proof-explorer] Cutting node ${resource.name} (${resource.nodeId})`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Cutting node ${resource.name} (${resource.nodeId})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
@@ -1699,7 +1699,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 				const actionConfirmed: boolean = await this.queryConfirmation(msg);
 				if (actionConfirmed) {
 					const action: ProofEditCutTree = { action: "cut-tree", selected: { id: resource.nodeId, name: resource.name } };
-					console.log(`[vscode-proof-explorer] Cutting tree rooted at ${resource.name} (${resource.nodeId})`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Cutting tree rooted at ${resource.name} (${resource.nodeId})`);
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			}
@@ -1714,7 +1714,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 				});
 				if (name) {
 					const action: ProofEditAppendNode = { action: "append-node", selected: { id: resource.nodeId, name: resource.name }, name };
-					// console.log(`[vscode-proof-explorer] Appending ${name} at ${resource.name} (${resource.id})`);
+					// console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Appending ${name} at ${resource.name} (${resource.id})`);
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			}
@@ -1722,7 +1722,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 		context.subscriptions.push(commands.registerCommand("proof-explorer.new-proof-branch", (resource?: ProofItem) => {
 			if (resource) {
 				const action: ProofEditAppendBranch = { action: "append-branch", selected: { id: resource.nodeId, name: resource.name } };
-				// console.log(`[vscode-proof-explorer] Appending new branch at ${resource.name} (${resource.id})`);
+				// console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Appending new branch at ${resource.name} (${resource.id})`);
 				this.client.sendRequest(serverRequest.proverCommand, action);
 			}
 		}));
@@ -1732,7 +1732,7 @@ export class VSCodePvsProofExplorer extends Explorer {
 				let newName: string = await vscode.window.showInputBox({ prompt: `Editing proof command ${resource.name}`, placeHolder: `${resource.name}`, value: `${resource.name}`, ignoreFocusOut: true });
 				if (newName) {
 					const action: ProofEditRenameNode = { action: "rename-node", selected: { id: resource.nodeId, name: resource.name }, newName };
-					console.log(`[vscode-proof-explorer] Renaming node ${resource.name} (${resource.nodeId})`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[vscode-proof-explorer] Renaming node ${resource.name} (${resource.nodeId})`);
 					this.client.sendRequest(serverRequest.proverCommand, action);
 				}
 			}
@@ -1906,7 +1906,7 @@ export abstract class ProofItem extends TreeItem {
 	protected completeFlag: boolean = false;
 
 	// sequent *before* the execution of the node
-	protected sequent: SequentDescriptor = null;
+	protected sequent: PvsProofState = null;
 
 	/**
 	 * Constructor
@@ -1939,14 +1939,14 @@ export abstract class ProofItem extends TreeItem {
 	/**
 	 * Utility function, updates sequent information for the tree item
 	 */
-	updateSequent (sequent?: SequentDescriptor): void {
+	updateSequent (sequent?: PvsProofState): void {
 		this.sequent = sequent;
 		this.tooltip = sequent ? formatSequent(sequent, { formulasOnly: true }).trim() : "";
 	}
 	/**
 	 * Utility function, returns the sequent associated to this tree item
 	 */
-	getSequent (): SequentDescriptor {
+	getSequent (): PvsProofState {
 		return this.sequent;
 	}
 	/**
@@ -1979,19 +1979,19 @@ export abstract class ProofItem extends TreeItem {
 		if (this.completeFlag) {
 			if (this.contextValue === "root") {
 				this.iconPath = {
-					light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"),
-					dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")
+					light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")),
+					dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"))
 				};
 			} else {
 				this.iconPath = {
-					light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-round.svg"),
-					dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-round.svg")
+					light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-round.svg")),
+					dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-round.svg"))
 				};
 			}
 		} else if (this.activeFlag) {
 			this.iconPath = {
-				light: path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg"),
-				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg")
+				light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg")),
+				dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-blue-diamond.svg"))
 			};
 		} else if (this.pendingFlag) {
 			this.iconPath = new vscode.ThemeIcon("star-empty");
@@ -2370,8 +2370,8 @@ export class RootNode extends ProofItem {
 		super.pending();
 		this.updateLabel();
 		this.iconPath = {
-            light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"),
-            dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")
+            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")),
+            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"))
         }
 	}
 	QED (): void {
@@ -2381,8 +2381,8 @@ export class RootNode extends ProofItem {
 		this.setProofStatus(QED);
 		this.updateLabel();
 		this.iconPath = {
-            light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"),
-            dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")
+            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")),
+            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"))
 		};
 	}
 	isQED (): boolean {

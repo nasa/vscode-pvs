@@ -159,8 +159,8 @@ export class TheoryItem extends TreeItem {
 		const nTheorems: number = this.theoremsOverview.getTotal();
 		const nTccs: number = this.tccsOverview.getTotal();
 		const n: number = nTccs + nTheorems;
-		this.label = `${this.theoryName}  (${this.fileName}${this.fileExtension}, Ln ${this.position.line})`;
-		this.tooltip = `theory ${this.theoryName}`;
+		this.label = this.theoryName;
+		this.tooltip = `${this.fileName}${this.fileExtension} (Ln ${this.position.line})`;
 		// update collapsible state
 		if (n > 0 && this.collapsibleState !== TreeItemCollapsibleState.Expanded) {
 			// this will force refresh
@@ -271,27 +271,29 @@ export class FormulaOverviewItem extends OverviewItem {
 		const nProved: number = (this.theorems) ? this.theorems.filter((item: FormulaItem) => {
 			return item.getStatus() === "proved";
 		}).length : 0;
+		this.iconPath = new ThemeIcon("tasklist");; // new ThemeIcon("eye");
 		if (nProved === nTheorems) {
 			// this.label = `${utils.icons.checkmark} ${this.name}  (${nProved} proved)`;
-			this.label = `${this.name}  (${nProved} proved)`;
-			this.iconPath = {
-				light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"),
-				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")
-			};
+			this.label = `${this.name}: ${nProved} proved`;
+			// this.iconPath = {
+			// 	light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")),
+			// 	dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"))
+			// };
 		} else {
 			// this.label = `${utils.icons.whitecircle} ${this.name}  (${nProved} proved, ${nTheorems-nProved} to be proved)`;
-			this.label = `${this.name}  (${nProved} proved, ${nTheorems-nProved} to be proved)`;
-			this.iconPath = {
-				// light: path.join(__dirname, "..", "..", "..", "icons", "svg-gray-circle.svg"),
-				// dark: path.join(__dirname, "..", "..", "..", "icons", "svg-white-circle.svg")
-				light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"),
-				dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")
-			};
+			this.label = `${this.name}: ${nProved} proved, ${nTheorems-nProved} to be proved`;
+			// this.iconPath = {
+			// 	// light: path.join(__dirname, "..", "..", "..", "icons", "svg-gray-circle.svg"),
+			// 	// dark: path.join(__dirname, "..", "..", "..", "icons", "svg-white-circle.svg")
+			// 	light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")),
+			// 	dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"))
+			// };
 		}
 		this.collapsibleState = (this.theorems.length > 0) ?
-			this.collapsibleState === TreeItemCollapsibleState.None ? TreeItemCollapsibleState.Expanded : this.collapsibleState
+			this.collapsibleState === TreeItemCollapsibleState.None ? 
+				TreeItemCollapsibleState.Expanded : this.collapsibleState
 			// (nProved === nTheorems) ? TreeItemCollapsibleState.Collapsed : TreeItemCollapsibleState.Expanded
-				: TreeItemCollapsibleState.None;
+			: TreeItemCollapsibleState.None;
 	}
 	updateStatus (desc: FormulaDescriptor): void {
 		if (desc) {
@@ -364,23 +366,28 @@ export class FormulaItem extends TreeItem {
 		this.status = this.status || "unchecked"; //'\u{2705}'
 		this.status = this.status.startsWith("proved") ? "proved" : this.status;
 		// this.label = `${utils.getIcon(this.status)} ${this.formulaName}  (${this.status})`;
-		this.label = `${this.formulaName}  (${this.status})`;
+		this.label = this.formulaName;
+		this.tooltip = this.status;
 		const icon: string = utils.getIcon(this.status);
 		this.iconPath = (icon === utils.icons.checkmark) ? {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"),
-			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")
+			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg")),
+			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark.svg"))
 		} : (icon === utils.icons.bang) ? {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg"),
-			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg")
+			// light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg")),
+			// dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-exclamation-mark.svg"))
+			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-cross-mark.svg")),
+			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-cross-mark.svg"))
 		} : (icon === utils.icons.snowflake) ? {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"),
-			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")
+			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg")),
+			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-checkmark-gray.svg"))
 		} : (icon === utils.icons.sparkles) ? {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles-orange.svg"),
-			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles.svg")
+			// light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles-orange.svg")),
+			// dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-sparkles.svg"))
+			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-cross-mark-gray.svg")),
+			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-cross-mark-gray.svg"))
 		} : (icon === utils.icons.whitecircle) ? {
-			light: path.join(__dirname, "..", "..", "..", "icons", "svg-gray-circle.svg"),
-			dark: path.join(__dirname, "..", "..", "..", "icons", "svg-white-circle.svg")
+			light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-gray-circle.svg")),
+			dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "svg-white-circle.svg"))
 		} : null;
 	}
 }
@@ -395,6 +402,7 @@ export class TccsOverviewItem extends FormulaOverviewItem {
 	contextValue: string = "tccs-overview";
 	constructor(desc: TheoryDescriptor) {
 		super("tccs-overview", desc);
+		this.name = "TCCs";
 		this.refreshLabel();
 	}
 	// @overrides
@@ -591,15 +599,30 @@ class FolderOverviewItem extends OverviewItem {
 				}
 			}
 		} else {
-			this.files = [];
+			// this.files = [];
 			this.contextFolder = desc.contextFolder;
 			if (desc.fileDescriptors) {
 				const fnames: string[] = Object.keys(desc.fileDescriptors);
-				for (let i = 0; i < fnames.length; i++) {
-					const item: PvsFileItem = new PvsFileItem();
-					item.updateFileDescriptor(desc.fileDescriptors[fnames[i]]);
-					this.files.push(item);
+
+				if (this.files.length > 0) {
+					for (let i = 0; i < fnames.length; i++) {
+						for (let j = 0; j < this.files.length; j++){
+							if (this.files[j].path === fnames[i]) {
+								const item = this.files[j];
+								item.updateFileDescriptor(desc.fileDescriptors[fnames[i]]);
+								break;
+							}
+						}
+					}
+				} else {
+					for (let i = 0; i < fnames.length; i++) {
+						const item: PvsFileItem = new PvsFileItem();
+						item.updateFileDescriptor(desc.fileDescriptors[fnames[i]]);
+						this.files.push(item);
+					}
 				}
+
+
 				// this.sort();
 			}
 		}
@@ -733,6 +756,15 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 	protected activeFile: string; // last active pvs file
 	protected mode: WorkspaceMode;
 
+	private _pvsFailureHandler: (params: any) => void;
+
+	protected set pvsFailureHandler(value: (params: any) => void) {
+		this._pvsFailureHandler = value;
+	}
+	get pvsFailureHandler(): (params: any) => void {
+		return this._pvsFailureHandler;
+	}
+
 	/**
 	 * @constructor
 	 * @param client Language client 
@@ -751,6 +783,15 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 		// use window.createTreeView instead of window.registerDataProvider -- this allows to perform UI operations programatically. 
 		// window.registerTreeDataProvider(this.providerView, this);
 		this.view = window.createTreeView(this.providerView, { treeDataProvider: this, showCollapseAll: false });
+
+		this.view.onDidExpandElement(e => {
+				e.element.collapsibleState = TreeItemCollapsibleState.Expanded;
+		});
+
+		this.view.onDidCollapseElement(e => {
+				e.element.collapsibleState = TreeItemCollapsibleState.Collapsed;
+		});
+		
 	}
 	
 	/**
@@ -1005,15 +1046,15 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 		if (desc && desc.theoryName) {
 			opt = opt || {};
 			// show dialog with progress
-			await window.withProgress({
-				location: ProgressLocation.Notification,
-				cancellable: true
-			}, async (progress, token) => {
+			await window.withProgress({location: ProgressLocation.Notification, cancellable: true}, async (progress, token) => {
 				// show initial dialog with spinning progress
 				const matchingFormula: string = opt.match?.source?.replace("_TCC", "");
-				const message: string = (opt.tccsOnly) ? 
-					matchingFormula ? `Preparing to discharge TCCs for ${matchingFormula}` : `Preparing to prove TCCs in theory ${desc.theoryName}` 
-						: `Preparing to prove theorems in theory ${desc.theoryName}`;
+				let message: string = 
+					(opt.tccsOnly) ? 
+					  matchingFormula ? 
+						  `Preparing to discharge TCCs for ${matchingFormula}` : 
+							`Preparing to prove TCCs in theory ${desc.theoryName}` 
+					: `Preparing to prove theorems in theory ${desc.theoryName}`;
 				progress.report({ increment: -1, message });
 
 				const candidates: PvsFormula[] = (opt.tccsOnly) ? await this.getTccs(desc) : await this.getTheorems(desc);
@@ -1048,10 +1089,15 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 					tccsOnly: opt.tccsOnly,
 					total: (formulas) ? formulas.length : 0
 				};
-				
+					
 				progress.report({ increment: -1, message });
 				// update the dialog
 				return new Promise<void>(async (resolve, reject) => {
+
+					this.pvsFailureHandler = (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src: string, log?: string }) => {
+							reject();
+					};
+
 					let stop: boolean = false;
 					commands.executeCommand('setContext', 'autorun', true);
 					// show output panel for feedback
@@ -1073,10 +1119,10 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 							const message: string = (opt.tccsOnly) ? `Discharging proof obligations in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`
 								: `Re-running proofs in theory ${theoryName} (${i + 1}/${formulas.length}) '${formulaName}'`;
 							if (formulas.length > 1) {
-								progress.report({
-									increment: 1 / formulas.length * 100, // all increments must add up to 100
-									message
-								});
+							progress.report({
+								increment: 1 / formulas.length * 100, // all increments must add up to 100
+								message
+							});
 							}
 							const start: number = new Date().getTime();
 							const status: ProofStatus =  skip.includes(formula) ? "proved" : await new Promise((resolve, reject) => {
@@ -1089,6 +1135,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 									formulaName
 								});
 								this.client.onRequest(serverEvent.autorunFormulaResponse, (desc: { status: ProofStatus, error?: string }) => {
+									console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.autorunFormulaResponse} - param: ${desc} `); // #DEBUG
 									if (desc && desc.error) {
 										vscodeUtils.showErrorMessage(desc.error);
 									}
@@ -1165,6 +1212,11 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 				
 				// update the dialog
 				return new Promise<void>(async (resolve, reject) => {
+
+					this.pvsFailureHandler = (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src: string, log?: string }) => {
+							reject();
+					};
+
 					let stop: boolean = false;
 					commands.executeCommand('setContext', 'autorun', true);
 					// show output panel for feedback
@@ -1217,6 +1269,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 												formulaName
 											});
 											this.client.onRequest(serverEvent.autorunFormulaResponse, (desc: { status: ProofStatus, error?: string }) => {
+											  console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.autorunFormulaResponse} - param: ${desc} `); // #DEBUG
 												if (desc && desc.error) {
 													vscodeUtils.showErrorMessage(desc.error);
 												}
@@ -1292,6 +1345,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 		return new Promise((resolve, reject) => {
 			this.client.sendRequest(serverRequest.getTheorems, desc);
 			this.client.onRequest(serverEvent.getTheoremsResponse, (response: { theorems: PvsFormula[], error?: string }) => {
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.getTheoremsResponse} - param: ${response} `); // #DEBUG
 				if (response && response.error) {
 					vscodeUtils.showErrorMessage(response.error);
 					vscodeUtils.showProblemsPanel();
@@ -1308,6 +1362,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 		return new Promise((resolve, reject) => {
 			this.client.sendRequest(serverRequest.getTccs, desc);
 			this.client.onRequest(serverEvent.getTccsResponse, (response: { theorems: PvsFormula[], error?: string }) => {
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.getTccsResponse} - param: ${response} `); // #DEBUG
 				if (response && response.error) {
 					vscodeUtils.showErrorMessage(response.error);
 					vscodeUtils.showProblemsPanel();
@@ -1324,6 +1379,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 		return new Promise((resolve, reject) => {
 			this.client.sendRequest(serverRequest.typecheckWorkspace, desc);
 			this.client.onRequest(serverEvent.typecheckWorkspaceResponse, (response: { args: ContextFolder, success: boolean }) => {
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.typecheckWorkspaceResponse} - param: ${response} `); // #DEBUG
 				return resolve(response?.success);
 			});
 		});
@@ -1336,6 +1392,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 		return new Promise((resolve, reject) => {
 			this.client.sendRequest(serverRequest.getImportChainTheorems, desc);
 			this.client.onRequest(serverEvent.getImportChainTheoremsResponse, (response: { theorems: PvsFormula[] }) => {
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.getImportChainTheoremsResponse} - param: ${response} `); // #DEBUG
 				return response ? resolve(response.theorems) : resolve(null);
 			});
 		});
@@ -1361,6 +1418,11 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 				if (formulas && formulas.length) {
 					// update the dialog
 					return new Promise<void>(async (resolve, reject) => {
+
+						this.pvsFailureHandler = (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src: string, log?: string }) => {
+								reject();
+						};
+
 						let stop: boolean = false;
 						commands.executeCommand('setContext', 'autorun', true);
 						// show output panel for feedback
@@ -1402,6 +1464,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 									formulaName
 								});
 								this.client.onRequest(serverEvent.autorunFormulaResponse, (desc: { status: ProofStatus, error?: string }) => {
+								  console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsWorkspaceExplorer] responding request ${serverEvent.autorunFormulaResponse} - param: ${desc} `); // #DEBUG
 									if (desc && desc.error) {
 										vscodeUtils.showErrorMessage(desc.error);
 									}
@@ -1603,6 +1666,10 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 						message?: string; increment?: number
 					}>, token: CancellationToken): Promise<FileDescriptor> => {
 						return new Promise<FileDescriptor>(async (resolveTask, rejectTask) => {
+
+							this.pvsFailureHandler = (opt?: { msg?: string, fname?: string, method?: string, error_type?: string, src: string, log?: string }) => {
+									reject();
+							};
 							// show initial dialog with spinning progress
 							const message: string = `Generating ProofLite script for formula ${desc.formulaName}`;
 							progress.report({ increment: -1, message });
@@ -1674,9 +1741,9 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 				const desc: TccsOverviewItem = <TccsOverviewItem> element;
 				children = desc.getChildren();
 			} else if (element.contextValue === "tcc") {
-				// console.log('tcc');
+				// console.log(`[${fsUtils.generateTimestamp()}] `+'tcc');
 			} else if (element.contextValue === "theorem") {
-				// console.log('theorem');
+				// console.log(`[${fsUtils.generateTimestamp()}] `+'theorem');
 			} else if (element.contextValue === "theorems-overview") {
 				const desc: TheoremsOverviewItem = <TheoremsOverviewItem> element;
 				children = desc.getChildren();

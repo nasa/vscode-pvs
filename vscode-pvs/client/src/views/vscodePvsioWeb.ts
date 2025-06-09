@@ -55,7 +55,7 @@ const pvsiowebFolder: string = "pvsioweb";
 const dbg: boolean = false;
 function log(...args: any): void {
     if (dbg) {
-        console.log(args);
+        console.log(`[${fsUtils.generateTimestamp()}] `+args);
     }
 }
 
@@ -298,7 +298,7 @@ export class VSCodePvsioWeb {
     protected getImageType (fname: string): string {
         let extName: string = fsUtils.getFileExtension(fname);
         if (extName) {
-            extName = extName.substr(1);
+            extName = extName.substring(1);
             return extName === "jpg" ? "jpeg" : extName; 
         }
         return null;
@@ -850,7 +850,7 @@ export class VSCodePvsioWeb {
                 // reveal the panel 
                 this.panel.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
                 // set language to pvs
-                vscodeUtils.setEditorLanguagetoPVS();                
+                vscodeUtils.setEditorLanguageToPVS();                
             }
         });
     }
@@ -881,7 +881,7 @@ export class VSCodePvsioWeb {
             return fsUtils.fileExists(fname) && contextFolder?.startsWith(currentRootFolder);
         }).map(fname => {
             let name: string = fsUtils.getFileName(fname);
-            name = name.endsWith(".min") ? name.substr(0, name.length - 4) : name;
+            name = name.endsWith(".min") ? name.substring(0, name.length - 4) : name;
             return { name, uri: this.panel.webview.asWebviewUri(Uri.file(fname)) };
         });
         const css: Uri[] = [

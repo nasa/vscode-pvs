@@ -1,7 +1,7 @@
 import * as path from 'path';
 
 // -- flags to control what is displayed
-const VERBOSE: boolean = false;
+const VERBOSE: boolean = true;
 
 // folders with the example specifications
 export const helloworldExamples: string = path.join(__dirname, "helloworld");
@@ -14,8 +14,6 @@ export const pvsioExamples: string = path.join(__dirname, "pvsio");
 export const mValueExamples: string = path.join(__dirname, "m-value");
 export const mValue2Examples: string = path.join(__dirname, "m-value2");
 export const pigeonhole: string = path.join(__dirname, "shankar", "pigeonhole");
-export const graphtheory: string = path.join(__dirname, "esther", "graph-theory");
-export const libraryaddons: string = path.join(graphtheory, "library_add_ons");
 
 export const stever: string = path.join(__dirname, "stever"); // examples courtesy of steve reeves (waikato university)
 export const steverFiles: string[] = [
@@ -52,7 +50,7 @@ export const pvsiowebFiles: string[] = [
 	"baxter/limits",
 	"baxter/MDNumberpad",
 
-	"calc/display",
+//	"calc/display", // @M3 pvs 8.0 does not end when typechecking 
 	"calc/utils",
 
 	"data_entry/arcomedical",

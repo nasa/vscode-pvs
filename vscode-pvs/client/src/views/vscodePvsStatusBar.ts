@@ -35,10 +35,11 @@
  * REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
  * TERMINATION OF THIS AGREEMENT.
  **/
-import { StatusBarItem, ExtensionContext, StatusBarAlignment, window, commands, TextEditor } from "vscode";
+import { StatusBarItem, ExtensionContext, StatusBarAlignment, window, commands, TextEditor, MarkdownString } from "vscode";
 import { LanguageClient } from "vscode-languageclient";
 import { PvsVersionDescriptor } from "../common/serverInterface";
 import * as vscodeUtils from '../utils/vscode-utils';
+import * as path from 'path';
 
 export class StatusBarPriority {
     public static Min: number = 1;
@@ -54,13 +55,22 @@ export class VSCodePvsStatusBarItem {
         this.ico = window.createStatusBarItem(alignment, priority);
         this.lab = window.createStatusBarItem(alignment, priority);
     }
+    setTooltip (text: string): void {
+        const tooltipMessage = new MarkdownString(text);
+        tooltipMessage.supportHtml = true;
+        this.lab.tooltip = tooltipMessage;
+        this.ico.tooltip = tooltipMessage;
+    }
+    getText(): string {
+        return this.lab.text;
+    }
     text (text: string): void {
         this.lab.text = text;
-        if (text?.length > this.maxLen) {
-            const start: string = text.substring(0, this.maxLen / 2);
-            const end: string = text.substring(text.length - this.maxLen / 2);
-            this.lab.text = start + " ... " + end;
-        }
+        // if (text?.length > this.maxLen) { // #TODO @M3 may we remove the trimming of the message?
+        //     const start: string = text.substring(0, this.maxLen / 2);
+        //     const end: string = text.substring(text.length - this.maxLen / 2);
+        //     this.lab.text = start + " ... " + end;
+        // }
     }
     icon (text: string): void {
         if (text !== this.ico.text) {
@@ -81,7 +91,7 @@ export class VSCodePvsStatusBarItem {
     }
     clear (): void {
         this.lab.text = "";
-        this.ico.text = "";
+        this.ico.text = ``;
     }
 }
 
@@ -92,10 +102,12 @@ export class VSCodePvsStatusBar {
     protected pvsStatus: VSCodePvsStatusBarItem;
     protected workspaceStatus: VSCodePvsStatusBarItem;
     protected versionInfo: VSCodePvsStatusBarItem;
-    // protected crashReport: VSCodePvsStatusBarItem;
+    protected crashReport: VSCodePvsStatusBarItem;
     protected restartPvs: VSCodePvsStatusBarItem;
     protected interruptProver: VSCodePvsStatusBarItem;
+
     protected downloadNasalib: VSCodePvsStatusBarItem;
+    protected installPVSButton: VSCodePvsStatusBarItem;
 
     // running flag, disables this.ready()
     protected runningFlag: boolean = false;
@@ -110,14 +122,15 @@ export class VSCodePvsStatusBar {
         this.client = client;
         // create status bar elements
         this.workspaceStatus = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
-        this.pvsStatus = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
+        this.pvsStatus = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
         this.versionInfo = new VSCodePvsStatusBarItem(StatusBarAlignment.Right, StatusBarPriority.Medium);
 
         this.restartPvs = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Max);
-        // this.crashReport = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
+        this.crashReport = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
 
         this.interruptProver = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
         this.downloadNasalib = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
+        this.installPVSButton = new VSCodePvsStatusBarItem(StatusBarAlignment.Left, StatusBarPriority.Medium);
     }
 
 
@@ -127,7 +140,26 @@ export class VSCodePvsStatusBar {
      */
     pvsReady (desc: PvsVersionDescriptor): void {
         if (desc) {
+            this.hideinstallpvsButton();
             this.pvsVersionInfo = desc;
+
+            let tooltipMessage 
+              = "## PVS System Information\n" 
+                + "\n* **Status**: ready to receive commands\n";
+  
+            if (this.pvsVersionInfo) {
+                tooltipMessage += `\n* **PVS Version**: ${this.pvsVersionInfo["pvs-version"]}\n`
+                + `\n* **Lisp Version**: ${this.pvsVersionInfo["lisp-version"]}\n`
+                + (this.pvsVersionInfo["nasalib-version"]? `\n* **NASALib Version**: ${this.pvsVersionInfo["nasalib-version"]}\n` : "\n* No NASALib detected.\n");
+        
+                tooltipMessage += "\n* **Active Library Paths**";
+                for (const libPath of this.pvsVersionInfo["reported-library-paths"]){
+                    tooltipMessage += `\n\n  1. ${libPath}<a> </a>`; // @M3 the anchor forces the tooltip to remain up when moving the pointer, allowing the user to copy the library paths.
+                }
+            } 
+            
+            this.pvsStatus.setTooltip(tooltipMessage);
+  
             const activeEditor: TextEditor = vscodeUtils.getActivePvsEditor();
             if (activeEditor?.document?.languageId === "pvs") {
                 this.showVersionInfo();
@@ -151,23 +183,34 @@ export class VSCodePvsStatusBar {
     /**
      * Clears the status bar and makes it visible
      */
-    ready (): void {
+    clear (): void {
         this.pvsStatus.clear();
         this.pvsStatus.show();
     };
+
+    ready(): void {
+        const currentStatusMsg: string = this.pvsStatus.getText();
+        if (currentStatusMsg && currentStatusMsg !== "" && currentStatusMsg !== `$(pass) PVS ready` && !currentStatusMsg.startsWith(`$(gear~spin)`))
+            this.pvsStatus.text(`$(pass) PVS ready - ${currentStatusMsg}`);
+        else
+            this.pvsStatus.text(`$(pass) PVS ready`);
+        this.pvsStatus.show();
+    }
 
     /**
      * Shows a spinning icon and a message in the status bar
      * @param msg message
      */
-    showProgress (msg: string): void {
+    showProgress (msg: string, tooltip?: string): void {
         if (!this.runningFlag) {
             if (msg) {
-                this.pvsStatus.icon(`$(loading~spin)`);
-                this.pvsStatus.text(msg);
+                if (tooltip)
+                    this.pvsStatus.setTooltip(tooltip);
+                this.pvsStatus.icon("");
+                this.pvsStatus.text(`$(gear~spin) ${msg}`);
                 this.pvsStatus.show();
             } else {
-                this.ready();
+                this.clear();
             }
         }
     }
@@ -186,13 +229,22 @@ export class VSCodePvsStatusBar {
     showInfo (msg: string): void {
         if (msg) {
             this.pvsStatus.icon("");
-            this.pvsStatus.text(`$(info)  ${msg}`);
+            this.pvsStatus.text(`$(info) ${msg}`);
             this.pvsStatus.show();
         } else {
-            this.ready();
+            this.clear();
         }
     }
 
+    removeInfo (msg: string): void {
+        const currentStatusMsg: string = this.pvsStatus.getText();
+        this.pvsStatus.icon("");
+        let newMsg: string = currentStatusMsg.replace(`- $(info) ${msg}`,"");
+        newMsg = newMsg.replace(`$(info) ${msg}`,"");
+        this.pvsStatus.text(newMsg);
+        this.pvsStatus.show();
+    }
+    
     /**
      * Shows a message in the status bar
      * @param msg message
@@ -203,7 +255,7 @@ export class VSCodePvsStatusBar {
             this.pvsStatus.text(msg);
             this.pvsStatus.show();
         } else {
-            this.ready();
+            this.clear();
         }
     }
     
@@ -213,13 +265,12 @@ export class VSCodePvsStatusBar {
      */
     showError (msg: string): void {
         if (msg) {
-            const shortmsg: string = msg.split("\n")[0];
+            const shortMsg: string = msg.split("\n")[0];
             this.pvsStatus.icon("");
-            this.pvsStatus.text(`$(pinned-dirty)  ${shortmsg}`); // messages in the status bar should always be on one line
+            this.pvsStatus.text(`$(error)  ${shortMsg}`); // messages in the status bar should always be on one line
             this.pvsStatus.show();
-            vscodeUtils.showProblemsPanel();
         } else {
-            this.ready();
+            this.clear();
         }
     }
 
@@ -230,8 +281,10 @@ export class VSCodePvsStatusBar {
         opt = opt || {};
         opt.trailingNote = opt.trailingNote || "";
         if (this.pvsVersionInfo) {
+            let currentPVSVersion: string = this.pvsVersionInfo["pvs-version"];
             this.versionInfo.icon("");
-            this.versionInfo.text(this.pvsVersionInfo["pvs-version"]);
+            this.versionInfo.text(`v${currentPVSVersion}`);
+            this.versionInfo.setTooltip(`PVS version: ${currentPVSVersion}`);
             let msg: string = `PVS ${this.pvsVersionInfo["pvs-version"]}`;
             let extras: string[] = [];
             if (this.pvsVersionInfo["lisp-version"]) {
@@ -296,19 +349,47 @@ export class VSCodePvsStatusBar {
     hideInterruptButton (): void {
         this.interruptProver.hide();
     }
-    showDownloadNasalibButton (showButton?: boolean): void {
-        showButton = showButton === undefined ? true : !!showButton;
+
+    toggleVisibilityCrashReportButton (showButton?: boolean): void {
+        if (!!showButton) {
+            this.crashReport.icon("");
+            this.crashReport.text(`$(bug) Report Issue`);
+            this.crashReport.command("vscode-pvs.report-issue");
+            this.crashReport.show();
+        } else {
+            this.crashReport.hide();
+        }
+    }
+    
+
+    toggleVisibilityDownloadNasalibButton (showButton?: boolean): void {
+        showButton = !!showButton;
         if (showButton === true) {
             this.downloadNasalib.icon("");
-            this.downloadNasalib.text(`$(symbol-function)  Download NASALib`);
+            this.downloadNasalib.text(`$(symbol-function)  Get NASALib`);
             this.downloadNasalib.command("vscode-pvs.download-nasalib");
             this.downloadNasalib.show();
         } else {
-            this.hideDownloadNasalibButton();
+            this.downloadNasalib.hide();
         }
     }
     hideDownloadNasalibButton (): void {
         this.downloadNasalib.hide();
+    }
+
+    showInstallPvsButton (showButton?: boolean): void {
+        showButton = showButton === undefined ? true : !!showButton;
+        if (showButton === true) {
+            this.installPVSButton.icon("");
+            this.installPVSButton.text(`$(symbol-function)  Install PVS`);
+            this.installPVSButton.command("vscode-pvs.install-pvs");
+            this.installPVSButton.show();
+        } else {
+            this.hideinstallpvsButton();
+        }
+    }
+    hideinstallpvsButton (): void {
+        this.installPVSButton.hide();
     }
 
     /**
@@ -316,9 +397,9 @@ export class VSCodePvsStatusBar {
      * @param msg message
      */
     failure (msg: string): void {
-        const shortmsg: string = (msg) ? msg.split("\n")[0] : msg;
-        this.pvsStatus.icon("");
-        this.pvsStatus.text(`$(exclude)  ${shortmsg}`); // messages in the status bar should be on one line
+        const shortMsg: string = (msg) ? msg.split("\n")[0] : msg;
+        this.pvsStatus.icon("❌");
+        this.pvsStatus.text(`$(exclude)  ${shortMsg}`); // messages in the status bar should be on one line
         this.pvsStatus.show();
     }
 
@@ -329,6 +410,13 @@ export class VSCodePvsStatusBar {
         this.show();
         context.subscriptions.push(commands.registerCommand("vscode.show-statusbar-message", (msg: string) => {
             this.showInfo(msg);
+        }));
+        // @M3 removes an specific message from the status bar if it's there
+        context.subscriptions.push(commands.registerCommand("vscode.remove-statusbar-message", (msg: string) => {
+            this.removeInfo(msg);
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode.show-statusbar-failure", (msg: string) => {
+            this.failure(msg);
         }));
     }
 
@@ -343,10 +431,11 @@ export class VSCodePvsStatusBar {
         this.hideVersionInfo();
         this.hideInstallNasalib();
         // this.hideRestartButton();
+        this.hideinstallpvsButton();
     }
 
     showInstallNasalib (): void {
-        this.showDownloadNasalibButton();
+        this.toggleVisibilityDownloadNasalibButton();
     }
     hideInstallNasalib (): void {
         this.hideDownloadNasalibButton();

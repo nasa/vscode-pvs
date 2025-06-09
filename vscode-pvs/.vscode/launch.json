@@ -8,27 +8,26 @@
 					"name": "Launch Client",
 					"runtimeExecutable": "${execPath}",
 					"args": ["--extensionDevelopmentPath=${workspaceRoot}"],
-					"stopOnEntry": false,
 					"sourceMaps": true,
 					"outFiles": ["${workspaceRoot}/client/out/**/*.js"],
-					"preLaunchTask": "npm: watch"
+					"preLaunchTask": "npm: compile"
 			},
 			{
 					"type": "node",
 					"request": "attach",
 					"name": "Attach to Server",
 					"address": "localhost",
-					"protocol": "inspector",
 					"port": 6009,
 					"sourceMaps": true,
-					"outFiles": ["${workspaceRoot}/server/out/**/*.js"]
+					"outFiles": ["${workspaceRoot}/server/out/**/*.js"],
+					"preLaunchTask": "npm: compile"
 			},       
 			{
 					"type": "node",
 					"request": "launch",
 					"name": "Test PVS Language Server",
 					"runtimeExecutable": "${execPath}",
-					"preLaunchTask": "npm: test:server"
+					"preLaunchTask": "npm: compile"
 			}
 	],
 	"compounds": [

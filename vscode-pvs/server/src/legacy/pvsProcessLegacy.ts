@@ -66,7 +66,7 @@ export class PvsProcessLegacy {
 			if (this.connection) {
 				this.connection.sendNotification('pvs-error', msg);
 			}
-			console.log('[pvs-process-legacy] pvs-error', msg);
+			console.log(`[${fsUtils.generateTimestamp()}] `+'[pvs-process-legacy] pvs-error', msg);
 		}
 	}
 
@@ -124,7 +124,7 @@ export class PvsProcessLegacy {
 			const pvsExecutable = path.join(this.pvsPath, "pvs");
 			const args: string[] = [ `-raw` ];
 			// pvsio args
-			console.info(`${pvsExecutable} ${args.join(" ")}`);
+			console.info(`[${fsUtils.generateTimestamp()}] `+`${pvsExecutable} ${args.join(" ")}`);
 			const fileExists: boolean = await fsUtils.fileExists(pvsExecutable);
 			if (fileExists && !this.pvsProcess) {
 				this.pvsProcess = spawn(pvsExecutable, args);
@@ -132,13 +132,13 @@ export class PvsProcessLegacy {
 				this.pvsProcess.stdout.setEncoding("utf8");
 				this.pvsProcess.stderr.setEncoding("utf8");
 				this.pvsProcess.stdout.on("data", (data: string) => {
-					this.connection.console.log(data);
+					this.connection.console.log(`[${fsUtils.generateTimestamp()}] `+data);
 					this.data += data;
 					// console.dir({ 
 					// 	type: "memory usage",
 					// 	data: process.memoryUsage()
 					// }, { depth: null });
-					// console.log(data);
+					// console.log(`[${fsUtils.generateTimestamp()}] `+data);
 
 					// wait for the pvs prompt, to make sure pvs-server is operational
 					const match: RegExpMatchArray = /\bpvs\(\d+\)\s*:/g.exec(data);
@@ -154,27 +154,27 @@ export class PvsProcessLegacy {
 					}
 				});
 				this.pvsProcess.stdin.on("data", (data: string) => {
-					console.log("stdin", data);
+					console.log(`[${fsUtils.generateTimestamp()}] `+"stdin", data);
 				});
 				this.pvsProcess.stderr.on("data", (data: string) => {
-					console.log("[pvs-process-legacy] Error: " + data);
+					console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-process-legacy] Error: " + data);
 					this.error(data);
 					// resolve(false);
 				});
 				this.pvsProcess.on("error", (err: Error) => {
-					console.log("[pvs-process-legacy] Process error");
+					console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-process-legacy] Process error");
 					// console.dir(err, { depth: null });
 				});
 				this.pvsProcess.on("exit", (code: number, signal: string) => {
-					console.log("[pvs-process-legacy] Process exited");
+					console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-process-legacy] Process exited");
 					// console.dir({ code, signal });
 				});
 				this.pvsProcess.on("message", (message: any) => {
-					console.log("[pvs-process-legacy] Process message");
+					console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-process-legacy] Process message");
 					// console.dir(message, { depth: null });
 				});
 			} else {
-				console.log(`\n>>> PVS executable not found at ${pvsExecutable} <<<\n`);
+				console.log(`[${fsUtils.generateTimestamp()}] `+`\n>>> PVS executable not found at ${pvsExecutable} <<<\n`);
 				resolve(false);
 			}
 		});
@@ -211,12 +211,12 @@ export class PvsProcessLegacy {
 				try {
 					execSync(`kill -9 ${pvs_shell}`);
 					this.pvsProcess.on("close", (code: number, signal: string) => {
-						console.log("[pvs-process] Process terminated");
+						console.log(`[${fsUtils.generateTimestamp()}] `+"[pvs-process] Process terminated");
 						resolve(true);
 						// console.dir({ code, signal }, { depth: null });
 					});
 				} catch (kill_error) {
-					console.log(`[pvsProcess] Warning: Could not kill process id ${pvs_shell}.`);
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsProcess] Warning: Could not kill process id ${pvs_shell}.`);
 					resolve(false);
 				} finally {
 					this.pvsProcess = null;

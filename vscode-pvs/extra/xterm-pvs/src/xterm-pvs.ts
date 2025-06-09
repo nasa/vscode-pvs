@@ -28,21 +28,6 @@ interface RebaseEvent {
     pos: Position
 };
 
-// regexp for identifying the sequent number
-const sequentNumberRegExp: RegExp = /\s*\{([^\}]+)\}/g;
-
-// utility function, extract the sequent number from the provided line, if any sequent number is indicated. The sequent number can also be a label.
-function getSequentNumber (line: string): string {
-    if (line) {
-        const regex: RegExp = new RegExp(sequentNumberRegExp);
-        const match: RegExpMatchArray = regex.exec(line);
-        if (match?.length > 0) {
-            return match[1];
-        }
-    }
-    return null;
-}
-
 /**
  * Utility function, returns the welcome message for a prover/evaluator session
  */
@@ -154,7 +139,7 @@ class LineWrapper {
 }
 
 /**
- * Virtual content of the terminal, keeps track of the content and the cursor position
+ * Virtual content of the terminal, keeps track of the content of the cursor position
  */
 export class Content extends Backbone.Model {
     // content of the terminal
@@ -1459,18 +1444,6 @@ export class Autocomplete extends Backbone.Model {
         return sym?.length ? [ "=>", "IMPLIES" ].includes(sym.toLocaleUpperCase()) : false;
     }
     /**
-     * Utility function, checks if a given symbol is an "IF" keyword
-     */
-    isIf (sym: string): boolean {
-        return sym?.length ? [ "IF" ].includes(sym.toLocaleUpperCase()) : false;
-    }
-    /**
-     * Utility function, checks if a given symbol is a "THEN" keyword
-     */
-    isThen (sym: string): boolean {
-        return sym?.length ? [ "THEN" ].includes(sym.toLocaleUpperCase()) : false;
-    }
-    /**
      * Utility function, checks if a given symbol is an implication
      */
     isForall (sym: string): boolean {
@@ -2043,7 +2016,7 @@ export class XTermPvs extends Backbone.Model {
     protected brackets: MatchBrackets;
 
     // scroll timer
-    protected timer: NodeJS.Timer = null;
+    protected timer: NodeJS.Timeout = null;
     readonly timerTimeout: number = 50; //ms
 
     // list of commands
@@ -2960,11 +2933,7 @@ export class XTermPvs extends Backbone.Model {
         $(document).on("dblclick", (evt: JQuery.DoubleClickEvent) => {
             if (this.sessionType === "prover") {
                 // this give the raw position of the cursor, in px, how do we convert this into lines/cols?
-                const pos: IBufferRange = this.xterm.getSelectionPosition();
-                const line: string = this.xterm.buffer.active.getLine(pos?.start?.y)?.translateToString();
-                const label: string = getSequentNumber(line);
-                const sequentNumber: number = +label;
-                // console.log({ line, label });
+                // const pos: IBufferRange = this.xterm.getSelectionPosition();
                 const sel: string = this.xterm.getSelection();
                 // console.log("[xterm-pvs] dblclick", { evt: evt, pos, sel });
                 if (sel && this.autocomplete.validSymbol(sel)) {
@@ -2974,21 +2943,15 @@ export class XTermPvs extends Backbone.Model {
                         `(expand "${sel}" -)`
                     ], { top: evt.pageY, left: evt.pageX });
                 } else if (sel && this.autocomplete.isForall(sel)) {
-                    if (isFinite(sequentNumber)) {
-                        const hints: string[] = sequentNumber > 0 ? [ "(skeep)", "(skosimp*)" ] : [ "(inst?)"];
-                        this.autocomplete.showTooltip(hints, { top: evt.pageY, left: evt.pageX })
-                    }
+                    this.autocomplete.showTooltip([
+                        `(skeep)`,
+                        `(skosimp*)`
+                    ], { top: evt.pageY, left: evt.pageX });
                 } else if (sel && this.autocomplete.isImplication(sel)) {
-                    if (isFinite(sequentNumber)) {
-                        const hints: string[] = sequentNumber > 0 ? [ "(flatten)" ] : [ "(split)"];
-                        this.autocomplete.showTooltip(hints, { top: evt.pageY, left: evt.pageX })
-                    }
-                } else if (sel && this.autocomplete.isIf(sel)) {
-                    const hints: string[] = [ "(lift-if)" ];
-                    this.autocomplete.showTooltip(hints, { top: evt.pageY, left: evt.pageX })
-                } else if (sel && this.autocomplete.isThen(sel)) {
-                    const hints: string[] = [ "(split)" ];
-                    this.autocomplete.showTooltip(hints, { top: evt.pageY, left: evt.pageX })
+                    this.autocomplete.showTooltip([
+                        `(flatten)`,
+                        `(split)`
+                    ], { top: evt.pageY, left: evt.pageX });
                 } else {
                     this.autocomplete.deleteTooltips();
                 }

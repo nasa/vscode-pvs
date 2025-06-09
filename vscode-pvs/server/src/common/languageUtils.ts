@@ -40,7 +40,7 @@ import * as language from './languageKeywords';
 import { ProofNode, PvsVersionDescriptor, ProofDescriptor, 
 	ProofStatus, Position, Range, ProofTree, PvsFormula, 
     CommandDescriptor, CommandsMap, ProofMateProfile, 
-    HintsObject, ProofNodeType
+    HintsObject, ProofNodeType, PvsProofState
 } from '../common/serverInterface';
 import * as colorUtils from "./colorUtils";
 import { SessionType } from './xtermInterface';
@@ -679,10 +679,14 @@ export function makeBranchId (desc: { branchId: string, goalId: number }): strin
 	}
 	return "";
 }
-
-export function getBranchId (label: string): string {
-	if (label) {
-		return label.split(".").slice(1).join(".");
+/**
+ * Give a branch label, extracts its branch id.
+ * @param branchLabel a branch label is formed by the formula name followed by the branch id, which is a sequence of numbers separated by dots. For example, 'myLemma.1.2.1.1'.
+ * @returns the branch id of the given label, for example, '1.2.1.1' for the label mentioned above.
+ */
+export function getBranchId (branchLabel: string): string {
+	if (branchLabel) {
+		return branchLabel.split(".").slice(1).join(".");
 	}
 	return "";
 }
@@ -885,7 +889,7 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
 				default: {}
 			}
 			if (par === 0) {
-				return prf.substr(0, match.index + 1);
+				return prf.substring(0, match.index + 1);
 			}
 		}
 		return "";
@@ -929,7 +933,7 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
 						});
 					}
 					// update prf
-					desc.prf = desc.prf.substr(expr.length).trim();
+					desc.prf = desc.prf.substring(expr.length).trim();
 				} else {
 					// ) parentheses comes before (, from parsing a series labelled branches, just ignore them and iterate
 					const match: RegExpMatchArray = /\)+([\w\W\s]*)/.exec(desc.prf);
@@ -969,7 +973,7 @@ export function prf2ProofTree (desc: { prf: string, proofName: string }): ProofT
 			// }
 			return rootNode;
 		} else {
-			console.error("[pvs-proxy] Warning: unrecognised proof structure", desc.prf);
+			console.error("[pvs-proxy] Warning: unrecognized proof structure", desc.prf);
 		}
 	}
 	return null;
@@ -1165,28 +1169,35 @@ export function interruptedByClient (result: { commentary: string | string[] }):
 	return false;
 }
 
-export function branchComplete (result: { commentary: string | string[] }, formulaName: string, previousBranch: string): boolean {
-	if (result && result.commentary) {
-		if (typeof result.commentary === "string") {
-			if (typeof previousBranch === "string") {
-				return result.commentary.startsWith("This completes") 
-					&& (result.commentary.endsWith(`${formulaName}.${previousBranch}.`)
-						|| result.commentary.endsWith(`${formulaName}.${previousBranch}`.trim()));
-			}
-			return result.commentary.startsWith("This completes");
-
-		} else if (typeof result.commentary === "object") {
-			return result.commentary.length 
-				&& result.commentary.filter((comment: string) => {
-					if (typeof previousBranch === "string") {
-						return comment.startsWith("This completes") 
-							&& (comment.endsWith(`${formulaName}.${previousBranch}.`)
-								|| comment.endsWith(`${formulaName}.${previousBranch}`.trim()));
-					}
-				return comment.startsWith("This completes");
-			}).length > 0;
-		}
-	}
+export function branchComplete (proofStatus: PvsProofState, formulaName: string, previousBranch: string): boolean {
+	if (proofStatus) {
+        // @M3 I gonna ignore this for now, until we improve the way in which PVS communicates the impact of the
+        //     last user input on the current proof.
+        // if (proofStatus.status) {
+        //     return '!' === proofStatus.status;
+        // }
+        if (proofStatus.commentary) {
+            if (typeof proofStatus.commentary === "string") {
+                if (typeof previousBranch === "string") {
+                    return proofStatus.commentary.startsWith("This completes") 
+                        && (proofStatus.commentary.endsWith(`${formulaName}.${previousBranch}.`)
+                            || proofStatus.commentary.endsWith(`${formulaName}.${previousBranch}`.trim()));
+                }
+                return proofStatus.commentary.startsWith("This completes");
+    
+            } else if (typeof proofStatus.commentary === "object") {
+                return proofStatus.commentary.length 
+                    && proofStatus.commentary.filter((comment: string) => {
+                        if (typeof previousBranch === "string") {
+                            return comment.startsWith("This completes") 
+                                && (comment.endsWith(`${formulaName}.${previousBranch}.`)
+                                    || comment.endsWith(`${formulaName}.${previousBranch}`.trim()));
+                        }
+                    return comment.startsWith("This completes");
+                }).length > 0;
+            }
+        }        
+    } 
 	return false;
 }
 
@@ -1212,11 +1223,15 @@ export function branchHasChanged (desc: { newBranch: string, previousBranch: str
 	}
 	return false;
 }
-
-export function pathHasChanged (desc: { newBranch: string, previousBranch: string }): boolean {
+/**
+ * 
+ * @param desc two branch ids
+ * @returns 
+ */
+export function pathHasChanged (desc: { newBranchId: string, previousBranchId: string }): boolean {
 	if (desc) {
-		const newBranch: string = desc.newBranch.replace(/T/g, "");
-		const previousBranch: string = desc.previousBranch.replace(/T/g, "");
+		const newBranch: string = desc.newBranchId.replace(/T/g, "");
+		const previousBranch: string = desc.previousBranchId.replace(/T/g, "");
 		return !newBranch.startsWith(previousBranch);
 	}
 	return false;
@@ -1352,7 +1367,7 @@ export function getPvsTag (tag: PvsTag, fileContent: string): string {
         const regex: RegExp = new RegExp(`%\\s*${tag}\[\\s+\|:\]\\s*(.*)`, "gi");
         const match: RegExpMatchArray = regex.exec(fileContent);
         const val: string = match?.length > 1 ? match[1].trim() : "";
-        // console.log(`[language-utils] getPvsTag`, { tag, val, regex: regex.source });
+        // console.log(`[${fsUtils.generateTimestamp()}] `+`[language-utils] getPvsTag`, { tag, val, regex: regex.source });
         return val;
     }
     return null;
@@ -3365,10 +3380,10 @@ export function balancePar (cmd: string): string {
 		if (par > 0) {
 			// missing closed brackets
 			cmd = cmd.trimRight() + ')'.repeat(par);
-			// console.log(`Mismatching parentheses automatically fixed: ${par} open round brackets without corresponding closed bracket.`)
+			// console.log(`[${fsUtils.generateTimestamp()}] `+`Mismatching parentheses automatically fixed: ${par} open round brackets without corresponding closed bracket.`)
 		} else if (par < 0) {
 			cmd = '('.repeat(-par) + cmd;
-			// console.log(`Mismatching parentheses automatically fixed: ${-par} closed brackets did not match any other open bracket.`)
+			// console.log(`[${fsUtils.generateTimestamp()}] `+`Mismatching parentheses automatically fixed: ${-par} closed brackets did not match any other open bracket.`)
 		}
 		return cmd.startsWith('(') ? cmd : `(${cmd})`; // add outer parentheses if they are missing
 	}
@@ -3515,7 +3530,7 @@ export function isPostponeCommand (cmd: string, result?: { commentary: string | 
 				}).length > 0;
 		}
 	}
-	return cmd && /^\(?\s*\bpostpone\b/g.test(cmd);
+	return cmd && /^\(?\s*\bpostpone\b/gi.test(cmd);
 }
 
 export function isSkipCommand (cmd: string): boolean {
@@ -3615,14 +3630,32 @@ export function isQEDCommand (cmd: string): boolean {
 		|| /^\(?\s*Q\.E\.D\./g.test(cmd))
 		;
 }
-
+/**
+ * Determines if cmd1 and cmd2 are equivalent commands. 
+ * Assumes both commands are well-formed.
+ * @param cmd1 
+ * @param cmd2 
+ * @returns 
+ */
 export function isSameCommand (cmd1: string, cmd2: string): boolean {
+    let result: boolean = true;
 	if (cmd1 && cmd2) {
-		const c1: string = cmd1.replace(/\s+/g, "").replace(/[\s+\"\(\)]/g, ""); // remove all spaces, round parens, and double quotes
-		const c2: string = cmd2.replace(/\s+/g, "").replace(/[\s+\"\(\)]/g, "");
-		return c1 === c2;
-	}
-	return false;
+        // This comparison is case-insesitive on the unquoted parts of the commands.
+        // It also ignores external parenthesis (if any).
+		const c1: string[] = cmd1.replace(/\s+/g, "").replace(/^\(/,'').replace(/\)$/,'').split(/[^\\]"/);
+		const c2: string[] = cmd2.replace(/\s+/g, "").replace(/^\(/,'').replace(/\)$/,'').split(/[^\\]"/);
+
+        result &&= (c1.length === c2.length);
+        
+        for(let i=0; result && i<c1.length;i++){
+            result &&= (i%2===0?
+                c1[i].toLocaleLowerCase() === c2[i].toLocaleLowerCase() :
+                c1[i] === c2[i]
+            )
+        }
+                
+	} else result = false;
+	return result;
 }
 
 export function isPropax (cmd: string): boolean {
@@ -3698,7 +3731,28 @@ export function getInvalidCommandName (result: { commentary: string | string[] }
 	process.env["ACL_LOCALE"] = "en_US.UTF-8";
 	process.env["LC_ALL"] = "en_US.UTF-8";
 	process.env["LANG"] = "en_US.UTF-8";
-	console.log(`\nACL_LOCALE=${process.env["ACL_LOCALE"]}`);
-	console.log(`LC_ALL=${process.env["LC_ALL"]}`);
-	console.log(`LANG=${process.env["LANG"]}\n`);
+}
+
+export function getLabelFromPSDisplayId(pvsProofStateDisplayId: string): string {
+    return pvsProofStateDisplayId.split("-")[0];
+}
+export function getBranchIdFromPSDisplayId(pvsProofStateDisplayId: string): string {
+    return getBranchId(getLabelFromPSDisplayId(pvsProofStateDisplayId));
+}
+/**
+ * 
+ * @param displayIdA string representation of a ps-display-id
+ * @param displayIdB 
+ * @returns 
+ */
+export function successivePSDisplayIds(displayIdA: string, displayIdB: string): boolean {
+	return +displayIdA.split("-")[1] + 1 === +displayIdB.split("-")[1];
+}
+
+export function sameBranchPSDisplayIds(displayIdA: string, displayIdB: string): boolean {
+	return getBranchIdFromPSDisplayId(displayIdA)===getBranchIdFromPSDisplayId(displayIdB);
+}
+
+export function isQEDProofState(ps: PvsProofState): boolean {
+    return ps.commentary && (typeof ps.commentary === "string" ? isQEDCommand(ps.commentary as string) : (ps.commentary as string[]).some(isQEDCommand) )
 }

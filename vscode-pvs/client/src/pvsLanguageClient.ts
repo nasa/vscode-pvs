@@ -126,6 +126,11 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	protected pvsioweb: VSCodePvsioWeb;
 
 	/**
+	 * Indicates if it was already been suggested to the user to get NASALib
+	 */
+	protected alreadySuggestedNASALib: boolean = false;
+
+	/**
 	 * Internal function, returns the current pvs path, as indicated in the configuration file
 	 */
 	protected getPvsPath (): string {
@@ -158,37 +163,37 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		// onDidOpenTextDocument is emitted when a text file is opened in the editor or when the language id of a text document has changed.
 		workspace.onDidOpenTextDocument(async (event: TextDocument) => {
 			const editor: TextEditor = getActivePvsEditor();
-			if (event?.languageId === "pvs" || fsUtils.isPvsFile(editor?.document?.fileName)) {
-				commands.executeCommand('setContext', 'pvs-server-active', true);
-				// show status bar
-				this.statusBar.show();
-				// check if this is a session start and there's a file that needs to be opened
-				const fname: string = event?.fileName;
-				if (fsUtils.isPvsFile(fname) && fname === editor?.document?.fileName) {
-					vscodeUtils.loadPvsFileIcons();
-					const contextFolder: string = fsUtils.getContextFolder(fname);
-					const currentWorkspace: string = this.workspaceExplorer.getCurrentWorkspace();
-					const theoriesFromActiveFile: boolean = vscodeUtils.getConfigurationFlag("pvs.pvsWorkspaceTheoriesFromActiveFile");
-					if (contextFolder !== currentWorkspace || theoriesFromActiveFile || theoriesFromActiveFile !== this.workspaceExplorer?.theoriesFromActiveFile()) {
-						this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder });
-						this.workspaceExplorer.setMode(theoriesFromActiveFile ? WorkspaceMode.theoriesFromActiveFile : WorkspaceMode.theoriesFromActiveContext);
-						this.workspaceExplorer.setActivePvsFile(fname);
-						// don't update file explorer, as any modification will create an Untitled workspace, which might be problematic for vscode-pvs users
-						// because users will be asked to save the workspace on exit, and if they choose to save the workspace, 
-						// they will also be asked whether they want to open the workspace configuration next time they will work on that folder
-						// const contextFolderUri: Uri = Uri.file(contextFolder);
-						// if (!workspace.getWorkspaceFolder(contextFolderUri)) {
-						// 	// add the folder to file explorer
-						// 	// commands.executeCommand('vscode.openFolder', Uri.file(contextFolder), { forceReuseWindow: true });
-						// 	// const nOpenFolders: number = workspace?.workspaceFolders?.length || 0;
-						// 	await vscodeUtils.updateWorkspaceFolders(0, 0, { uri: Uri.file(contextFolder) });
-						// }
+				if (event?.languageId === "pvs" || fsUtils.isPvsFile(editor?.document?.fileName)) {
+					commands.executeCommand('setContext', 'pvs-server-active', true);
+					// show status bar
+					this.statusBar.show();
+					// check if this is a session start and there's a file that needs to be opened
+					const fname: string = event?.fileName;
+					if (fsUtils.isPvsFile(fname) && fname === editor?.document?.fileName) {
+						vscodeUtils.loadPvsFileIcons();
+						const contextFolder: string = fsUtils.getContextFolder(fname);
+						const currentWorkspace: string = this.workspaceExplorer.getCurrentWorkspace();
+						const theoriesFromActiveFile: boolean = vscodeUtils.getConfigurationFlag("pvs.pvsWorkspaceTheoriesFromActiveFile");
+						if (contextFolder !== currentWorkspace || theoriesFromActiveFile || theoriesFromActiveFile !== this.workspaceExplorer?.theoriesFromActiveFile()) {
+							this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder });
+							this.workspaceExplorer.setMode(theoriesFromActiveFile ? WorkspaceMode.theoriesFromActiveFile : WorkspaceMode.theoriesFromActiveContext);
+							this.workspaceExplorer.setActivePvsFile(fname);
+							// don't update file explorer, as any modification will create an Untitled workspace, which might be problematic for vscode-pvs users
+							// because users will be asked to save the workspace on exit, and if they choose to save the workspace, 
+							// they will also be asked whether they want to open the workspace configuration next time they will work on that folder
+							// const contextFolderUri: Uri = Uri.file(contextFolder);
+							// if (!workspace.getWorkspaceFolder(contextFolderUri)) {
+							// 	// add the folder to file explorer
+							// 	// commands.executeCommand('vscode.openFolder', Uri.file(contextFolder), { forceReuseWindow: true });
+							// 	// const nOpenFolders: number = workspace?.workspaceFolders?.length || 0;
+							// 	await vscodeUtils.updateWorkspaceFolders(0, 0, { uri: Uri.file(contextFolder) });
+							// }
+						}
 					}
-				}
-				// don't highlight the active file in the explorer -- doing so will put the focus on the file explorer
-				// and the user might be looking at the pvs workspace explorer instead, which would become hidden
-				// commands.executeCommand("workbench.files.action.showActiveFileInExplorer");
-			} 
+					// don't highlight the active file in the explorer -- doing so will put the focus on the file explorer
+					// and the user might be looking at the pvs workspace explorer instead, which would become hidden
+					// commands.executeCommand("workbench.files.action.showActiveFileInExplorer");
+				} 
 			// the following is commented out because workspace.findFiles can take a lot of CPU
 			// else {
 			// 	const pvsFiles: Uri[] = await workspace.findFiles("**/*.pvs", null, 1);
@@ -245,7 +250,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		}, null, this.context.subscriptions);
 
 		// onDidChangeConfiguration is emitted when the configuration file changes
-		workspace.onDidChangeConfiguration((event: ConfigurationChangeEvent) => {
+		workspace.onDidChangeConfiguration( async (event: ConfigurationChangeEvent) => {			
 			// get color theme
 			const colorTheme: XTermColorTheme = vscodeUtils.detectColorTheme();
 			this.xterm.updateColorTheme(colorTheme);
@@ -254,32 +259,59 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			const flag: boolean = vscodeUtils.getConfigurationFlag("pvs.settings.proverConsole.colorizeBracketPairs");
 			this.xterm.enableBracketColors(flag);
 
-			// re-initialise pvs if the executable is different
-			const pvsPath: string = vscodeUtils.getConfiguration("pvs.path").trim();
-			const pvsLibraryPath: string = vscodeUtils.getPvsLibraryPath();
-			if (pvsPath !== this.pvsPath || this.pvsLibraryPath !== pvsLibraryPath) {
-				this.pvsPath = pvsPath || this.pvsPath;
+			// re-initialize pvs if the executable is different
+			let pvsPathChanged: boolean = false;
+			let pvsPath: string;
+			if(event.affectsConfiguration("pvs.path")){
+				pvsPath = vscodeUtils.getConfiguration("pvs.path").trim();
+				pvsPathChanged = (this.pvsPath === '' || fsUtils.folderExists(pvsPath)) && (pvsPath !== this.pvsPath);
+			}
+			let pvsLibraryPathChanged: boolean = false;
+			let pvsLibraryPath: string;
+			if(event.affectsConfiguration("pvs.pvsLibraryPath")){
+				pvsLibraryPath = fsUtils.prunePvsLibraryPath(vscodeUtils.getPvsLibraryPath());
+				pvsLibraryPathChanged = (this.pvsLibraryPath !== pvsLibraryPath);
+			}
+			if(pvsPathChanged || pvsLibraryPathChanged){
+				let pvsServerHasToBeRestarted: boolean = true;
+				if (this.pvsPath === '' && pvsPath !== ''){
+					// If pvsPath was set, and pvsLibraryPath was empty and NASALib is not in the pvsLibraryPath, we suggest the user to get it
+					if(!this.alreadySuggestedNASALib && !fsUtils.getNasalibPath(pvsLibraryPath)){
+						this.alreadySuggestedNASALib = true;
+						this.pvsPath = pvsPath;
+						this.statusBar.hideDownloadNasalibButton();
+						const nasalibHasBeenInstalled: boolean = await this.packageManager.nasalibInstallationWizard();
+						pvsServerHasToBeRestarted = !nasalibHasBeenInstalled;
+					}
+				} else {
+					// if the pvs path was cleared, we'll suggest NASALib again when a new PVS is selected
+					this.alreadySuggestedNASALib = this.alreadySuggestedNASALib && !(pvsPath === undefined || pvsPath === '');
+				}	
+				this.pvsPath = pvsPath || this.pvsPath; // #TODO this prevents removing the PVS folder... is this what we want?
 				this.pvsLibraryPath = pvsLibraryPath;
-				if (this.pvsPath) {
+				if (this.pvsPath && pvsServerHasToBeRestarted) {
 					const msg: string = `Restarting PVS from ${this.pvsPath}`;
 					this.statusBar.showProgress(msg);
 					// window.showInformationMessage(msg);
 					this.client.sendRequest(serverRequest.startPvsServer, {
 						pvsPath: this.pvsPath, 
-						pvsLibraryPath: this.pvsLibraryPath
+						pvsLibraryPath: this.pvsLibraryPath, 
+						externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
+						webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber")
 					}); // the server will use the last context folder it was using	
 				}
 			}
 
 			// update xterm-pvs settings, if xterm is active
-			if (this.xterm.isActive()) {
+			if (event.affectsConfiguration("pvs.settings.proverConsole.autocompleteWithEnter") && this.xterm.isActive()) {
 				const flag: boolean = vscodeUtils.getConfigurationFlag("pvs.settings.proverConsole.autocompleteWithEnter");
 				this.xterm.autocompleteWithEnter(flag);
 			}
 
 			// update workspace explorer if needed
 			const theoriesFromActiveFile: boolean = vscodeUtils.getConfigurationFlag("pvs.pvsWorkspaceTheoriesFromActiveFile");
-			if (theoriesFromActiveFile !== this.workspaceExplorer.theoriesFromActiveFile()) {
+			if (event.affectsConfiguration("pvs.pvsWorkspaceTheoriesFromActiveFile") 
+			    && theoriesFromActiveFile !== this.workspaceExplorer.theoriesFromActiveFile()) {
 				const activeEditor: TextEditor = getActivePvsEditor();//window.activeTextEditor; //event || window.activeTextEditor;
 				const fname: string =  activeEditor?.document?.fileName || this.workspaceExplorer.getActivePvsFile();
 				const contextFolder: string = fsUtils.getContextFolder(fname);
@@ -295,17 +327,18 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				return value?.oldUri?.path?.endsWith(".pvs");
 			}) || [];
 			const activeEditor: TextEditor = getActivePvsEditor();
+			
 			if (pvsFiles.length > 0
 				|| (activeEditor && 
 						(fsUtils.isPvsFile(activeEditor?.document?.fileName)
-							|| activeEditor?.document?.languageId === "Log"))) {
+							|| activeEditor?.document?.languageId === "Log"))) { 
 				// send clearWorkspace command to the server, otherwise the server will erroneously report a typecheck error because it may have cached the theory name from the old file
 				this.client.sendRequest(serverRequest.clearWorkspace);
 				// remove tccs file for the renamed file, if the file exists
-                if (workspace?.workspaceFolders?.length) {
+				if (workspace?.workspaceFolders?.length) {
 					for (let i in pvsFiles) {
 						const tccFile: Uri = Uri.file(pvsFiles[i].oldUri.path.replace(".pvs", ".tccs"));
-						console.log(`[pvs-client] Removing file ${tccFile}`);
+						console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-client] Removing file ${tccFile}`);
 						workspace.fs.delete(tccFile);
 					}
 				}
@@ -370,7 +403,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			// this.client.outputChannel.hide();
 
 			// initialise service providers defined on the client-side
-			this.statusBar.showProgress("Starting vscode-pvs...");
+			this.statusBar.showProgress("Starting VSCode-PVS...");
 
 			// start vscode-pvs components
 			this.proofExplorer = new VSCodePvsProofExplorer(this.client, 'proof-explorer-view');
@@ -432,22 +465,29 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			
 			// start PVS
 			// the server will respond with one of the following events: pvsServerReady, pvsNotPresent, pvsIncorrectVersion
-			const contextFolder = vscodeUtils.getEditorContextFolder();
-			// console.log(`Context folder: ${contextFolder}`);
+			var contextFolder;
+			const workspaceFolders = workspace.workspaceFolders;
+			if (workspaceFolders && workspaceFolders.length > 0) {
+				contextFolder = workspaceFolders[0].uri.fsPath;
+			} else {
+				contextFolder = vscodeUtils.getEditorContextFolder();
+			}
+			// console.log(`[${fsUtils.generateTimestamp()}] `+`Context folder: ${contextFolder}`);
 			this.pvsPath = vscodeUtils.getConfiguration("pvs.path");
+			this.alreadySuggestedNASALib = this.alreadySuggestedNASALib && !(this.pvsPath === undefined || this.pvsPath === '');
 			this.pvsLibraryPath = vscodeUtils.getPvsLibraryPath();
-			// setTimeout(() => {
 			this.client.sendRequest(serverRequest.startPvsServer, {
 				pvsPath: this.pvsPath,
 				pvsLibraryPath: this.pvsLibraryPath,
 				contextFolder,
-				externalServer: false
+				externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
+				webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber"),
 			});
-			// }, 1000);
 			// set vscode context variable pvs-server-active to true -- this will create the PVS icon on the activity bar
 			commands.executeCommand('setContext', 'pvs-server-active', true);
 			// create handler for pvsServerReady event
-			this.client.onRequest(serverEvent.pvsServerReady, (info: PvsVersionDescriptor) => {
+			this.client.onRequest(serverEvent.pvsServerReady, async (info: PvsVersionDescriptor) => {
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageClient] responding request ${serverEvent.pvsServerReady} - param: ${info} `); // #DEBUG
 				// reset other globals
 				vscodeUtils.resetGlobals();
 
@@ -461,7 +501,12 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				vscodeUtils.setReadonlyFiles([ ".tccs", ".summary" ]);
 
 				// update status bar
-				this.statusBar.ready();
+				this.statusBar.clear();
+				this.statusBar.pvsReady(info);
+
+				this.statusBar.toggleVisibilityDownloadNasalibButton(!info["nasalib-version"]);
+
+				this.statusBar.toggleVisibilityCrashReportButton(true);
 
 				const activeEditor: TextEditor = getActivePvsEditor();
 				if (activeEditor?.document) {

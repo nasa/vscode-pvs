@@ -84,7 +84,6 @@ const cmds: string[] = [
 	"view-pvs-library-path",
 	"reboot-pvs",
 	"restart-pvs",
-	"reset-pvs",
 	"install-pvs",
 	"reinstall-pvs", // equivalent to install-pvs
 	"install-nasalib",
@@ -286,7 +285,6 @@ export class VSCodePvsEmacsBindingsProvider {
 					commands.executeCommand('vscode-pvs.prove-formula', desc);
 					break;
 				}
-				case "reset-pvs":
 				case "restart-pvs":
 				case "reboot-pvs": {
 					commands.executeCommand('vscode-pvs.reboot-pvs');
@@ -372,7 +370,7 @@ export class VSCodePvsEmacsBindingsProvider {
 		this.inputBox.onDidAccept(() => {
 			this.onDidAccept(this.userInput);
 			this.inputBox.dispose();
-			this.statusBar.ready();
+			this.statusBar.clear();
 		});
 		this.inputBox.onDidChangeValue((input: string) => {
 			// FIXME: VSCode does not seem to capture tabs in the input box??

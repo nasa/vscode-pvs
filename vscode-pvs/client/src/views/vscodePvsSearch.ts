@@ -439,7 +439,7 @@ ul, #myUL {
         <ul class="nested">
         {{#each this}}
         <li>
-            <a class="result-item" href="{{../../nasalibPath}}/{{contextFolder}}/{{fileName}}{{fileExtension}}" {{#if line}}line="{{line}}"{{/if}} style="white-space:nowrap;">{{theoryName}}</a>
+            <a class="result-item" href="{{contextFolder}}/{{fileName}}{{fileExtension}}" {{#if line}}line="{{line}}"{{/if}} style="white-space:nowrap;">{{theoryName}}</a>
         </li>
         {{/each}}
         </ul>
@@ -520,8 +520,13 @@ export class VSCodePvsSearch {
 
     // nasalib path
     protected nasalibPath: string;
-    // nasalib data, cached in advance to speed up rendering
-    readonly nasalibLibraries: LibraryMap = nasalib_lookup_table.folders;
+
+    // TODO restate caching in final version @M3
+    // // nasalib data, cached in advance to speed up rendering
+    // readonly nasalibLibraries: LibraryMap = nasalib_lookup_table.folders;
+    // readonly nasalibStats: LookUpTableStats = nasalib_lookup_table.stats;
+    protected nasalibLibraries: LibraryMap = {};
+    protected nasalibStats: LookUpTableStats;
 
     // pvs library data
     protected pvsLibraries: LibraryMap = {};
@@ -543,7 +548,7 @@ export class VSCodePvsSearch {
      */
     constructor (client: LanguageClient) {
 		this.client = client;
-        this.nasalibPath = this.getNasalibPath();
+        this.nasalibPath = fsUtils.getNasalibPath(vscodeUtils.getPvsLibraryPath())
         this.welcomeScreen = "";
     }
     /**
@@ -638,7 +643,7 @@ export class VSCodePvsSearch {
             this.context.subscriptions
         );
         // set language to pvs
-        vscodeUtils.setEditorLanguagetoPVS();
+        vscodeUtils.setEditorLanguageToPVS();
     }
     /**
      * Utility function, show spinning wheel in the view to indicate search in progress
@@ -700,7 +705,7 @@ export class VSCodePvsSearch {
             title: this.title,
             welcomeScreen: this.welcomeScreen,
             logo,
-            nasalibStats: nasalib_lookup_table.stats,
+            nasalibStats: this.nasalibStats,
             pvslibStats: this.pvslibStats,
             preludeStats: this.preludeStats,
             activeView: this.activeView,
@@ -729,29 +734,21 @@ export class VSCodePvsSearch {
         this.focus();
     }
 	/**
-	 * Internal function, returns nasalib path
-	 */
-    protected getNasalibPath (): string {
-		const pvsPath: string = vscodeUtils.getConfiguration("pvs.path");
-		if (pvsPath) {
-			return path.join(pvsPath, "nasalib");
-		}
-		return null;
-	}
-	/**
 	 * Internal function, loads pvs library descriptors
 	 */
     protected async loadPvsLibraryDescriptors (): Promise<void> {
         this.pvsLibraries = {};
-        const libraryFolders: string[] = vscodeUtils.getConfiguration("pvs.pvsLibraryPath")?.split(":").map(elem => {
-            return elem.trim();
-        }).filter(elem => {
-            return elem && elem !== "";
-        });
+        this.nasalibLibraries = {} ; // #TODO remove when using cached version @M3
+        let currentLibraryMap: LibraryMap;
+        const libraryFolders: string[] = vscodeUtils.getPvsLibraryPaths();
         let nTheories: number = 0;
+        let nNASALibTheories : number = 0;
 		for (let i = 0; i < libraryFolders?.length; i++) {
-			const contextFolders: string[] = fsUtils.listSubFolders(libraryFolders[i])?.map(elem => {
-                return path.join(libraryFolders[i], elem);
+            const currentLibFolder: string = libraryFolders[i];
+            const isNasalib: boolean = fsUtils.containsNasalib(currentLibFolder);
+            currentLibraryMap = (isNasalib?this.nasalibLibraries:this.pvsLibraries); // #TODO remove when using cached version @M3
+			const contextFolders: string[] = fsUtils.listSubFolders(currentLibFolder)?.map(elem => {
+                return path.join(currentLibFolder, elem);
             });
 			for (let k = 0; k < contextFolders?.length; k++) {
 				const desc: PvsContextDescriptor = await fsUtils.getContextDescriptor(contextFolders[k], {
@@ -763,8 +760,8 @@ export class VSCodePvsSearch {
                     const contextFolder: string = desc.fileDescriptors[files[f]].contextFolder;
                     const contextFolderName: string = fsUtils.getContextFolderName(contextFolder);
                     if (desc.fileDescriptors[files[f]]?.theories?.length) {
-        				this.pvsLibraries[contextFolderName] = this.pvsLibraries[contextFolderName] || [];
-                        this.pvsLibraries[contextFolderName] = this.pvsLibraries[contextFolderName].concat(desc.fileDescriptors[files[f]]?.theories?.map(elem => {
+        				currentLibraryMap[contextFolderName] = currentLibraryMap[contextFolderName] || [];
+                        currentLibraryMap[contextFolderName] = currentLibraryMap[contextFolderName].concat(desc.fileDescriptors[files[f]]?.theories?.map(elem => {
                             return {
                                 theoryName: elem.theoryName,
                                 line: elem.position.line,
@@ -773,7 +770,11 @@ export class VSCodePvsSearch {
                                 fileExtension: elem.fileExtension
                             };
                         }));
-                        nTheories += desc.fileDescriptors[files[f]]?.theories?.length;
+                        // #TODO remove when using cached version @M3
+                        if (isNasalib)
+                            nTheories += desc.fileDescriptors[files[f]]?.theories?.length;
+                        else
+                            nNASALibTheories += desc.fileDescriptors[files[f]]?.theories?.length;
                     }
                 }
                 // TODO: sort theory names?
@@ -782,8 +783,13 @@ export class VSCodePvsSearch {
         this.pvslibStats = {
             version: "User-defined libraries",
             folders: this.pvsLibraries ? Object.keys(this.pvsLibraries).length : 0,
-            theories: nTheories               
+            theories: nTheories
         };
+        this.nasalibStats = {
+            version: "NASALib libraries",
+            folders: this.nasalibLibraries ? Object.keys(this.nasalibLibraries).length : 0,
+            theories: nNASALibTheories
+        }; // #TODO remove when using cached version @M3
     }
 	/**
 	 * Internal function, loads prelude libraries descriptors
