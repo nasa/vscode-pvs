@@ -163,37 +163,37 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 		// onDidOpenTextDocument is emitted when a text file is opened in the editor or when the language id of a text document has changed.
 		workspace.onDidOpenTextDocument(async (event: TextDocument) => {
 			const editor: TextEditor = getActivePvsEditor();
-			if (event?.languageId === "pvs" || fsUtils.isPvsFile(editor?.document?.fileName)) {
-				commands.executeCommand('setContext', 'pvs-server-active', true);
-				// show status bar
-				this.statusBar.show();
-				// check if this is a session start and there's a file that needs to be opened
-				const fname: string = event?.fileName;
-				if (fsUtils.isPvsFile(fname) && fname === editor?.document?.fileName) {
-					vscodeUtils.loadPvsFileIcons();
-					const contextFolder: string = fsUtils.getContextFolder(fname);
-					const currentWorkspace: string = this.workspaceExplorer.getCurrentWorkspace();
-					const theoriesFromActiveFile: boolean = vscodeUtils.getConfigurationFlag("pvs.pvsWorkspaceTheoriesFromActiveFile");
-					if (contextFolder !== currentWorkspace || theoriesFromActiveFile || theoriesFromActiveFile !== this.workspaceExplorer?.theoriesFromActiveFile()) {
-						this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder });
-						this.workspaceExplorer.setMode(theoriesFromActiveFile ? WorkspaceMode.theoriesFromActiveFile : WorkspaceMode.theoriesFromActiveContext);
-						this.workspaceExplorer.setActivePvsFile(fname);
-						// don't update file explorer, as any modification will create an Untitled workspace, which might be problematic for vscode-pvs users
-						// because users will be asked to save the workspace on exit, and if they choose to save the workspace, 
-						// they will also be asked whether they want to open the workspace configuration next time they will work on that folder
-						// const contextFolderUri: Uri = Uri.file(contextFolder);
-						// if (!workspace.getWorkspaceFolder(contextFolderUri)) {
-						// 	// add the folder to file explorer
-						// 	// commands.executeCommand('vscode.openFolder', Uri.file(contextFolder), { forceReuseWindow: true });
-						// 	// const nOpenFolders: number = workspace?.workspaceFolders?.length || 0;
-						// 	await vscodeUtils.updateWorkspaceFolders(0, 0, { uri: Uri.file(contextFolder) });
-						// }
+				if (event?.languageId === "pvs" || fsUtils.isPvsFile(editor?.document?.fileName)) {
+					commands.executeCommand('setContext', 'pvs-server-active', true);
+					// show status bar
+					this.statusBar.show();
+					// check if this is a session start and there's a file that needs to be opened
+					const fname: string = event?.fileName;
+					if (fsUtils.isPvsFile(fname) && fname === editor?.document?.fileName) {
+						vscodeUtils.loadPvsFileIcons();
+						const contextFolder: string = fsUtils.getContextFolder(fname);
+						const currentWorkspace: string = this.workspaceExplorer.getCurrentWorkspace();
+						const theoriesFromActiveFile: boolean = vscodeUtils.getConfigurationFlag("pvs.pvsWorkspaceTheoriesFromActiveFile");
+						if (contextFolder !== currentWorkspace || theoriesFromActiveFile || theoriesFromActiveFile !== this.workspaceExplorer?.theoriesFromActiveFile()) {
+							this.client.sendRequest(serverRequest.getContextDescriptor, { contextFolder });
+							this.workspaceExplorer.setMode(theoriesFromActiveFile ? WorkspaceMode.theoriesFromActiveFile : WorkspaceMode.theoriesFromActiveContext);
+							this.workspaceExplorer.setActivePvsFile(fname);
+							// don't update file explorer, as any modification will create an Untitled workspace, which might be problematic for vscode-pvs users
+							// because users will be asked to save the workspace on exit, and if they choose to save the workspace, 
+							// they will also be asked whether they want to open the workspace configuration next time they will work on that folder
+							// const contextFolderUri: Uri = Uri.file(contextFolder);
+							// if (!workspace.getWorkspaceFolder(contextFolderUri)) {
+							// 	// add the folder to file explorer
+							// 	// commands.executeCommand('vscode.openFolder', Uri.file(contextFolder), { forceReuseWindow: true });
+							// 	// const nOpenFolders: number = workspace?.workspaceFolders?.length || 0;
+							// 	await vscodeUtils.updateWorkspaceFolders(0, 0, { uri: Uri.file(contextFolder) });
+							// }
+						}
 					}
-				}
-				// don't highlight the active file in the explorer -- doing so will put the focus on the file explorer
-				// and the user might be looking at the pvs workspace explorer instead, which would become hidden
-				// commands.executeCommand("workbench.files.action.showActiveFileInExplorer");
-			} 
+					// don't highlight the active file in the explorer -- doing so will put the focus on the file explorer
+					// and the user might be looking at the pvs workspace explorer instead, which would become hidden
+					// commands.executeCommand("workbench.files.action.showActiveFileInExplorer");
+				} 
 			// the following is commented out because workspace.findFiles can take a lot of CPU
 			// else {
 			// 	const pvsFiles: Uri[] = await workspace.findFiles("**/*.pvs", null, 1);
@@ -327,14 +327,15 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				return value?.oldUri?.path?.endsWith(".pvs");
 			}) || [];
 			const activeEditor: TextEditor = getActivePvsEditor();
+			
 			if (pvsFiles.length > 0
 				|| (activeEditor && 
 						(fsUtils.isPvsFile(activeEditor?.document?.fileName)
-							|| activeEditor?.document?.languageId === "Log"))) {
+							|| activeEditor?.document?.languageId === "Log"))) { 
 				// send clearWorkspace command to the server, otherwise the server will erroneously report a typecheck error because it may have cached the theory name from the old file
 				this.client.sendRequest(serverRequest.clearWorkspace);
 				// remove tccs file for the renamed file, if the file exists
-                if (workspace?.workspaceFolders?.length) {
+				if (workspace?.workspaceFolders?.length) {
 					for (let i in pvsFiles) {
 						const tccFile: Uri = Uri.file(pvsFiles[i].oldUri.path.replace(".pvs", ".tccs"));
 						console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-client] Removing file ${tccFile}`);

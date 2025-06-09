@@ -40,7 +40,10 @@ import {
 	Connection, TextDocuments, TextDocument, CompletionItem, createConnection, ProposedFeatures, InitializeParams, 
 	TextDocumentPositionParams, Hover, CodeLens, CodeLensParams,
 	Diagnostic, Position, Range, DiagnosticSeverity, Definition,
-	TextDocumentChangeEvent, TextDocumentSyncKind, RenameParams, WorkspaceEdit, WorkspaceFolder, ServerCapabilities, CodeActionParams, Command, CodeAction
+	TextDocumentChangeEvent, TextDocumentSyncKind, RenameParams, WorkspaceEdit, WorkspaceFolder, ServerCapabilities, CodeActionParams, Command, CodeAction,
+	DidChangeWatchedFilesNotification,
+	WatchKind,
+	FileChangeType
 } from 'vscode-languageserver';
 import { 
 	PvsDefinition, FileList, TheoryDescriptor, PvsContextDescriptor, serverEvent, serverRequest,
@@ -1757,76 +1760,84 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		if (fnames && fnames.length > 0) {
 			for (let i = 0; i < fnames.length; i++) {
 				let fname: string = fnames[i];
-				const response: PvsResponse = (this.diags && this.diags[fname]) ? this.diags[fname].pvsResponse : null;
-				if (response && response["error"]) {
-					const info: PvsError = <PvsError> response;
 
-					// old pvs parser (legacy code)
-					if (info.error && info.error.data && info.error.data.place && info.error.data.place.length >= 2) {
-						const errorStart: Position = {
-							line: info.error.data.place[0], 
-							character: info.error.data.place[1]
-						};
-						const errorEnd: Position = (info.error.data.place.length > 3) ? { 
-							line: info.error.data.place[2], 
-							character: info.error.data.place[3]
-						} : {
-							...errorStart
-						};
-						const txt: string = await fsUtils.readFile(fname);
-						if (txt) {
-							// error message
-							const message: string = info.error.data.error_string;
-							// error range
-							const errorRange: Range = getErrorRange(txt, errorStart, errorEnd, message);
-							// diagnostics
-							const diag: Diagnostic = {
-								severity: DiagnosticSeverity.Error,
-								range: {
-									start: { line: errorRange.start.line - 1, character: errorRange.start.character },
-									end: { line: errorRange.end.line - 1, character: errorRange.end.character },
-								},
-								message,
-								source: `\n${source} error`
+				if(fsUtils.fileExists(fname)) {
+					const response: PvsResponse = (this.diags && this.diags[fname]) ? this.diags[fname].pvsResponse : null;
+					if (response && response["error"]) {
+						const info: PvsError = <PvsError> response;
+
+						// old pvs parser (legacy code)
+						if (info.error && info.error.data && info.error.data.place && info.error.data.place.length >= 2) {
+							const errorStart: Position = {
+								line: info.error.data.place[0], 
+								character: info.error.data.place[1]
 							};
-							this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ diag ] });
-						} else {
-							console.error(`[pvs-language-server] Warning: unable to send error diagnostics for file ${fname}`);
-						}
-					}
-
-					// new pvs parser
-					else if (info.error && info.error.data && info.error.data.length > 0) {
-						let diagnostics: Diagnostic[];
-						if (typeof info.error.data == "string") {
-							diagnostics = [ {
-								range: {
-									start: { line: 0, character: 0 }, 
-									end: { line: 0, character: 0 }
-								},
-								message: info.error.data,
-								severity: DiagnosticSeverity.Error
-							} ];
-						} else {
-							let data: Diagnostic[] = info.error.data;
-
-							diagnostics = <Diagnostic[]> data.map(diag => {
-								return {
+							const errorEnd: Position = (info.error.data.place.length > 3) ? { 
+								line: info.error.data.place[2], 
+								character: info.error.data.place[3]
+							} : {
+								...errorStart
+							};
+							const txt: string = await fsUtils.readFile(fname);
+							if (txt) {
+								// error message
+								const message: string = info.error.data.error_string;
+								// error range
+								const errorRange: Range = getErrorRange(txt, errorStart, errorEnd, message);
+								// diagnostics
+								const diag: Diagnostic = {
+									severity: DiagnosticSeverity.Error,
 									range: {
-										start: { line: diag.range.start.line - 1, character: diag.range.start.character }, // lines in the editor start from 0
-										end: { line: diag.range.end.line - 1, character: diag.range.end.character }
+										start: { line: errorRange.start.line - 1, character: errorRange.start.character },
+										end: { line: errorRange.end.line - 1, character: errorRange.end.character },
 									},
-									message: diag.message,
-									severity: diag.severity
-								}
-							});
+									message,
+									source: `\n${source} error`
+								};
+								this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ diag ] });
+							} else {
+								console.error(`[pvs-language-server] Warning: unable to send error diagnostics for file ${fname}`);
+							}
 						}
-						this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics });
+
+						// new pvs parser
+						else if (info.error && info.error.data && info.error.data.length > 0) {
+							let diagnostics: Diagnostic[];
+							if (typeof info.error.data == "string") {
+								diagnostics = [ {
+									range: {
+										start: { line: 0, character: 0 }, 
+										end: { line: 0, character: 0 }
+									},
+									message: info.error.data,
+									severity: DiagnosticSeverity.Error
+								} ];
+							} else {
+								let data: Diagnostic[] = info.error.data;
+
+								diagnostics = <Diagnostic[]> data.map(diag => {
+									return {
+										range: {
+											start: { line: diag.range.start.line - 1, character: diag.range.start.character }, // lines in the editor start from 0
+											end: { line: diag.range.end.line - 1, character: diag.range.end.character }
+										},
+										message: diag.message,
+										severity: diag.severity
+									}
+								});
+							}
+							this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics });
+						}
+					} else {
+						// send clean diagnostics
+						this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ ] });
 					}
 				} else {
-					// send clean diagnostics
-					this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ ] });
+						// @M3 send clean diagnostics and remove diagnostics of non-existent file
+						this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ ] });
+						delete this.diags[fname];
 				}
+
 			}
 		}
 	}
@@ -2147,6 +2158,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		// 		await this.startPvs();
 		// 	}
 		// });
+		
 		this.connection?.onInitialized(async () => {
 			// register handlers
 			// if (this.clientCapabilities.hasConfigurationCapability) {
@@ -2157,6 +2169,29 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			// 		// this.connection?.console.info(`[${fsUtils.generateTimestamp()}] `+'Workspace folder change event received.');
 			// 	});
 			// }
+
+			this.connection?.client.register(
+					DidChangeWatchedFilesNotification.type,
+					{
+							watchers: [
+									{
+											globPattern: '**/*.pvs', // Adjust as needed
+											kind: WatchKind.Delete
+									} 
+							]
+					}
+			);
+
+			this.connection?.onDidChangeWatchedFiles((params) => {
+					for (const change of params.changes) {
+							if (change.type === FileChangeType.Deleted) {
+									const uri = change.uri;
+									// Clear diagnostics for the deleted file
+									this.connection?.sendDiagnostics({ uri, diagnostics: [] });
+							}
+					}
+			});
+
 			this.connection?.onRequest(serverRequest.openFileWithExternalApp, (desc: FileDescriptor) => {
 			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.openFileWithExternalApp} - param: ${desc} `); // #DEBUG
 				if (desc?.fileName) {
@@ -2509,7 +2544,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				}
 			});
 		});
-
 
 		//-------------------------------
 		//    LSP event handlers
