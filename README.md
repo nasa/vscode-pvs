@@ -11,8 +11,10 @@ The environment redefines the way developers interact with PVS, and better align
 <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png" width="800">
 
 ## Latest version
-[vscode-pvs-1.0.64](releases/vscode-pvs-1.0.64.vsix)
-
+The relase [vscode-pvs-1.0-latest.vsix](/releases/vscode-pvs-1.0-latest.vsix) in the branch [master](https://github.com/nasa/vscode-pvs) points to the
+current development release of NASALib for [PVS8.0](https://github.com/SRI-CSL/PVS). 
+The release [vscode-pvs-1.0.65](/releases/vscode-pvs/releases/previous-releases/vscode-pvs-1.0.65) is
+the final stable release for [PVS 7.1](http://pvs.csl.sri.com/).
 
 ## Publications
 - Paolo Masci and César Muñoz, [An Integrated Development Environment for the Prototype Verification System](https://dx.doi.org/10.4204/EPTCS.310.5), Electronic Proceedings in Theoretical Computer Science (EPTCS), Vol. 310, pp. 35-49, 2019 [[PDF](https://arxiv.org/pdf/1912.10632v1)][[BibTeX](https://dblp.org/rec/journals/corr/abs-1912-10632.html?view=bibtex)]
@@ -60,11 +62,9 @@ Once PVS Allegro is installed on your machine, you can link up PVS and VSCode-PV
 <br>
 
 ## Updating VSCode-PVS
-VSCode-PVS will be automatically updated every time we publish a new release in the marketplace.
-
-All settings and preferences will be maintained when installing a new release.
-
-If you would like to perform manual updates, e.g., to try out pre-releases, you can download and install the .vsix files posted on the [PVS google group](https://groups.google.com/g/pvs-group).
+- VSCode-PVS will be automatically updated every time we publish a new release in the marketplace.
+- All settings and preferences will be maintained when installing a new release.
+- If you would like to perform manual updates, e.g., to try out pre-releases, you can download and install the .vsix files posted on the [PVS google group](https://groups.google.com/g/pvs-group).
 
 
 ## Functionalities
@@ -120,6 +120,7 @@ The main functionalities provided by the environment are as follows:
     └── src
         ├── providers                          // Server-side service providers
         │     ├── pvsCodeLensProvider.ts       // In-line actionable commands
+        │     ├── pvsCodeActionProvider.ts     // Quick-fix actions
         │     ├── pvsCompletionProvider.ts     // Auto-completion
         │     ├── pvsDefinitionProvider.ts     // Find definitions
         │     ├── pvsHoverProvider.ts          // Hover information 
