@@ -545,9 +545,17 @@ export class PvsProxy {
 				if (this.pvsLibPath) {
 					libraries.push(this.pvsLibPath);
 				}
-				this.pvsLibraryPath.split(':').forEach(path => {
-					libraries.push(path);
-				});
+				if (process.platform === "win32") { 
+					this.pvsLibraryPath.split(';').forEach(path => {
+						if(path && path !== "")
+							libraries.push(path);
+					});
+				} else {
+					this.pvsLibraryPath.split(':').forEach(path => {
+						if(path && path !== "")
+							libraries.push(path);
+					});
+				}
 
 				const message: ClientMessage = {
 					type: 'connect',
