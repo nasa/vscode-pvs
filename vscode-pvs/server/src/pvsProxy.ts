@@ -571,8 +571,8 @@ export class PvsProxy {
 		this.webSocket.on('message', async (msg: string) => {
 			const obj = JSON.parse(msg);
 			// Should check for valid JSON-RPC,
-			//console.log('webSocket.on: ', this.pendingRequests);
-			//console.log('  obj = ', obj);
+			console.log('[pvsProxy.startWebSocket!!!] webSocket.on: ', this.pendingRequests); // debug
+			console.log('[pvsProxy.startWebSocket!!!]  obj = ', obj); // debug
 			if (obj.type === "send-token") {
 				console.log("Received new session token from remove server");
 				if (obj.token_str) {
@@ -613,9 +613,10 @@ export class PvsProxy {
 				if (!lib_path_returned) {
 					let lib_promises = new Array<Promise<number>>;
 					for (const key in obj.syncPathsResponse.libPaths) {
-						console.log(`[pvsProxy.startWebSocket!!!] Tyring to sync path: "${key}" `);
+						console.log(`[pvsProxy.startWebSocket!!!] Tyring to sync path: "${key}" - "${obj.syncPathsResponse.libPaths[key]}" `);
 						if (!(key in this.pathCache.libPaths) && 'ssh_path' in this.remoteDetails && 'hostname' in this.remoteDetails) {
-							lib_promises.push(fsUtils.runRsync(key, obj.syncPathsResponse.libPaths[key], this.remoteDetails.ssh_path, this.remoteDetails.hostname, this.remoteDetails.ip));
+							if (key !== "") 
+								lib_promises.push(fsUtils.runRsync(key, obj.syncPathsResponse.libPaths[key], this.remoteDetails.ssh_path, this.remoteDetails.hostname, this.remoteDetails.ip));
 						}
 						this.pathCache.libPaths[key] = obj.syncPathsResponse.libPaths[key];
 					}
