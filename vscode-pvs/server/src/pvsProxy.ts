@@ -341,9 +341,10 @@ export class PvsProxy {
 		}
 	}
 
-	async syncPaths(contextPath: string) {
+	async syncPaths(contextPath: string): Promise<number> {
 		let rsyncCode = -1;
-		if ('hostname' in this.remoteDetails && this.remoteActive) {
+		console.log(`[pvsProxy.syncPaths] Tyring to sync path: "${contextPath}" `);
+		if ('hostname' in this.remoteDetails && this.remoteActive && contextPath !== "") {
 			let remotePath = this.searchPathCache(contextPath);
 			if (!remotePath) {
 				await this.syncMapping(contextPath);
@@ -351,6 +352,8 @@ export class PvsProxy {
 			}
 			rsyncCode = await fsUtils.runRsync(contextPath, remotePath, this.remoteDetails.ssh_path, this.remoteDetails.hostname, this.remoteDetails.ip);
 			return rsyncCode;
+		} else if (contextPath === "") {
+			console.log(`[pvsProxy.syncPaths] Tried to synchronize an empty path. Ignoring request.`);
 		}
 		return rsyncCode;
 	}
