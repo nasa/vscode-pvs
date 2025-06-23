@@ -2635,7 +2635,7 @@ export function runRsync(localPath: string, remotePath: string, ssh_key_path: st
 				localPath + '/*',
 				`${user}@${host}:${path.join(remotePath, '/')}`
 			];
-			child = spawn('scp', scpArgs);
+			// child = spawn('scp', scpArgs);
 		} else {
 			console.log("Linux detected, using rsync");
 			const rsyncArgs = [
@@ -2653,26 +2653,28 @@ export function runRsync(localPath: string, remotePath: string, ssh_key_path: st
 			child = spawn('rsync', rsyncArgs);
 		}
 
-		child.stdout.on('data', (data) => {
-			console.log(`stdout: ${data}`);
-		});
+		if (child) {
+			child.stdout.on('data', (data) => {
+				console.log(`stdout: ${data}`);
+			});
 
-		child.stderr.on('data', (data) => {
-			console.error(`stderr: ${data}`);
-		});
+			child.stderr.on('data', (data) => {
+				console.error(`stderr: ${data}`);
+			});
 
-		child.on('close', (code) => {
-			if (code === 0) {
-				resolve(code);
-			} else {
-				reject(code);
-			}
-		});
+			child.on('close', (code) => {
+				if (code === 0) {
+					resolve(code);
+				} else {
+					reject(code);
+				}
+			});
 
-		child.on('error', (err) => {
-			console.log(`Error in syncing ${localPath} - ${err}`);
-			reject(err);
-		});
+			child.on('error', (err) => {
+				console.log(`Error in syncing ${localPath} - ${err}`);
+				reject(err);
+			});
+		}
 	});
 }
 
