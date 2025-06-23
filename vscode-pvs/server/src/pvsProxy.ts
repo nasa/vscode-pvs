@@ -613,6 +613,7 @@ export class PvsProxy {
 				if (!lib_path_returned) {
 					let lib_promises = new Array<Promise<number>>;
 					for (const key in obj.syncPathsResponse.libPaths) {
+						console.log(`[pvsProxy.startWebSocket!!!] Tyring to sync path: "${key}" `);
 						if (!(key in this.pathCache.libPaths) && 'ssh_path' in this.remoteDetails && 'hostname' in this.remoteDetails) {
 							lib_promises.push(fsUtils.runRsync(key, obj.syncPathsResponse.libPaths[key], this.remoteDetails.ssh_path, this.remoteDetails.hostname, this.remoteDetails.ip));
 						}
