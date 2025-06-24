@@ -2627,17 +2627,31 @@ export function runRsync(localPath: string, remotePath: string, ssh_key_path: st
 	return new Promise((resolve, reject) => {
 		let child;
 
+		console.log(`[fsUtils.runRsync] platform: ${process.platform}`)
+
 		if (process.platform === "win32") {
-			console.log("Windows detected, using scp");
-			const scpArgs = [
-				'-i', ssh_key_path,
-				'-r',
-				localPath + '/*',
-				`${user}@${host}:${path.join(remotePath, '/')}`
-			];
+			console.log("[fsUtils.runRsync] Windows detected, using scp");
+
+			// const scpArgs = [
+			// 	'-i', ssh_key_path,
+			// 	'-r',
+			// 	localPath + '/*',
+			// 	`${user}@${host}:${path.join(remotePath, '/')}`
+			// ];
 			// child = spawn('scp', scpArgs);
+
+			const psCommand = `
+			Get-ChildItem -Path "${localPath + '/*'}" -Recurse -Include *.pvs,*.prf,pvs-strategies,pvs-attachments | ForEach-Object {
+					scp $_.FullName ${user}@${host}:"${path.join(remotePath, '/')}/$($_.Name)"
+			}
+			`;
+
+			console.log(`[fsUtils.runRsync] power shell Command: ${psCommand}`)
+
+			const child = spawn('powershell.exe', ['-Command', psCommand]);
+
 		} else {
-			console.log("Linux detected, using rsync");
+			console.log("[fsUtils.runRsync] Linux detected, using rsync");
 			const rsyncArgs = [
 				'-avz',
 				'--partial',
@@ -2653,28 +2667,26 @@ export function runRsync(localPath: string, remotePath: string, ssh_key_path: st
 			child = spawn('rsync', rsyncArgs);
 		}
 
-		if (child) {
-			child.stdout.on('data', (data) => {
-				console.log(`stdout: ${data}`);
-			});
+		child.stdout.on('data', (data) => {
+			console.log(`stdout: ${data}`);
+		});
 
-			child.stderr.on('data', (data) => {
-				console.error(`stderr: ${data}`);
-			});
+		child.stderr.on('data', (data) => {
+			console.error(`stderr: ${data}`);
+		});
 
-			child.on('close', (code) => {
-				if (code === 0) {
-					resolve(code);
-				} else {
-					reject(code);
-				}
-			});
+		child.on('close', (code) => {
+			if (code === 0) {
+				resolve(code);
+			} else {
+				reject(code);
+			}
+		});
 
-			child.on('error', (err) => {
-				console.log(`Error in syncing ${localPath} - ${err}`);
-				reject(err);
-			});
-		}
+		child.on('error', (err) => {
+			console.log(`Error in syncing ${localPath} - ${err}`);
+			reject(err);
+		});
 	});
 }
 
