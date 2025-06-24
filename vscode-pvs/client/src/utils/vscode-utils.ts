@@ -1184,7 +1184,7 @@ export function resource2desc (resource: string | {
             const isFolder: boolean = !fsUtils.isPvsFile(resource);
             if (isFolder) {
                 return { 
-                    contextFolder: fsUtils.normalizeContextFolder(resource),
+                    contextFolder: fsUtils.getContextFolder(resource),
                     fileName: null,
                     fileExtension: null,
                     theoryName: null,
@@ -1213,7 +1213,7 @@ export function resource2desc (resource: string | {
             const isFolder: boolean = !fsUtils.isPvsFile(resource.path);
             if (isFolder) {
                 return {
-                    contextFolder: fsUtils.normalizeContextFolder(resource.path),
+                    contextFolder: fsUtils.getContextFolder(resource.path),
                     fileName: null,
                     fileExtension: null,
                     theoryName: null,

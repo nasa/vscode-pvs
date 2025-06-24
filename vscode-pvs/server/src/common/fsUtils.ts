@@ -464,9 +464,8 @@ export function getContextFolder(fname: string): string {
 	if (fname) {
 		const ctx: string = fname.replace("file:///", "");
 		if (process.platform === "win32") {
-		return path.dirname(ctx);
-		}
-		else {
+			return path.dirname(ctx);
+		} else {
 			return ctx.split("/").slice(0, -1).join("/").replace("//", "/");
 		}
 	}
