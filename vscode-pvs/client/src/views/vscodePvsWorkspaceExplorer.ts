@@ -953,6 +953,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 	 * Updates information about a given pvs context
 	 */
 	updateContextFolder (desc: PvsContextDescriptor, opt?: { tccDescriptor?: boolean }): void {
+		console.log(`[vscodePvsWorkspaceExplorer.updateContextFolder] desc: ${JSON.stringify(desc)}`);
 		if (desc?.contextFolder) {
 			const theoriesFromSelectedFile: boolean = vscodeUtils.getConfigurationFlag("pvs.pvsWorkspaceTheoriesFromActiveFile");
 			if (theoriesFromSelectedFile) {
