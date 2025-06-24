@@ -2647,7 +2647,7 @@ export function runRsync(localPath: string, remotePath: string, ssh_key_path: st
 
 			console.log(`[fsUtils.runRsync] power shell Command: ${psCommand}`)
 
-			const child = spawn('powershell.exe', ['-Command', psCommand]);
+			child = spawn('powershell.exe', ['-Command', psCommand]);
 
 		} else {
 			console.log("[fsUtils.runRsync] Linux detected, using rsync");
