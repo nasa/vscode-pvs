@@ -957,19 +957,27 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 			const theoriesFromSelectedFile: boolean = vscodeUtils.getConfigurationFlag("pvs.pvsWorkspaceTheoriesFromActiveFile");
 			if (theoriesFromSelectedFile) {
 				const activePvsFile: TextDocument = getActivePvsFile();
+				console.log(`[vscodePvsWorkspaceExplorer.updateContextFolder] activePvsFile: ${activePvsFile}`);
+				console.log(`[vscodePvsWorkspaceExplorer.updateContextFolder] activeFile: ${this.activeFile}`);
 				if (activePvsFile) {
-					const activeDesc: PvsFile = fsUtils.fname2desc(activePvsFile?.fileName || this.activeFile);
-					// sanity check
-					if (activeDesc?.contextFolder === desc.contextFolder) {
-						activeDesc.fileExtension = ".pvs"; // we force the .pvs extension because the editor could be open on a .summary file
-						// remove all file descriptors except the one related to the selected file
-						// TODO: do we need to do search for ADT files associated to the current file?
-						this.activeFile = fsUtils.desc2fname(activeDesc);
-						const allDesc: { [fname: string]: PvsFileDescriptor } = desc.fileDescriptors;
-						desc.fileDescriptors = {};
-						desc.fileDescriptors[this.activeFile] = allDesc[this.activeFile];
+					let activeFile : string = this.activeFile;
+					if (activePvsFile?.fileName !== undefined) activeFile = activePvsFile?.fileName;
+					if (activeFile) {
+						const activeDesc: PvsFile = fsUtils.fname2desc(activeFile);
+						// sanity check
+						if (activeDesc?.contextFolder === desc.contextFolder) {
+							activeDesc.fileExtension = ".pvs"; // we force the .pvs extension because the editor could be open on a .summary file
+							// remove all file descriptors except the one related to the selected file
+							// TODO: do we need to do search for ADT files associated to the current file?
+							this.activeFile = fsUtils.desc2fname(activeDesc);
+							const allDesc: { [fname: string]: PvsFileDescriptor } = desc.fileDescriptors;
+							desc.fileDescriptors = {};
+							desc.fileDescriptors[this.activeFile] = allDesc[this.activeFile];
+						} else {
+							console.warn("[vscodePvsWorkspaceExplorer.updateContextFolder] Warning: updateContextFolder has received a mismatching context folder update", { desc, activePvsFile})
+						}
 					} else {
-						console.warn("[vscode-pvs-explorer] Warning: updateContextFolder has received a mismatching context folder update", { desc, activePvsFile})
+						console.warn("[vscodePvsWorkspaceExplorer.updateContextFolder] Cannot find active fileName", { desc, activePvsFile})
 					}
 				}
 			}
