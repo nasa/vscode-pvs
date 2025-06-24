@@ -451,7 +451,10 @@ export function getFileExtension(fname: string): string {
  */
 export function normalizeContextFolder(contextFolder: string): string {
 	if (contextFolder) {
-		return contextFolder.replace("file://", "");
+		if (process.platform === "win32") 
+			return contextFolder.replace("file:///", "");
+		else
+			return contextFolder.replace("file://", "");
 	}
 	return null;
 }
@@ -462,10 +465,11 @@ export function normalizeContextFolder(contextFolder: string): string {
 export function getContextFolder(fname: string): string {
 	//TODO: check in which situations is necessary to remove file protocol header (file://)
 	if (fname) {
-		const ctx: string = fname.replace("file:///", "");
 		if (process.platform === "win32") {
+			const ctx: string = fname.replace("file:///", "");
 			return path.dirname(ctx);
 		} else {
+			const ctx: string = fname.replace("file://", "");
 			return ctx.split("/").slice(0, -1).join("/").replace("//", "/");
 		}
 	}
@@ -2645,7 +2649,7 @@ export function runRsync(localPath: string, remotePath: string, ssh_key_path: st
 			}
 			`;
 
-			console.log(`[fsUtils.runRsync] power shell Command: ${psCommand}`)
+			console.log(`[fsUtils.runRsync] power shell Command: powershell.exe -Command ${psCommand}`)
 
 			child = spawn('powershell.exe', ['-Command', psCommand]);
 
@@ -2656,13 +2660,20 @@ export function runRsync(localPath: string, remotePath: string, ssh_key_path: st
 				'--partial',
 				'--prune-empty-dirs',
 				'--include', '*/',
+				'--include', 'pvs-strategies',
+				'--include', 'pvs-attachments',
+				'--include', '*.pvs',
+				'--include', '*.prf',
 				'--include', '**/*.pvs',
 				'--include', '**/*.prf',
+				'--include', '**/pvs-strategies',
+				'--include', '**/pvs-attachments',
 				'--exclude', '*',
 				'-e', `ssh -i ${ssh_key_path}`,
 				path.join(localPath, '/'),
 				`${user}@${host}:${path.join(remotePath, '/')}`
 			];
+			console.log(`[fsUtils.runRsync] rsync Command: rsync ${rsyncArgs.join(" ")}`)
 			child = spawn('rsync', rsyncArgs);
 		}
 

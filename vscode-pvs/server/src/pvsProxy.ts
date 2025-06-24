@@ -641,7 +641,6 @@ export class PvsProxy {
 				}
 			}
 			if (obj.id) {
-				console.log(obj);
 				if ("result" in obj || "error" in obj || "method" in obj) {
 					if (this.pendingRequests[obj.id]) {
 						// console.log(`[pvsRequest] msg = ${msg}`)
@@ -1431,7 +1430,7 @@ export class PvsProxy {
 			let res: PvsResponse;
 			if (this.remoteActive) {
 				const fnameRemote = this.fileRefRemote(desc);
-				res = await this.pvsRequestRemote('typecheck', [fnameRemote, desc.fileContent], opt.progressReporter);
+				res = await this.pvsRequestRemote('typecheck', (desc.fileContent? [fnameRemote, desc.fileContent] : [fnameRemote]) , opt.progressReporter);
 
 			} else {
 				res = await this.pvsRequest('typecheck', [fname, desc.fileContent], opt.progressReporter);

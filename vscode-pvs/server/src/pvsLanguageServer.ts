@@ -729,14 +729,14 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			// proceed with typechecking
 			const response: PvsResponse = await this.typecheckFile(request, { progressReporter: (msg: string) => {this.notifyProgressImportantTask({ id: taskId, msg: msg, increment: -1})}});
 			console.warn("Sending typecheckFileResponse:");
-console.warn("  → Event:", serverEvent.typecheckFileResponse);
-console.warn("  → Response:", response);
-console.warn("  → Args (request):", request);
+			console.warn("  → Event:", serverEvent.typecheckFileResponse);
+			console.warn("  → Response:", response);
+			console.warn("  → Args (request):", request);
 
-this.connection?.sendRequest(serverEvent.typecheckFileResponse, {
-	response,
-	args: request
-});
+			this.connection?.sendRequest(serverEvent.typecheckFileResponse, {
+				response,
+				args: request
+			});
 
 			// // send diagnostics
 			if (response) {
@@ -988,6 +988,7 @@ this.connection?.sendRequest(serverEvent.typecheckFileResponse, {
 					if (this.lastParsedContext !== request.contextFolder) {
 						this.lastParsedContext = request.contextFolder;
 						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
+						console.log(`[pvsLanguageServer.parseFileRequest] sending req context update ${JSON.stringify(cdesc)}`);
 						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 					}
 					
@@ -1108,6 +1109,7 @@ this.connection?.sendRequest(serverEvent.typecheckFileResponse, {
 					if (!this.isSameWorkspace(contextFolder)) {
 						this.lastParsedContext = contextFolder;
 						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
+						console.log(`[pvsLanguageServer.workspaceActionRequest] sending req context update ${JSON.stringify(cdesc)}`);
 						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 					}
 
@@ -2070,6 +2072,7 @@ this.connection?.sendRequest(serverEvent.typecheckFileResponse, {
 							// TODO: send loading message to workspace explorer
 							// ...
 							const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
+							console.log(`[pvsLanguageServer.onRequest(startPVSServer)] sending req context update ${JSON.stringify(cdesc)}`);
 							this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 						}
 					}
@@ -2384,6 +2387,7 @@ this.connection?.sendRequest(serverEvent.typecheckFileResponse, {
 					const wsEdit: WorkspaceEdit = await this.renameProvider.provideRename({ txt, uri, position: args.position, newName: args.newName });
 					if (wsEdit && wsEdit.changes && Object.keys(wsEdit.changes) && Object.keys(wsEdit.changes).length) {
 						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: fsUtils.getContextFolder(uri) });
+						console.log(`[pvsLanguageServer.onRenameRequest] sending req context update ${JSON.stringify(cdesc)}`);
 						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);	
 					}
 					return {};
