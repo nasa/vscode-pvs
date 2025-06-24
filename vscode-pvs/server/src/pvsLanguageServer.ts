@@ -705,7 +705,8 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * Typecheck file request handler
 	 */
 	async typecheckFileRequest (request: PvsFile): Promise<void> {
-
+		console.log(`[pvsLanguageServer.typecheckFileRequest] request: ${JSON.stringify(request)}`);
+		
 		const mode: string = await this.getMode();
 		if (mode !== "lisp") {
 			return;
