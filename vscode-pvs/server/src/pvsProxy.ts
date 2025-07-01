@@ -68,8 +68,9 @@ import { checkPar, CheckParResult, getErrorRange, isQuitCommand, isQuitDontSaveC
 import * as languageUtils from './common/languageUtils';
 // import { PvsProxyLegacy } from './legacy/pvsProxyLegacy';
 import { PvsErrorManager } from './pvsErrorManager';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import { SSHTunnel } from './SSHTunnel';
+import { Extension } from 'typescript';
 
 export class PvsProgressInfo {
 	protected progressLevel: number = 0;
@@ -126,9 +127,10 @@ export class PvsProxy {
 	protected activeProgressReporters: object = [];
 
 	protected pvsPath: string;
-	protected pvsLibPath: string; // these are internal libraries
 	protected nasalibPath: string;
+	protected pvsLibPath: string; // these are internal libraries
 	protected pvsLibraryPath: string; // these are external libraries
+
 	protected pvsServer: PvsProcess;
 	protected connection: SimpleConnection; // connection to the client
 	protected cliListener: (data: string) => void; // useful to show progress feedback
@@ -161,6 +163,7 @@ export class PvsProxy {
 	activeWorkspace: string;
 	tunnel: SSHTunnel;
 
+	extensionPath: string;
 
 	/** The constructor simply sets various properties in the PvsProxy class. */
 	constructor(pvsPath: string,
@@ -169,12 +172,15 @@ export class PvsProxy {
 			connection?: SimpleConnection,
 			externalServer?: boolean,
 			pvsLibraryPath?: string,
-			remote?: remoteDetailsDesc
+			remote?: remoteDetailsDesc,
+			extensionPath?: string,
 			messageReporter?: (data: string) => void
 		}) {
 		opt = opt || {};
 		this.pvsPath = pvsPath;
 		this.pvsLibPath = pvsPath ? path.join(pvsPath, "lib") : undefined;
+
+		this.extensionPath = opt.extensionPath;
 
 		this.pvsLibraryPath = opt.pvsLibraryPath || "";
 		if (this.pvsLibraryPath) {
@@ -350,7 +356,7 @@ export class PvsProxy {
 				await this.syncMapping(contextPath);
 				remotePath = this.searchPathCache(contextPath);
 			}
-			rsyncCode = await fsUtils.runRsync(contextPath, remotePath, this.remoteDetails.ssh_path, this.remoteDetails.hostname, this.remoteDetails.ip);
+			rsyncCode = await this.runRsync(contextPath, remotePath, this.remoteDetails.ssh_path, this.remoteDetails.hostname, this.remoteDetails.ip);
 			return rsyncCode;
 		} else if (contextPath === "") {
 			console.log(`[pvsProxy.syncPaths] Tried to synchronize an empty path. Ignoring request.`);
@@ -541,21 +547,24 @@ export class PvsProxy {
 				} else {
 					console.log("No token found, Requesting new.");
 				}
+
+				// @M3 I'm omitting libraries for now, until we get a better way to transfer files from Win to Linux
 				let libraries = new Array<string>;
-				if (this.pvsLibPath) {
-					libraries.push(this.pvsLibPath);
-				}
-				if (process.platform === "win32") { 
-					this.pvsLibraryPath.split(';').forEach(path => {
-						if(path && path !== "")
-							libraries.push(path);
-					});
-				} else {
-					this.pvsLibraryPath.split(':').forEach(path => {
-						if(path && path !== "")
-							libraries.push(path);
-					});
-				}
+				console.warn(`[pvsProxy.startWebSocket(on open)] Omitting libraries ${this.pvsLibPath} and ${this.pvsLibraryPath}. Libraries are remote's responsibilities for now.`)
+				// if (this.pvsLibPath) {
+				// 	libraries.push(this.pvsLibPath);
+				// }
+				// if (process.platform === "win32") { 
+				// 	this.pvsLibraryPath.split(';').forEach(path => {
+				// 		if(path && path !== "")
+				// 			libraries.push(path);
+				// 	});
+				// } else {
+				// 	this.pvsLibraryPath.split(':').forEach(path => {
+				// 		if(path && path !== "")
+				// 			libraries.push(path);
+				// 	});
+				// }
 
 				const message: ClientMessage = {
 					type: 'connect',
@@ -579,8 +588,8 @@ export class PvsProxy {
 		this.webSocket.on('message', async (msg: string) => {
 			const obj = JSON.parse(msg);
 			// Should check for valid JSON-RPC,
-			console.log('[pvsProxy.startWebSocket!!!] webSocket.on: ', this.pendingRequests); // debug
-			console.log('[pvsProxy.startWebSocket!!!]  obj = ', obj); // debug
+			console.log('[pvsProxy.startWebSocket] webSocket.on message: ', this.pendingRequests); // debug
+			console.log('[pvsProxy.startWebSocket]  obj = ', obj); // debug
 			if (obj.type === "send-token") {
 				console.log("Received new session token from remove server");
 				if (obj.token_str) {
@@ -618,13 +627,14 @@ export class PvsProxy {
 						}
 					}
 				}
+				
 				if (!lib_path_returned) {
 					let lib_promises = new Array<Promise<number>>;
 					for (const key in obj.syncPathsResponse.libPaths) {
 						console.log(`[pvsProxy.startWebSocket!!!] Tyring to sync path: "${key}" - "${obj.syncPathsResponse.libPaths[key]}" `);
 						if (!(key in this.pathCache.libPaths) && 'ssh_path' in this.remoteDetails && 'hostname' in this.remoteDetails) {
 							if (key !== "") 
-								lib_promises.push(fsUtils.runRsync(key, obj.syncPathsResponse.libPaths[key], this.remoteDetails.ssh_path, this.remoteDetails.hostname, this.remoteDetails.ip));
+								lib_promises.push(this.runRsync(key, obj.syncPathsResponse.libPaths[key], this.remoteDetails.ssh_path, this.remoteDetails.hostname, this.remoteDetails.ip));
 						}
 						this.pathCache.libPaths[key] = obj.syncPathsResponse.libPaths[key];
 					}
@@ -661,6 +671,112 @@ export class PvsProxy {
 		});
 	}
 
+	protected runRsync(localPath: string, remotePath: string, ssh_key_path: string, user: string, host: string): Promise<number> {
+		return new Promise((resolve, reject) => {
+			let child;
+
+			console.log(`[fsUtils.runRsync] platform: ${process.platform}`)
+
+			if (process.platform === "win32") {
+				console.log("[fsUtils.runRsync] Windows detected, using scp");
+
+				// const scpArgs = [
+				// 	'-i', ssh_key_path,
+				// 	'-r',
+				// 	localPath + '/*',
+				// 	`${user}@${host}:${path.join(remotePath, '/')}`
+				// ];
+				// child = spawn('scp', scpArgs);
+
+				// const psCommand = `
+				// Get-ChildItem -Path "${localPath + '/*'}" -Recurse -Include *.pvs,*.prf,pvs-strategies,pvs-attachments | ForEach-Object {
+				// 		scp $_.FullName ${user}@${host}:"${path.join(remotePath, '/')}/$($_.Name)"
+				// }
+				// `;
+
+				// const psCommand = `
+				// Get-ChildItem -Path "${localPath}" -Recurse -Include *.pvs,*.prf,pvs-strategies,pvs-attachments | ForEach-Object {
+				// 	$relativePath = $_.FullName.Substring($localPath.Length).TrimStart('\\')
+				// 	$destinationPath = "${remotePath}/$relativePath" -replace '\\\\', '/'
+				// 	$remoteDir = [System.IO.Path]::GetDirectoryName($destinationPath)
+				// 	ssh ${user}@${host} "mkdir -Force -p \\"$remoteDir\\"
+				// 	scp $_.FullName ${user}@${host}:\\"$destinationPath\\"
+				// }`;
+
+				// const psCommand = `
+				// Get-ChildItem -Path "${localPath}" -Recurse -Include *.pvs,*.prf,pvs-strategies,pvs-attachments | ForEach-Object {
+				// 	$relativePath = $_.FullName.Substring(${localPath.length}).TrimStart('\\');
+				// 	$destinationPath = "${remotePath}/$relativePath" -replace '\\\\', '/';
+				// 	$remoteDir = [System.IO.Path]::GetDirectoryName($destinationPath);
+				// 	ssh ${user}@${host} "mkdir -Force -p \\"$remoteDir\\"";
+				// 	scp $_.FullName ${user}@${host}:"\\"$destinationPath\\""
+				// }`.replace(/\n/g, '').replace(/\s+/g, ' ').trim();
+
+
+				// const psCommand = `
+				// powershell.exe -Command "Get-ChildItem -Path \\"${localPath}\\" -Recurse -Include *.pvs,*.prf,pvs-strategies,pvs-attachments | ForEach-Object {
+				// 	$relativePath = $_.FullName.Substring(${localPath.length}).TrimStart('\\\\');
+				// 	$destinationPath = \\"${remotePath}/\\" + $relativePath -replace '\\\\', '/';
+				// 	$remoteDir = [System.IO.Path]::GetDirectoryName($destinationPath);
+				// 	ssh ${user}@${host} \\"mkdir -p \\\\\\"$remoteDir\\\\\\"\\"; 
+				// 	scp \\"$($_.FullName)\\" ${user}@${host}:\\"$destinationPath\\"
+				// }"`
+
+
+				const scpScript: string = path.join(this.extensionPath, 'extra/scp-pvslib.ps1');
+				const psCommand: string = `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${scpScript}" -PvsLibPath "${localPath}" -RemoteUser "${user}" -RemoteIP "${host}" -RemoteBaseDir "${remotePath}"`;
+				console.log(`[fsUtils.runRsync] power shell Command: powershell.exe -Command ${psCommand}`)
+
+				child = spawn('powershell.exe', ['-Command', psCommand]);
+
+			} else {
+				console.log("[fsUtils.runRsync] Linux detected, using rsync");
+				const rsyncArgs = [
+					'-avz',
+					'--partial',
+					'--prune-empty-dirs',
+					'--include', '*/',
+					'--include', 'pvs-strategies',
+					'--include', 'pvs-attachments',
+					'--include', '*.pvs',
+					'--include', '*.prf',
+					'--include', '**/*.pvs',
+					'--include', '**/*.prf',
+					'--include', '**/pvs-strategies',
+					'--include', '**/pvs-attachments',
+					'--exclude', '*',
+					'-e', `ssh -i ${ssh_key_path}`,
+					path.join(localPath, '/'),
+					`${user}@${host}:${path.join(remotePath, '/')}`
+				];
+				console.log(`[fsUtils.runRsync] rsync Command: rsync ${rsyncArgs.join(" ")}`)
+				child = spawn('rsync', rsyncArgs);
+			}
+
+			child.stdout.on('data', (data) => {
+				console.log(`${data}`);
+			});
+
+			child.stderr.on('data', (data) => {
+				console.error(`${data}`);
+			});
+
+			child.on('close', (code) => {
+				if (code === 0) {
+					resolve(code);
+				} else {
+					reject(code);
+				}
+			});
+
+			child.on('error', (err) => {
+				console.log(`Error in syncing ${localPath} - ${err}`);
+				reject(err);
+			});
+		});
+	}
+
+
 	async startInterruptionWebSocket(resolveInterupptConn?: Function): Promise<void> {
 		console.log("[pvsProxy.startInterruptionWebSocket] Creating web socket client connection...");
 		this.interruptConn = new WebSocket(`ws://${this.webSocketAddress}:${this.webSocketPort}`);
@@ -680,7 +796,7 @@ export class PvsProxy {
 			console.log("[pvsProxy.startInterruptionWebSocket]  PING");
 		});
 		this.interruptConn.on('error', (error) => {
-			console.log(`ERROR: ${error}`);
+			console.log(`ERROR: ${JSON.stringify(error)}`);
 			// If the connection was refused, we retry, in case PVS is still starting
 
 		});
@@ -2513,11 +2629,15 @@ export class PvsProxy {
 		if (this.nasalibPath && this.nasalibPath !== '') {
 			// const nasalibVersion: PvsResponse = await this.lisp(`(when (fboundp 'extra-pvslib-keyval) (extra-pvslib-keyval "NASALib" "version"))`);
 			const cmd: string = `PVS_LIBRARY_PATH=${this.nasalibPath} sh ${path.join(this.nasalibPath, "nasalib-version")}`;
-			const result: string = execSync(cmd, { encoding: "utf-8" });
-			const nasalibVersion: { result: string } = { result };
+			try {
+				const result: string = execSync(cmd, { encoding: "utf-8" });
+				const nasalibVersion: { result: string } = { result };
 
-			this.useNasalib = (nasalibVersion?.result !== 'NIL' && nasalibVersion?.result !== 'nil');
-			return this.useNasalib ? nasalibVersion.result : null;
+				this.useNasalib = (nasalibVersion?.result !== 'NIL' && nasalibVersion?.result !== 'nil');
+				return this.useNasalib ? nasalibVersion.result : null;
+			} catch (error: any) {
+				return "NASALib"; // @M3 Nasalib seems to be there, but cannot run scripts.
+			}
 		}
 		return null;
 	}

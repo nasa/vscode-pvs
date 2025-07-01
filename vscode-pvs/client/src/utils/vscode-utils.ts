@@ -1410,7 +1410,7 @@ export async function annotateFormula (desc: PvsFormula, tag: Tag, opt?: TagOpti
 export function setDevContainerConfig(context: vscode.ExtensionContext, workspace_folder?: vscode.WorkspaceFolder, force?: boolean) {
     let globalStoragePath = context.globalStorageUri.fsPath;
     globalStoragePath = globalStoragePath.substring(0, globalStoragePath.lastIndexOf(path.sep));
-    if (!workspace_folder){
+    if (!workspace_folder && vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0){
         workspace_folder=vscode.workspace.workspaceFolders[0];
     }
     if (workspace_folder){
@@ -1536,10 +1536,11 @@ export const getRemoteDetail = (context: vscode.ExtensionContext): {[key: string
             vscode.window.showWarningMessage('Remote Server setting on , but no remote username provided.');
         }
         ans['token'] = context.globalState.get('sessionTokenPVS', '');
-        console.log("Token: ", ans['token']);
-        console.log(vscode.workspace.workspaceFolders);
-        ans['workspace']=vscode.workspace.workspaceFolders[0]?vscode.workspace.workspaceFolders[0]:'';
-        console.log("Workspace: ", ans['workspace']);
+        console.log("[vscodeUtils.getRemoteDetail] Token: ", ans['token']);
+        console.log(`[vscodeUtils.getRemoteDetail] Workspace Folders: ${vscode.workspace.workspaceFolders}`);
+        ans['workspace']=(vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0 ?
+            vscode.workspace.workspaceFolders[0] :'' );
+        console.log("[vscodeUtils.getRemoteDetail] Workspace: ", ans['workspace']);
     }
     if ('ip' in ans && 'port' in ans && 'ssh_path' in ans && 'hostname' in ans){
         return ans;

@@ -64,7 +64,6 @@ install-tsc:
 	cd client && npm install typescript
 
 install-ws:
-	cd server && npm install wc
 	cd server && npm install ws
 
 install-vsce:

@@ -152,6 +152,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 */
 	protected lastParsedContext: string = ""; // this is used to avoid re-parsing a context
 
+	/** Extension Path to access needed resources (scp-pvslib.ps1) @M3 */
+	protected extensionPath: string;
+
 	/**
 	 * @constructor
 	 */
@@ -728,10 +731,10 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking -- pvs-server is not able for now tho.
 			// proceed with typechecking
 			const response: PvsResponse = await this.typecheckFile(request, { progressReporter: (msg: string) => {this.notifyProgressImportantTask({ id: taskId, msg: msg, increment: -1})}});
-			console.warn("Sending typecheckFileResponse:");
-			console.warn("  → Event:", serverEvent.typecheckFileResponse);
-			console.warn("  → Response:", response);
-			console.warn("  → Args (request):", request);
+			console.log("Sending typecheckFileResponse:");
+			console.log("  → Event:", serverEvent.typecheckFileResponse);
+			console.log("  → Response:", response);
+			console.log("  → Args (request):", request);
 
 			this.connection?.sendRequest(serverEvent.typecheckFileResponse, {
 				response,
@@ -1851,7 +1854,8 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 							pvsLibraryPath: this.pvsLibraryPath, 
 							externalServer: externalServer,
 							webSocketPort: desc.webSocketPort,
-							remote: desc.remote
+							remote: desc.remote,
+							extensionPath : this.extensionPath
 						 } );
 					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath });
 					this.createServiceProviders();
@@ -1954,6 +1958,11 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 */
 	protected setupConnectionManager () {
 		this.connection?.onInitialize((params: InitializeParams): { capabilities: ServerCapabilities } => {
+			if (params.initializationOptions && (params.initializationOptions as any).extensionPath) {
+	        	this.extensionPath = (params.initializationOptions as any).extensionPath;
+				console.log(`[setupConnectionManager] Received extension path on server: ${this.extensionPath}`);
+			}
+
 			// console.log(`--------- Client capabilities ---------\n`, params.capabilities);
 			const capabilities = params.capabilities;
 			this.clientCapabilities = {

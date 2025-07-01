@@ -55,7 +55,7 @@ import { execFileSync } from 'child_process';
 import { PrettyPrinter } from './xtermInterface';
 import { colorText, getColor, PvsColor, XTermColorTheme } from './colorUtils';
 import * as net from 'net';
-
+import { fileURLToPath } from 'url';
 
 
 // home dir of the current installation
@@ -396,7 +396,8 @@ export async function renameFile(old_fname: string, new_fname: string): Promise<
 export function getFileName(fname: string, opt?: { keepExtension?: boolean, extension?: string }): string {
 	if (fname) {
 		fname = fname.replace("file://", "");
-		fname = fname.includes("/") ? fname.split("/").slice(-1)[0] : fname;
+		// fname = fname.includes("/") ? fname.split("/").slice(-1)[0] : fname;
+		fname = path.basename(fname);
 		if (!opt?.keepExtension) {
 			const index: number = opt?.extension ? fname.lastIndexOf(opt.extension) : fname.lastIndexOf(".");
 			fname = index > 0 ? fname.substring(0, index) : fname;
@@ -466,8 +467,11 @@ export function getContextFolder(fname: string): string {
 	//TODO: check in which situations is necessary to remove file protocol header (file://)
 	if (fname) {
 		if (process.platform === "win32") {
-			const ctx: string = fname.replace("file:///", "");
-			return path.dirname(ctx);
+			if (fname.startsWith('file://')) {
+				return path.dirname(fileURLToPath(fname));
+			} else {
+				return path.dirname(fname);
+			}
 		} else {
 			const ctx: string = fname.replace("file://", "");
 			return ctx.split("/").slice(0, -1).join("/").replace("//", "/");
@@ -2624,80 +2628,6 @@ export function chown(contextFolder: string, opt?: { uid?: number, gid?: number,
 		}
 	}
 	return false;
-}
-
-export function runRsync(localPath: string, remotePath: string, ssh_key_path: string, user: string, host: string): Promise<number> {
-	return new Promise((resolve, reject) => {
-		let child;
-
-		console.log(`[fsUtils.runRsync] platform: ${process.platform}`)
-
-		if (process.platform === "win32") {
-			console.log("[fsUtils.runRsync] Windows detected, using scp");
-
-			// const scpArgs = [
-			// 	'-i', ssh_key_path,
-			// 	'-r',
-			// 	localPath + '/*',
-			// 	`${user}@${host}:${path.join(remotePath, '/')}`
-			// ];
-			// child = spawn('scp', scpArgs);
-
-			const psCommand = `
-			Get-ChildItem -Path "${localPath + '/*'}" -Recurse -Include *.pvs,*.prf,pvs-strategies,pvs-attachments | ForEach-Object {
-					scp $_.FullName ${user}@${host}:"${path.join(remotePath, '/')}/$($_.Name)"
-			}
-			`;
-
-			console.log(`[fsUtils.runRsync] power shell Command: powershell.exe -Command ${psCommand}`)
-
-			child = spawn('powershell.exe', ['-Command', psCommand]);
-
-		} else {
-			console.log("[fsUtils.runRsync] Linux detected, using rsync");
-			const rsyncArgs = [
-				'-avz',
-				'--partial',
-				'--prune-empty-dirs',
-				'--include', '*/',
-				'--include', 'pvs-strategies',
-				'--include', 'pvs-attachments',
-				'--include', '*.pvs',
-				'--include', '*.prf',
-				'--include', '**/*.pvs',
-				'--include', '**/*.prf',
-				'--include', '**/pvs-strategies',
-				'--include', '**/pvs-attachments',
-				'--exclude', '*',
-				'-e', `ssh -i ${ssh_key_path}`,
-				path.join(localPath, '/'),
-				`${user}@${host}:${path.join(remotePath, '/')}`
-			];
-			console.log(`[fsUtils.runRsync] rsync Command: rsync ${rsyncArgs.join(" ")}`)
-			child = spawn('rsync', rsyncArgs);
-		}
-
-		child.stdout.on('data', (data) => {
-			console.log(`stdout: ${data}`);
-		});
-
-		child.stderr.on('data', (data) => {
-			console.error(`stderr: ${data}`);
-		});
-
-		child.on('close', (code) => {
-			if (code === 0) {
-				resolve(code);
-			} else {
-				reject(code);
-			}
-		});
-
-		child.on('error', (err) => {
-			console.log(`Error in syncing ${localPath} - ${err}`);
-			reject(err);
-		});
-	});
 }
 
 function AvailablePort(port: number): Promise<boolean> {

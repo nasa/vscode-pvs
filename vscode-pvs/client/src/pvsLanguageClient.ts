@@ -391,7 +391,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			synchronize: {
 				// Notify the server about file changes to '.clientrc files contained in the workspace
 				fileEvents: workspace.createFileSystemWatcher('**/.clientrc')
-			}
+			},
+			initializationOptions: {
+            	extensionPath: context.extensionPath
+        	}
 		};
 		// Create the language client and start the client.
 		this.client = new LanguageClient(
