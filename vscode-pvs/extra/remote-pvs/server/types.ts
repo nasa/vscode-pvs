@@ -37,6 +37,11 @@ export interface ServerMessage {
     output: string;
     id: string;
   };
+  unzipDataResponse?: {
+    success: boolean;
+    msg: string;
+    id?: string;
+  }
 }
 
 export interface PathMap {

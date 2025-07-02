@@ -8,6 +8,7 @@ import { ClientMessage, ProcessDescription, ServerMessage, PathMap } from './typ
 import { parseArgs, logger } from './utils';
 import { exit } from 'process';
 import { retrieveClientId, handlePathSync } from './helper';
+import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 
 export const basePath: string = parseArgs.dataPath || '/tmp/pvs_sync_server';
 const clientFolders: Map<string, PathMap> = new Map();
@@ -75,12 +76,77 @@ function handleConnection(ws: WebSocket) {
       case 'call-pvs-interrupt':
         handleCallPvsInterrupt(ws, data, clientId, workspacePath);
         break;
+      case 'extract-transferred-data':
+        let response: ServerMessage = { type: data.type };
+        if (data.params){
+          const zipDirPath : string = data.params[0];
+          const zipFileName : string = data.params[1];
+          try {
+            const output = await handleUnzipData(zipDirPath, zipFileName);
+            response = {
+              type: data.type,
+              unzipDataResponse: { success: true, msg: output, id: data.id }
+            }
+          } catch (error) {
+              if (error instanceof Error) {
+                response = {
+                  type: data.type,
+                  unzipDataResponse: { success: false, msg: error.message, id: data.id }
+                };
+              }
+          }          
+        } else {
+          response = {
+            type: data.type,
+            unzipDataResponse: { success: false, msg: "No zip file info provided" }
+          };
+        }
+        ws.send(JSON.stringify(response));
+        break;
       default:
         logger.warn(`Unknown message type received: ${data.type}`);
     }
   });
 
   ws.on('close', () => handleClose(ws));
+}
+
+async function handleUnzipData(zipDirPath: string, zipFileName: string): Promise<string> {
+  return new Promise((resolve,reject) => {
+    const zipFilePath: string = path.join(zipDirPath,zipFileName);
+    console.log(`[handleUnzipData] unzipping zip file: ${zipFilePath}`)
+    const args = ['-o', zipFileName];
+    let child: ChildProcessWithoutNullStreams = spawn('unzip', args, { cwd: zipDirPath });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data: Buffer) => {
+      console.log(`[handleUnzipData (stdout)] ${data}`)
+      stdout += data.toString();
+    });
+
+    child.stderr.on('data', (data: Buffer) => {
+      console.log(`[handleUnzipData (stderr)] ${data}`)
+      stderr += data.toString();
+    });
+
+    child.on('close', (code: number) => {
+        if (code === 0 || code === 1) { //  The exit code of 1 signifies "one or more warning errors were encountered, but processing completed successfully anyway." @M3
+            // remove zip file 
+            console.log(`[handleUnzipData] removing zip file: ${zipFilePath}`)
+            let rmChild: ChildProcessWithoutNullStreams = spawn('rm', [zipFileName], { cwd: zipDirPath });
+            resolve(stdout.trim()); // Trim whitespace from the output
+        } else {
+            const errorMessage = `Unzio "${args.join(' ')}" exited with code ${code} in directory "${zipDirPath}".\nStderr: ${stderr.trim()}`;
+            reject(new Error(errorMessage));
+        }
+    });
+
+    child.on('error', (err: Error) => {
+        reject(new Error(`Failed to start command unzip: ${err.message}`));
+    });
+  });
 }
 
 async function handleConnectInterrupt(ws: WebSocket, data: ClientMessage, clientId: string, workspacePath: string) {

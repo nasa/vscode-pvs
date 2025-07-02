@@ -55,39 +55,39 @@ export function handlePathSync(clientId: string, workspacePaths: string[], libPa
     ws.send(JSON.stringify(response));
 }
   
-  function processPaths(clientId: string, paths: string[], type: 'workspace' | 'lib',clientFolders: Map<string, PathMap>,processes: Map<string, ProcessDescription>,workspacepath: string): Record<string, string> {
-    const clientDir = path.join(basePath, clientId, type);
-    const pathMap = clientFolders.get(clientId) || { workspace: {}, lib: {} };
-    const pathsResult: Record<string, string> = {};
-  
-    paths.forEach(localPath => {
-      if (pathMap[type][localPath]) {
-        if (!fs.existsSync(pathMap[type][localPath])) {
-          fs.mkdirSync(pathMap[type][localPath], { recursive: true });
-        }
-      } else {
-        const hashedPath = hashPath(localPath);
-        pathMap[type][localPath] = path.join(clientDir, hashedPath);
+function processPaths(clientId: string, paths: string[], type: 'workspace' | 'lib',clientFolders: Map<string, PathMap>,processes: Map<string, ProcessDescription>,workspacepath: string): Record<string, string> {
+  const clientDir = path.join(basePath, clientId, type);
+  const pathMap = clientFolders.get(clientId) || { workspace: {}, lib: {} };
+  const pathsResult: Record<string, string> = {};
+
+  paths.forEach(localPath => {
+    if (pathMap[type][localPath]) {
+      if (!fs.existsSync(pathMap[type][localPath])) {
         fs.mkdirSync(pathMap[type][localPath], { recursive: true });
       }
-      pathsResult[localPath] = pathMap[type][localPath];
-      const clientProc = processes.get(JSON.stringify([workspacepath, clientId]));
-      if (type === 'lib' && clientProc && clientProc.ws) {
-        logger.info(`Adding path : ${pathsResult[localPath]} to pvs process`);
-        addLibraryToPVS(pathsResult[localPath], clientProc.ws);
-      }
-    });
-  
-    clientFolders.set(clientId, pathMap);
-    return pathsResult;
-  }
-  
-  function hashPath(localPath: string): string {
-    return crypto.createHash('sha256').update(localPath).digest('hex');
-  }
-  
-  function addLibraryToPVS(path: string, ws_to_pvs: WebSocket) {
-    const req = { method: 'add-pvs-library', params: [path], jsonrpc: "2.0" };
-    const jsonReq: string = JSON.stringify(req, null, " ");
-    ws_to_pvs.send(jsonReq);
-  }
+    } else {
+      const hashedPath = hashPath(localPath);
+      pathMap[type][localPath] = path.join(clientDir, hashedPath);
+      fs.mkdirSync(pathMap[type][localPath], { recursive: true });
+    }
+    pathsResult[localPath] = pathMap[type][localPath];
+    const clientProc = processes.get(JSON.stringify([workspacepath, clientId]));
+    if (type === 'lib' && clientProc && clientProc.ws) {
+      logger.info(`Adding path : ${pathsResult[localPath]} to pvs process`);
+      addLibraryToPVS(pathsResult[localPath], clientProc.ws);
+    }
+  });
+
+  clientFolders.set(clientId, pathMap);
+  return pathsResult;
+}
+
+function hashPath(localPath: string): string {
+  return crypto.createHash('sha256').update(localPath).digest('hex');
+}
+
+function addLibraryToPVS(path: string, ws_to_pvs: WebSocket) {
+  const req = { method: 'add-pvs-library', params: [path], jsonrpc: "2.0" };
+  const jsonReq: string = JSON.stringify(req, null, " ");
+  ws_to_pvs.send(jsonReq);
+}

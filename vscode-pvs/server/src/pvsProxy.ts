@@ -159,6 +159,8 @@ export class PvsProxy {
 	pathCache: PathCacheDesc;
 	pendingPathSyncs: Map<string, Function>;
 	SYNC_TIMEOUT = 5000;
+
+	extractResolveMap:  Map<string, any>;
 	functionResolveMap: Map<string, any>;
 	activeWorkspace: string;
 	tunnel: SSHTunnel;
@@ -216,6 +218,7 @@ export class PvsProxy {
 			this.remoteActive = false;
 		}
 		this.functionResolveMap = new Map();
+		this.extractResolveMap = new Map();
 	}
 
 	async getMode(): Promise<ServerMode> {
@@ -600,21 +603,32 @@ export class PvsProxy {
 						this.remoteDetails.token = obj.token_str;
 					}
 				}
-			}
-			if (obj.type === "port-active") {
+			} else if (obj.type === "port-active") {
 				// const processCode = obj.portActiveResponse.code;
 				// resolveRemoteActivate(processCode);
 				process_code_returned = obj.portActiveResponse.code;
-			}
-			if (obj.type === "function-response") {
+			} else if (obj.type === "extract-transferred-data") {
+				const clientId : string = obj.unzipDataResponse.id;
+				if (clientId) {
+					const { resolve , reject } = this.extractResolveMap.get(clientId);
+					this.extractResolveMap.delete(obj.id);
+					if (obj.unzipDataResponse.success) {
+						console.log(`[pvsProxy] ${obj.type} success response: ${obj.unzipDataResponse.msg}`)
+						resolve(0);
+					} else {
+						console.error(`[pvsProxy] ${obj.type} failure response: ${obj.unzipDataResponse.msg}`)
+						reject(-1);
+					}
+				} else {
+					console.warn(`[pvsProxy] ${obj.type} response with no Id`);
+				}
+			} else if (obj.type === "function-response") {
 				const resolveFunc = this.functionResolveMap.get(obj.id);
 				if (resolveFunc) {
 					resolveFunc(obj.output);
 					this.functionResolveMap.delete(obj.id);
 				}
-
-			}
-			if (obj.type === "return-path-sync") {
+			} else if (obj.type === "return-path-sync") {
 				const id: string = obj.syncPathsResponse ? obj.syncPathsResponse.id : '';
 				for (const key in obj.syncPathsResponse.workspacePaths) {
 					this.pathCache.workspacePaths[key] = obj.syncPathsResponse.workspacePaths[key];
@@ -644,13 +658,11 @@ export class PvsProxy {
 						resolveRemoteActivate(process_code_returned);
 					}
 				}
-			}
-			if (obj.type === "server-call") {
+			} else if (obj.type === "server-call") {
 				if (obj.method === "pvsErrorManager.notifyPvsFailure") {
 					this.pvsErrorManager.notifyPvsFailure({ msg: obj.msg, src: obj.src });
 				}
-			}
-			if (obj.id) {
+			} else if (obj.id) {
 				if ("result" in obj || "error" in obj || "method" in obj) {
 					if (this.pendingRequests[obj.id]) {
 						// console.log(`[pvsRequest] msg = ${msg}`)
@@ -722,12 +734,47 @@ export class PvsProxy {
 				// 	scp \\"$($_.FullName)\\" ${user}@${host}:\\"$destinationPath\\"
 				// }"`
 
-
+				let zipFileName: string;
 				const scpScript: string = path.join(this.extensionPath, 'extra/scp-pvslib.ps1');
 				const psCommand: string = `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${scpScript}" -PvsLibPath "${localPath}" -RemoteUser "${user}" -RemoteIP "${host}" -RemoteBaseDir "${remotePath}"`;
 				console.log(`[fsUtils.runRsync] power shell Command: powershell.exe -Command ${psCommand}`)
 
 				child = spawn('powershell.exe', ['-Command', psCommand]);
+
+				child.stdout.on('data', (data) => {
+					console.log(`[scp-pvslib.ps1 (stdout)] ${data}`);
+					const regex = /Generated Zip File: ([\w_]+\.zip)/;
+					const match = data.toString().match(regex);
+
+					if (match && match[1]) {
+						zipFileName = match[1];
+					}
+				});
+
+				child.stderr.on('data', (data) => {
+					console.error(`${data}`);
+				});
+
+				child.on('close', (code) => {
+					if (code === 0) {
+						let token = '';
+						if ('token' in this.remoteDetails) {
+							token = this.remoteDetails.token;
+						}
+						const id = this.get_fresh_id();
+						const req = { type: 'extract-transferred-data', token_str: token, id, params: [ remotePath, zipFileName ] };
+						const jsonReq = JSON.stringify(req, null, " ");
+						this.webSocket.send(jsonReq);
+						this.extractResolveMap.set(id, {resolve: resolve, reject: reject});
+					} else {
+						reject(code);
+					}
+				});
+
+				child.on('error', (err) => {
+					console.log(`Error in syncing ${localPath} - ${err}`);
+					reject(err);
+				});
 
 			} else {
 				console.log("[fsUtils.runRsync] Linux detected, using rsync");
@@ -751,28 +798,29 @@ export class PvsProxy {
 				];
 				console.log(`[fsUtils.runRsync] rsync Command: rsync ${rsyncArgs.join(" ")}`)
 				child = spawn('rsync', rsyncArgs);
+
+				child.stdout.on('data', (data) => {
+					console.log(`${data}`);
+				});
+
+				child.stderr.on('data', (data) => {
+					console.error(`${data}`);
+				});
+
+				child.on('close', (code) => {
+					if (code === 0) {
+						resolve(code);
+					} else {
+						reject(code);
+					}
+				});
+
+				child.on('error', (err) => {
+					console.log(`Error in syncing ${localPath} - ${err}`);
+					reject(err);
+				});
 			}
 
-			child.stdout.on('data', (data) => {
-				console.log(`${data}`);
-			});
-
-			child.stderr.on('data', (data) => {
-				console.error(`${data}`);
-			});
-
-			child.on('close', (code) => {
-				if (code === 0) {
-					resolve(code);
-				} else {
-					reject(code);
-				}
-			});
-
-			child.on('error', (err) => {
-				console.log(`Error in syncing ${localPath} - ${err}`);
-				reject(err);
-			});
 		});
 	}
 
