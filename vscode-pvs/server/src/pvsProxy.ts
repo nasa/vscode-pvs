@@ -638,7 +638,6 @@ export class PvsProxy {
 							};
 						}
 						const startTime: number = Date.now();
-						// const externalServer: boolean = opt.externalServer === undefined ? this.externalServer : !!opt.externalServer;
 						const res: PvsResponse = await this.pvsRequest('parse', [fname]);
 						if (opt.test) { return res; }
 
@@ -691,33 +690,41 @@ export class PvsProxy {
 								message
 							};
 							if (res.error && res.error.data) {
-								const errorStart: languageserver.Position = {
-									line: res.error.data.place[0],
-									character: res.error.data.place[1]
-								};
-								const errorEnd: languageserver.Position = (res.error.data.place.length > 3) ? {
-									line: res.error.data.place[2],
-									character: res.error.data.place[3]
-								} : null;
-								const txt: string = await fsUtils.readFile(fname);
-								const error_range: languageserver.Range = getErrorRange(txt, errorStart, errorEnd);
-								const error: languageserver.Diagnostic = {
-									range: error_range,
-									message: res.error.data.error_string,
-									severity: languageserver.DiagnosticSeverity.Error
-								};
-								diags.message = `File ${desc.fileName} contains errors`;
-								diags.errors = [error];
+								if (res.error.data.place) {
+									const errorStart: languageserver.Position = {
+										line: res.error.data.place[0],
+										character: res.error.data.place[1]
+									};
+									const errorEnd: languageserver.Position = (res.error.data.place.length > 3) ? {
+										line: res.error.data.place[2],
+										character: res.error.data.place[3]
+									} : null;
+									const txt: string = await fsUtils.readFile(fname);
+									const error_range: languageserver.Range = getErrorRange(txt, errorStart, errorEnd);
+									const error: languageserver.Diagnostic = {
+										range: error_range,
+										message: res.error.data.error_string,
+										severity: languageserver.DiagnosticSeverity.Error
+									};
+									diags.message = `File ${desc.fileName} contains errors`;
+									diags.errors = [error];
 
-								if (opt.enableEParser) {
-									// send also a request to the antlr parser, as it may report more errors (the standard pvs parser stops at the first error)
-									const antlrdiags: ParserDiagnostics = await this.parser.parseFile(desc);
-									if (antlrdiags && antlrdiags.errors) {
-										diags.errors = diags.errors.concat(antlrdiags.errors);
-										if (antlrdiags["parse-time"]) {
-											console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-parser] antlr completed parsing in ${antlrdiags["parse-time"].ms}ms`)
+									if (opt.enableEParser) {
+										// send also a request to the antlr parser, as it may report more errors (the standard pvs parser stops at the first error)
+										const antlrdiags: ParserDiagnostics = await this.parser.parseFile(desc);
+										if (antlrdiags && antlrdiags.errors) {
+											diags.errors = diags.errors.concat(antlrdiags.errors);
+											if (antlrdiags["parse-time"]) {
+												console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-parser] antlr completed parsing in ${antlrdiags["parse-time"].ms}ms`)
+											}
 										}
 									}
+								} else {
+									this.pvsErrorManager.notifyEndImportantTaskWithErrors({
+										id: "parseFile",
+										msg: res.error.data,
+										showProblemsPanel: false });
+									return null;
 								}
 							}
 							return this.makeDiags(diags, { id: res.id });
@@ -1398,35 +1405,6 @@ export class PvsProxy {
 	}
 
 	/**
-	 * Returns the help message for a given command
-	 */
-	async showHelpBang(desc: { cmd: string }): Promise<PvsResponse> {
-		const match: RegExpMatchArray = new RegExp(languageUtils.helpBangCommandRegexp).exec(desc.cmd);
-		if (match && match.length > 1 && match[1]) {
-			this.pvsServer.clearLispInterfaceOutput();
-			const helpCmd: string = `(help ${match[1]})`;
-			const ans: PvsResponse = await this.pvsRequest('proof-help', [helpCmd]);
-			if (ans && ans.result && ans.result.length) {
-				let help: string = this.pvsServer.getLispInterfaceOutput();
-				this.pvsServer.clearLispInterfaceOutput();
-				if (languageUtils.isInvalidCommand({ commentary: help })) {
-					// check if there's some help string we can provide
-					const metaHelp: string = languageUtils.PROOF_COMMANDS[match[1]] ?
-						`(${match[1]})    ${languageUtils.PROOF_COMMANDS[match[1]].description}`
-						: null;
-					help = metaHelp || `Help not available for ${match[1]}`;
-				} else {
-					help = help.substring(help.indexOf(`(${match[1]}`), help.indexOf("No change on"));
-				}
-				ans.result[ans.result.length - 1].action = "";
-				ans.result[ans.result.length - 1].commentary = [help.trim()];
-			}
-			return ans;
-		}
-		return null;
-	}
-
-	/**
 	 * Executes a proof command. The command is always adorned with round parentheses, e.g., (skosimp*)
 	 * @param desc Descriptor of the proof command
 	 */
@@ -1447,9 +1425,7 @@ export class PvsProxy {
 					showExpandedSequent ? `(lisp (format nil "Expanded sequent: ~%~a" (replace-string (with-output-to-string (*standard-output*) (show-expanded-sequent${languageUtils.isShowFullyExpandedSequentCommand(desc.cmd) ? " t" : ""})) "C-u M-x show-expanded-sequent" "'show-expanded-sequent t'")))` : 
 					desc.cmd ;
 				const pid: string = desc.proofId;
-				res = languageUtils.isHelpBangCommand(cmd)
-					? await this.showHelpBang({ cmd: cmd })
-					: await this.pvsRequest('proof-command', [pid, cmd]);
+				res = await this.pvsRequest('proof-command', [pid, cmd]);				
 				if (res && res.result) {
 					const proofStates: PvsProofState[] = res.result;
 					if (showHidden) {
@@ -2040,12 +2016,12 @@ export class PvsProxy {
 			}
 			const socket: net.Socket = net.createConnection({ host: this.webSocketAddress, port });
 			socket.once('error', (error: Error) => {
-				// noone is serving on the given port
+				// no one is serving on the given port
 				console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-proxy] port ${port} is available :)`);
 				resolve(true);
 			});
 			socket.once('connect', () => {
-				// sombody is using the port
+				// somebody is using the port
 				console.error(`[pvs-proxy] port ${port} is not available :/`);
 				resolve(false);
 			});

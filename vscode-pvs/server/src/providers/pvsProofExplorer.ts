@@ -688,13 +688,9 @@ export class PvsProofExplorer {
 
 			let branchFocusHasChanged = false;
 
-			if (languageUtils.isHelpCommand(userCmd) || languageUtils.isHelpBangCommand(userCmd)) {
-				// do nothing, CLI will show the help message
-				// return;
-			}
 			//--- check special conditions: empty/null command, invalid command, no change before proceeding
 			// if command is invalid command, stop execution and provide feedback to the user 
-			else if (isUndoUndoPlusCommand(userCmd)) {
+			if (isUndoUndoPlusCommand(userCmd)) {
 				// this.running = false;
 				if (this.autoRunFlag) {
 					// mark proof as unfinished
@@ -2579,13 +2575,6 @@ export class PvsProofExplorer {
 	async interruptAndQuitProof(opt?: { notifyClient?: boolean }): Promise<void> {
 		await this.interruptProofCommand();
 		await this.quitProof(opt);
-	}
-
-	/**
-	 * Utility function, shows help for a given command
-	 */
-	async helpCommand(cmd: string): Promise<void> {
-		await this.pvsProxy.showHelpBang({ cmd: cmd });
 	}
 
 	/**

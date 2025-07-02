@@ -1041,36 +1041,10 @@ export function prf2jprf (desc: {
 	return null;
 }
 
-// group 1 is the command argument
-export const helpCommandRegexp: RegExp = /^\s*\(?\s*help\s*\"?([^\)]+)/g;
-export function isHelpCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && new RegExp(helpCommandRegexp).test(cmd);
-}
-export function isHelpStarCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-    return cmd && (new RegExp(/\bhelp\s*\*/).test(cmd) || new RegExp(/\(\s*help\s*\*\s*\)/).test(cmd));
-}
 export function isHelpVSCodePlot (cmd: string): boolean {
 	cmd = (cmd) ? cmd.trim() : cmd;
     return cmd && (new RegExp(/\bhelp\s*vscode\-plot\b/).test(cmd) || new RegExp(/\(\s*help\s*vscode\-plot\s*\)/).test(cmd));
 }
-
-// group 1 is the command argument
-export const helpBangCommandRegexp: RegExp = /^\s*\(?\s*help!?\s*\"?([^\)"]+)/g;
-export function isHelpBangCommand (cmd: string): boolean {
-	cmd = (cmd) ? cmd.trim() : cmd;
-	return cmd && new RegExp(helpBangCommandRegexp).test(cmd);
-}
-
-// export function isSaveCommand (cmd: string): boolean {
-// 	cmd = (cmd) ? cmd.trim() : cmd;
-// 	return cmd && (cmd === "save" 
-// 		|| cmd === "save;"
-// 		|| cmd === "(save)"
-// 		|| /\(\s*save\s*\)/g.test(cmd))
-// 		;
-// }
 
 export function isMetaProofCommand (cmd: string): boolean {
 	return isPostponeCommand(cmd) || isUndoStarCommand(cmd) || isShowHiddenFormulas(cmd);
@@ -1416,21 +1390,6 @@ export function formatHelp (desc: CommandDescriptor, opt?: { useColors?: boolean
             }
         }
         return msg;
-    }
-    return "";
-}
-
-/**
- * Prints a compact help for a given command
- */
-export function printHelp (helpCommand: string, opt?: { useColors?: boolean }): string {
-    const match: RegExpMatchArray = new RegExp(helpCommandRegexp).exec(helpCommand);
-    if (match && match.length > 1) {
-        const availableHelp: CommandDescriptor = PROOF_COMMANDS[match[1]]
-            || PROOF_TACTICS[match[1]]
-            || EVALUATOR_COMMANDS[match[1]];
-        return (availableHelp) ? formatHelp(availableHelp, opt)
-            : `Help not available for ${match[1]}`;
     }
     return "";
 }

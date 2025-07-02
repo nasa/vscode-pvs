@@ -1009,15 +1009,6 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Utility function, shows all available commands and some brief info for each command
      */
-    helpStar (): void {
-        const message: XTermMessage = {
-            command: XTermCommands.helpStar
-        };
-        this.panel?.webview?.postMessage(message);
-    }
-    /**
-     * Utility function, shows all available commands and some brief info for each command
-     */
     helpVSCodePlot (): void {
         const message: XTermMessage = {
             command: XTermCommands.helpVSCodePlot
@@ -1123,9 +1114,6 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                                             this.showPrompt();
                                                         }
                                                     }
-                                                } else if (utils.isHelpStarCommand(message.data)) {
-                                                    this.helpStar();
-                                                    this.showPrompt();
                                                 } else if (utils.isHelpVSCodePlot(message.data)) {
                                                     this.helpVSCodePlot();
                                                     this.showPrompt();
@@ -1264,7 +1252,6 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         XTermCommands.showHelpMessage,
                         XTermCommands.running,
                         XTermCommands.autocompleteWithEnter,
-                        XTermCommands.helpStar,
                         XTermCommands.helpVSCodePlot
                     ],
                     xtermEvents: [
