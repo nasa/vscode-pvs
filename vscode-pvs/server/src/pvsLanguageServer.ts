@@ -488,23 +488,30 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 */
 	async pvsioEvaluatorCommandRequest (req: PvsioEvaluatorCommand): Promise<void> {
 		req = fsUtils.decodeURIComponents(req);
-		// const channelID: string = utils.desc2id(req);
-		const response: PvsResponse = await this.pvsioProxy?.evalCommand(req, {
-			cb: (res: string | "bye!", state: string) => {
-				// const result: PvsResult = {
-				// 	jsonrpc: "2.0",
-				// 	id: channelID,
-				// 	result: res
-				// };
-				// this.cliGateway?.publish({ type: "pvs.event.evaluator-state", channelID, data: result });
-				const data: EvaluatorCommandResponse = {
-					req,
-					res,
-					state
-				};
-				this.connection.sendRequest(serverEvent.evaluatorCommandResponse, data);
-			}
-		});
+		let pvsIoInput: string = req.cmd;
+		// @M3 if the inputs ends in ";" the user wants to evaluate it as a PVS expression,
+		//     if it ends with a "!", as a lisp expression.
+		const lastCharIdx: number = pvsIoInput.length-1;
+		let tailChar: string = pvsIoInput.charAt(lastCharIdx);
+		if (pvsIoInput === "quit"){
+			tailChar = ";";
+		}	else	
+			pvsIoInput = pvsIoInput.substring(0, lastCharIdx)
+		let response: PvsResponse;
+		if (tailChar === ";")
+				response = await this.pvsProxy.evaluateInPvsIoSession({expr: pvsIoInput, evaluateAsLisp: false});
+		else if(tailChar === "!")
+				response = await this.pvsProxy.evaluateInPvsIoSession({expr: pvsIoInput, evaluateAsLisp: true});
+		else {
+				this.pvsErrorManager?.handleEvaluationError({ request: req, response: {jsonrpc: "2.0", id: "N/A", error: { code: -1, message: `Input ${[pvsIoInput]} cannot be evaluated: Unknown termination char`}}});	
+				return; }
+
+		const data: EvaluatorCommandResponse = {
+			req,
+			res: (response && response.result ? response.result : response.error)
+		};
+		this.connection.sendRequest(serverEvent.evaluatorCommandResponse, data);
+
 		if (response && response.error) {
 			this.pvsErrorManager?.handleEvaluationError({ request: req, response: <PvsError> response });
 		}
@@ -527,25 +534,23 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		theory = fsUtils.decodeURIComponents(theory);
 		// send feedback to the front-end
 		const taskId: string = `pvsio-${theory.fileName}@${theory.theoryName}`;
-		// const channelID: string = utils.desc2id(theory);
 		this.notifyStartImportantTask({ id: taskId, msg: `Loading files necessary to evaluate theory ${theory.theoryName}` });
 		// make sure the theory typechecks before starting the evaluator
-		const response: PvsResponse = await this.typecheckFile(theory);
+		let response: PvsResponse = await this.typecheckFile(theory);
 		if (response && response.result) {
 			// start pvsio evaluator
-			let pvsioResponse: PvsResponse = await this.pvsioProxy?.startEvaluator(theory, {
-				pvsLibraryPath: this.pvsLibraryPath
-			});
-			// replace standard banner
-			// const banner: string = utils.colorText(utils.pvsioBanner, utils.vscodeColor.green);// + "\n\n" + utils.pvsioPrompt;
-			// this.cliGateway?.publish({ type: "pvs.event.evaluator-ready", channelID, banner });
-			this.connection?.sendRequest(serverEvent.startEvaluatorResponse, { response: pvsioResponse, args: theory });
-			this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });
-			this.notifyServerMode("pvsio");
-		} else {
+			response = await this.pvsProxy.startPvsIo(theory);
+
+			if (response && response.result) {
+				this.connection?.sendRequest(serverEvent.startEvaluatorResponse, { response, args: theory });
+				this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });
+				this.notifyServerMode("pvsio");
+			}
+		} 
+		
+		if ( !response || response.error) {
 			this.connection?.sendRequest(serverEvent.startEvaluatorResponse, { error: response?.error?.data?.error_string, args: theory });
 			this.pvsErrorManager?.handleEvaluationError({ request: theory, response: <PvsError> response, taskId });
-			// this.cliGateway?.publish({ type: "pvs.event.quit", channelID });
 		}
 	}
 	/**
@@ -2013,7 +2018,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath });
 					this.createServiceProviders();
 				}	
-				// #TODO @M3 shouldn't we activate pvsioProxy as well?
 				const success: ProcessCode = await this.pvsProxy?.activate({
 					debugMode: opt.debugMode, 
 					verbose: opt.debugMode !== false,

@@ -603,9 +603,8 @@ export const pvsioBannerAlt: string = `
 ║ PVSio Evaluator
 ║
 ║ Usage:
-║ - Enter a PVS expression followed by ';'
-║  or
-║ - Enter a Lisp expression followed by '!'
+║ - enter a PVS expression followed by ';', or
+║ - enter a Lisp expression followed by '!'.
 ╚════════════════════════════════════════════════════════════════════════════════════
 `
 ;
@@ -3139,7 +3138,15 @@ export const EVALUATOR_COMMANDS: { [key:string]: CommandDescriptor } = {
     "pvsio_version": {
         description: "Show current version of PVSio",
         syntax: "pvsio_version"
-    } 
+    },
+    "set_promptin": {
+        description: "Changes the input prompt of PVSio",
+        syntax: 'set_promptin("&lt;newprompt&gt;")'
+    } ,
+    "set_promptout": {
+        description: "Changes the output prompt of PVSio",
+        syntax: 'set_promptout("&lt;newprompt&gt;")'
+    } ,
 };
 
 // a selection of 32 useful commands for advanced users. The selection has been based on statistics from nasalib and feedback from experienced pvs users

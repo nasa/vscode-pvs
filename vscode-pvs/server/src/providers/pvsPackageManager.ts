@@ -69,7 +69,11 @@ export class PvsPackageManager {
         { fname: "lisp-rule-no-quoted-string.lisp", description: "Prevents the lisp proof rule from returning quoted strings" },
         { fname: "interface--pvs-emacs.lisp", description: "Ensures each log message starts in a new line and print also date of timestamp" },
         { fname: "rules.lisp", description: "Uses format-if to print help on proof commands" },
-        ];
+        { fname: "pvs-threads.lisp", description: "Updates to support PVSio" },
+        { fname: "pvs-json-methods.lisp", description: "Updates to support PVSio" }, 
+        { fname: "pvsio.lisp", description: "Updates to support PVSio" }, 
+        { fname: "pvs-lib.lisp", description: "Updates to support PVSio" }, 
+    ];
 
     /**
      * Installs PVS and provides progress feedback to the front-end.

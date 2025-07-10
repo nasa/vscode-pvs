@@ -704,9 +704,9 @@ export interface InstallWithProgressResponse {
 };
 
 export interface EvaluatorCommandResponse {
-	res: string | "bye!",
+	res: string | "bye!" | { pvsResult?: string, debugMsg?: string, inputKind: string, inputExpr: string, sessionId: string, tccMsg?: string, lispResult?: string, promptOut?: string, stdOut?: string, errOut?: string, promptIn?: string },
 	req: PvsioEvaluatorCommand,
-	state: string
+	state?: string
 }
 export interface ProofCommandResponse {
 	res: PvsProofState | "Q.E.D." | "bye!",
