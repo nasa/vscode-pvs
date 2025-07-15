@@ -39,7 +39,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { ChildProcess, exec, execSync } from 'child_process';
+import { ChildProcess, exec, execSync, spawn } from 'child_process';
 import * as crypto from 'crypto';
 import {
 	FileDescriptor, FileList, FormulaDescriptor, Position, ProofDescriptor,
@@ -54,6 +54,8 @@ import {
 import { execFileSync } from 'child_process';
 import { PrettyPrinter } from './xtermInterface';
 import { colorText, getColor, PvsColor, XTermColorTheme } from './colorUtils';
+import * as net from 'net';
+import { fileURLToPath } from 'url';
 
 
 // home dir of the current installation
@@ -222,8 +224,8 @@ export function deleteBinFiles(binFolder: string, opt?: { removePvsbinFolder?: b
  * Utility function, removes all .tccs files in a given folder
  * Subfolders are also processed when the optional parameter recursive is true
  */
-export async function cleanTccs(contextFolder: string, opt?: { 
-	recursive?: number, 
+export async function cleanTccs(contextFolder: string, opt?: {
+	recursive?: number,
 }): Promise<number> {
 	opt = opt || {};
 	let nCleaned: number = 0;
@@ -268,9 +270,9 @@ export async function cleanTccs(contextFolder: string, opt?: {
  * @param opt 
  * @returns 
  */
-export async function cleanBin(contextFolder: string, opt?: { 
-	keepTccs?: boolean, 
-	recursive?: number, 
+export async function cleanBin(contextFolder: string, opt?: {
+	keepTccs?: boolean,
+	recursive?: number,
 	removePvsbinFolder?: boolean
 }): Promise<number> {
 	opt = opt || {};
@@ -343,7 +345,7 @@ export function createFolder(path: string): boolean {
  * The content can be appended to an existing file with the optional parameter append
  */
 export function writeFile(fname: string, content: string, opt?: {
-	append?: boolean, 
+	append?: boolean,
 	encoding?: BufferEncoding
 }): boolean {
 	opt = opt || {};
@@ -394,7 +396,8 @@ export async function renameFile(old_fname: string, new_fname: string): Promise<
 export function getFileName(fname: string, opt?: { keepExtension?: boolean, extension?: string }): string {
 	if (fname) {
 		fname = fname.replace("file://", "");
-		fname = fname.includes("/") ? fname.split("/").slice(-1)[0] : fname;
+		// fname = fname.includes("/") ? fname.split("/").slice(-1)[0] : fname;
+		fname = path.basename(fname);
 		if (!opt?.keepExtension) {
 			const index: number = opt?.extension ? fname.lastIndexOf(opt.extension) : fname.lastIndexOf(".");
 			fname = index > 0 ? fname.substring(0, index) : fname;
@@ -434,9 +437,9 @@ export function moveFolder(contextFolder: string, toFolder: string): boolean {
 export function getFileExtension(fname: string): string {
 	if (fname) {
 		const parts: string[] = fname.split("/");
-		return parts?.length && parts[parts.length - 1].includes(".") ? 
+		return parts?.length && parts[parts.length - 1].includes(".") ?
 			`.${parts[parts.length - 1].split(".").slice(-1).join(".")}`
-				: "";
+			: "";
 	}
 	return null;
 }
@@ -449,7 +452,10 @@ export function getFileExtension(fname: string): string {
  */
 export function normalizeContextFolder(contextFolder: string): string {
 	if (contextFolder) {
-		return contextFolder.replace("file://", "");
+		if (process.platform === "win32") 
+			return contextFolder.replace("file:///", "");
+		else
+			return contextFolder.replace("file://", "");
 	}
 	return null;
 }
@@ -458,9 +464,18 @@ export function normalizeContextFolder(contextFolder: string): string {
  * TODO: use path.dirname(path), see https://nodejs.org/api/path.html
  */
 export function getContextFolder(fname: string): string {
+	//TODO: check in which situations is necessary to remove file protocol header (file://)
 	if (fname) {
-		const ctx: string = fname.replace("file://", "");
-		return ctx.split("/").slice(0, -1).join("/").replace("//", "/");
+		if (process.platform === "win32") {
+			if (fname.startsWith('file://')) {
+				return path.dirname(fileURLToPath(fname));
+			} else {
+				return path.dirname(fname);
+			}
+		} else {
+			const ctx: string = fname.replace("file://", "");
+			return ctx.split("/").slice(0, -1).join("/").replace("//", "/");
+		}
 	}
 	return null;
 }
@@ -483,7 +498,7 @@ export function isPvsFile(desc: string | { fileName: string, fileExtension: stri
 		const ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
 		if (ext) {
 			return ext.endsWith('.pvs') || ext.endsWith('.tccs') || ext.endsWith('.ppe') || ext.endsWith('.pr')
-					|| ext.endsWith('.hpvs') || ext.endsWith(".summary") || ext.endsWith(".prl");
+				|| ext.endsWith('.hpvs') || ext.endsWith(".summary") || ext.endsWith(".prl");
 		}
 	}
 	return false;
@@ -705,7 +720,7 @@ export function getCommandOpenWithExternalApp (desc: FileDescriptor): string {
 	const fname: string = desc2fname(desc);
 	return os?.version === "Linux" ? `xdg-open ${fname}`
 		: os?.version === "MacOSX" ? `open ${fname}`
-		: "";
+			: "";
 }
 /**
  * Utility function, returns a list of all subfolders contained in the given folder
@@ -759,7 +774,7 @@ export function getDownloader (): Downloader {
 		}
 	}
 	return null;
-} 
+}
 
 /**
  * Utility function, checks if git is available
@@ -860,10 +875,10 @@ export function execShellCommand (req: ShellCommand, opt?: {
 	if (req?.cmd) {
 		const cmd: string = req.args ? `${req.cmd} ${req.args?.join(" ")}` : req.cmd;
 		const shellProcess: ChildProcess = exec(cmd, { cwd: req?.cwd, env: req?.env });
-		
+
 		// spawn(req.cmd, req.args || [], { cwd: req?.cwd });
-        shellProcess.stdout.setEncoding("utf8");
-        shellProcess.stderr.setEncoding("utf8");
+		shellProcess.stdout.setEncoding("utf8");
+		shellProcess.stderr.setEncoding("utf8");
 
 		shellProcess.stdout.on("data", async (data: string) => {
 			opt?.stdOut(data);
@@ -985,7 +1000,7 @@ export async function listPvsFiles (contextFolder: string): Promise<FileList> {
 		const fileList: FileList = {
 			fileNames: children.filter((fileName) => {
 				return (fileName.endsWith(".pvs") || fileName.endsWith(".hpvs"))
-						&& !fileName.startsWith("."); // this second part is necessary to filter out temporary files created by pvs
+					&& !fileName.startsWith("."); // this second part is necessary to filter out temporary files created by pvs
 			}),
 			contextFolder: folder
 		};
@@ -1019,7 +1034,7 @@ export function listTheories(desc: { fileName: string, fileExtension: string, co
 					const fullClip = txt.slice(0, endIndex);
 
 					const clipStart = txt.slice(0, match.index);
-					const lines: string[] = clipStart.split("\n"); 
+					const lines: string[] = clipStart.split("\n");
 					const line: number = lines.length + lineOffset;
 					const character: number = 0;
 
@@ -1185,7 +1200,7 @@ export async function listTypesInFile (fdesc: FileDescriptor): Promise<PvsTypeDe
 								fileExtension: fdesc.fileExtension,
 								theoryName,
 								typeName,
-								line, 
+								line,
 								character: 0
 							});
 						}
@@ -1246,29 +1261,29 @@ export function getActualProofStatus (desc: ProofDescriptor, shasum: string): Pr
 			return desc.info.status;
 		} else {
 			return (desc.info.status === "proved") ? "unchecked"
-				: desc?.proofTree?.rules?.length ? "unfinished" 
-				: "untried";
+				: desc?.proofTree?.rules?.length ? "unfinished"
+					: "untried";
 		}
 	}
 	return "untried";
-}	
+}
 
 /**
  * Utility function, returns the status of the proof for the theorem indicated in the fuction arguments
  */
 export async function getProofStatus (desc: { 
-	fileName: string, 
-	fileExtension: string, 
-	contextFolder: string, 
-	theoryName: string, 
+	fileName: string,
+	fileExtension: string,
+	contextFolder: string,
+	theoryName: string,
 	formulaName: string
 }): Promise<ProofStatus> {
 	if (desc) {
 		let status: ProofStatus = "untried";
 		// check if the .jprf file contains the proof status
 		const jprf_file: string = desc2fname({
-			fileName: desc.fileName, 
-			fileExtension: ".jprf", 
+			fileName: desc.fileName,
+			fileExtension: ".jprf",
 			contextFolder: desc.contextFolder
 		});
 		const proofFile: ProofFile = await readJprfProofFile(jprf_file);
@@ -1297,8 +1312,8 @@ export async function getProofDescriptor (formula: PvsFormula): Promise<ProofDes
 	if (formula) {
 		// check if the .jprf file contains the proof status
 		const jprf_file: string = desc2fname({
-			fileName: formula.fileName, 
-			fileExtension: ".jprf", 
+			fileName: formula.fileName,
+			fileExtension: ".jprf",
 			contextFolder: formula.contextFolder
 		});
 		const proofFile: ProofFile = await readJprfProofFile(jprf_file);
@@ -1344,7 +1359,7 @@ export async function saveProofDescriptor (formula: PvsFormula, newDesc: ProofDe
 		}
 		// write descriptor to file
 		const newContent: string = JSON.stringify(fdesc, null, " ");
-		return await writeFile(fname, newContent);		
+		return await writeFile(fname, newContent);
 	}
 	return false;
 }
@@ -1369,7 +1384,7 @@ export async function saveSketchpad (formula: PvsFormula, clips: ProofNode[]): P
 			pdesc.clips = clips || [];
 			// write descriptor to file
 			const newContent: string = JSON.stringify(fdesc, null, " ");
-			return await writeFile(fname, newContent);		
+			return await writeFile(fname, newContent);
 		}
 	}
 	return false;
@@ -1403,17 +1418,17 @@ export async function openSketchpad (formula: PvsFormula): Promise<ProofNode[] |
  * @param desc 
  */
 export async function getProofDate (desc: { 
-	fileName: string, 
-	fileExtension: string, 
-	contextFolder: string, 
-	theoryName: string, 
+	fileName: string,
+	fileExtension: string,
+	contextFolder: string,
+	theoryName: string,
 	formulaName: string
 }): Promise<string | null> {
 	if (desc) {
 		// check if the .jprf file contains the date
 		const jprf_file: string = desc2fname({
-			fileName: desc.fileName, 
-			fileExtension: ".jprf", 
+			fileName: desc.fileName,
+			fileExtension: ".jprf",
 			contextFolder: desc.contextFolder
 		});
 		const proofFile: ProofFile = await readJprfProofFile(jprf_file);
@@ -1583,11 +1598,11 @@ export function getProofliteFileName (formula: PvsFormula, opt?: { usePvsBinFold
  * Utility function, returns the prooflite script for a given formula
  */
 export async function getProofliteScript (desc: { 
-	fileName: string, 
-	fileExtension: string, 
-	contextFolder: string, 
-	theoryName: string, 
-	formulaName: string 
+	fileName: string,
+	fileExtension: string,
+	contextFolder: string,
+	theoryName: string,
+	formulaName: string
 }): Promise<string> {
 	const fname: string = path.join(desc.contextFolder, `${desc.fileName}${desc.fileExtension}`);
 	const txt: string = await readFile(fname);
@@ -1659,8 +1674,8 @@ export async function listTheorems (desc: { fileName: string, fileExtension: str
 								// check if the .jprf file contains the proof status
 								const theoryName: string = boundaries[i].theoryName;
 								status = await getProofStatus({
-									fileName: desc.fileName, 
-									fileExtension: desc.fileExtension, 
+									fileName: desc.fileName,
+									fileExtension: desc.fileExtension,
 									contextFolder: desc.contextFolder,
 									formulaName,
 									theoryName
@@ -1783,14 +1798,14 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 	const theories: TheoryDescriptor[] = listTheories({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent });
 	if (theories) {
 		// if (opt.listTheorems) { console.log(`[${generateTimestamp()}] `+`[languageUtils.getFileDescriptor] listTheorems(${fileName})`);	}
-		const lemmas: FormulaDescriptor[] = 
-			(opt.listTheorems) 
+		const lemmas: FormulaDescriptor[] =
+			(opt.listTheorems)
 				? await listTheorems({ fileName, fileExtension, contextFolder, fileContent: pvsFileContent, prelude: opt?.prelude, cache: { theories } })
-					: [];
-		const tccs: FormulaDescriptor[] = 
-			(opt.listTheorems && fileExtension !== ".tccs" && tccsFileContent) 
+				: [];
+		const tccs: FormulaDescriptor[] =
+			(opt.listTheorems && fileExtension !== ".tccs" && tccsFileContent)
 				? await listTheorems({ fileName, fileExtension: ".tccs", contextFolder, fileContent: tccsFileContent, prelude: opt?.prelude })
-					: [];
+				: [];
 		const descriptors: FormulaDescriptor[] = lemmas.concat(tccs);
 		// console.log(`[${generateTimestamp()}] `+`[language-utils] Processing ${theories.length} theories`);
 		for (let i = 0; i < theories.length; i++) {
@@ -1798,7 +1813,7 @@ export async function getFileDescriptor (fname: string, opt?: { listTheorems?: b
 			// console.log(`[${generateTimestamp()}] `+`[language-utils] Processing theory ${theoryName}`);
 			const position: Position = theories[i].position;
 			const theoryDescriptor: TheoryDescriptor = {
-				fileName, fileExtension, contextFolder, theoryName, position, 
+				fileName, fileExtension, contextFolder, theoryName, position,
 				theorems: (descriptors && descriptors.length) ? descriptors.filter((desc: FormulaDescriptor) => {
 					return desc.theoryName === theoryName;
 				}) : []
@@ -1864,7 +1879,7 @@ export function contextDescriptor2LookUpTable (ctx: PvsContextDescriptor): LookU
 							theoryName: fdesc.theoryName,
 							formulaName: fdesc.formulaName,
 							line: fdesc.line,
-							character: fdesc.character	
+							character: fdesc.character
 						};
 						if (!table.formulas[formula.formulaName]) {
 							table.formulas[formula.formulaName] = [];
@@ -1951,13 +1966,13 @@ export async function renameTheoryInProofFile (theory: PvsTheory, newInfo: { new
 						pdesc.proofTree.name = newKey;
 					}
 					newFdesc[newKey] = [ pdesc ];
-				}	
+				}
 				// write to file
 				const newContent: string = JSON.stringify(newFdesc, null, " ");
 				const newFname: string = desc2fname({
 					fileName: (theory.fileName === theory.theoryName) ? newInfo.newTheoryName : theory.fileName,
 					fileExtension: ".jprf",
-					contextFolder: theory.contextFolder		
+					contextFolder: theory.contextFolder
 				});
 				const fileAlreadyExists: boolean = await fileExists(newFname);
 				const success: boolean = (fileAlreadyExists) ? await writeFile(fname, newContent)
@@ -1980,10 +1995,10 @@ export interface WorkspaceSummaryItem extends PvsTheory {
 	ok: number,
 	miss: number,
 	total: number,
-	ms: number	
+	ms: number
 }
 export type WorkspaceSummary = {
-	total: number, 
+	total: number,
 	contextFolder: string,
 	theories: WorkspaceSummaryItem[]
 }
@@ -2018,9 +2033,9 @@ export function makeWorkspaceSummary (desc: WorkspaceSummary): string {
 			}
 		}
 		ans += `\n\nWorkspace ${workspaceName} totals: ${desc.total} formulas, ${nProved + nMissed} attempted, ${nProved} succeeded (${(+totTime / 1000).toFixed(3)} s)`;
-	// 	ans += `\n
-	// *** Grand Totals: ${nProved} proofs / ${desc.total} formulas. Missed: ${nMissed} formulas.
-	// *** Number of libraries: ${Object.keys(libraries).length}`;	
+		// 	ans += `\n
+		// *** Grand Totals: ${nProved} proofs / ${desc.total} formulas. Missed: ${nMissed} formulas.
+		// *** Number of libraries: ${Object.keys(libraries).length}`;	
 		return ans;
 	}
 	return null;
@@ -2031,14 +2046,14 @@ export function makeWorkspaceSummary (desc: WorkspaceSummary): string {
  * about the total number of theorems proved/missed in a theory
  */
 export interface TheorySummaryItem {
-	theoryName: string, 
-	formulaName: string, 
-	status: ProofStatus, 
-	ms: number 
+	theoryName: string,
+	formulaName: string,
+	status: ProofStatus,
+	ms: number
 }
-export type TheorySummary = { 
-	total: number, 
-	tccsOnly?: boolean, 
+export type TheorySummary = {
+	total: number,
+	tccsOnly?: boolean,
 	theoryName: string,
 	theorems: TheorySummaryItem[]
 }
@@ -2203,7 +2218,7 @@ export function lsPvsVersions (): string {
  * Utility function, parses the result of lsPvsVersions
  */
 export function parseLsPvsVersions (str: string): PvsDownloadDescriptor[] {
-	 if (str) {
+	if (str) {
 		const res: string = str?.toLocaleString().trim();
 		const elems: string[] = res?.split("\n");
 		const versions: PvsDownloadDescriptor[] = elems?.map((fileName: string) => {
@@ -2235,9 +2250,9 @@ export abstract class PostTask {
 	protected TASK_START_DELAY: number = 250; //ms
 
 	/**
-     * Utility function for posting the execution of potentially long tasks
+	 * Utility function for posting the execution of potentially long tasks
 	 * that do not require immediate completion
-     */
+	 */
 	postTask (task: () => void): void {
 		clearTimeout(this.timer);
 		this.timer = setTimeout(() => {
@@ -2251,26 +2266,26 @@ export abstract class PostTask {
 /**
  * Utility function, prettyprints the sequent label
  */
- function sequentToString(sequents: SFormula[], opt?: {
-    useColors?: boolean, 
-    colorTheme?: XTermColorTheme,
-    htmlEncoding?: boolean,
-    colorizeParens?: boolean,
-    prettyPrinter?: PrettyPrinter
+function sequentToString(sequents: SFormula[], opt?: {
+	useColors?: boolean,
+	colorTheme?: XTermColorTheme,
+	htmlEncoding?: boolean,
+	colorizeParens?: boolean,
+	prettyPrinter?: PrettyPrinter
 }): string {
 	let res: string = "";
 	opt = opt || {};
-    const colorTheme: XTermColorTheme = opt.colorTheme || "dark";
-    const color: PvsColor = getColor(PvsColor.green, colorTheme);
+	const colorTheme: XTermColorTheme = opt.colorTheme || "dark";
+	const color: PvsColor = getColor(PvsColor.green, colorTheme);
 	for (let i = 0; i < sequents.length; i++) {
 		const sequent: SFormula = sequents[i];
 		let label: string = sequent.labels.join(" ");
 		label = (sequent.changed === 'true') ? `{${label}}` : `[${label}]` ;
 		label = (sequent.changed === 'true' && opt.useColors) ? `${colorText(label, color)}` : `${label}` ;
-        let fmla: string = tryPrettyPrintFormula(sequent.formula, opt?.prettyPrinter);
-        const formula: string = (opt.useColors) ? `${pvsSyntaxHighlighting(fmla, opt)}` : fmla;
-        res += `${label}   ${formula}`;
-        res += opt.htmlEncoding ? "<br>" : "\n";
+		let fmla: string = tryPrettyPrintFormula(sequent.formula, opt?.prettyPrinter);
+		const formula: string = (opt.useColors) ? `${pvsSyntaxHighlighting(fmla, opt)}` : fmla;
+		res += `${label}   ${formula}`;
+		res += opt.htmlEncoding ? "<br>" : "\n";
 	}
 	return res;
 }
@@ -2278,75 +2293,75 @@ export abstract class PostTask {
  * Utility function, tries to pretty-print a sequent formula
  */
 function tryPrettyPrintFormula (formula: string, pp: PrettyPrinter): string {
-    if (pp && formula) {
-        let fmla: string = formula;
-        const opts: string[] = pp?.options || [];
+	if (pp && formula) {
+		let fmla: string = formula;
+		const opts: string[] = pp?.options || [];
         const args: string[] = [ ...opts, formula ];
-        try {
-            fmla = pp?.cmd ? 
-                execFileSync(pp.cmd, args, { encoding: "utf-8" })
-                : formula;
-            if (fmla?.trim()?.startsWith("[{")) {
-                const diags: {
-                    range: {
-                        start: { line: number, character: number },
-                        end: { line: number, character: number }
-                    }, 
-                    message: string, 
-                    severity: string
-                }[] = JSON.parse(fmla);
-                console.dir("[language-utils] External prettyprinter returned an error");
-                console.dir(diags);
-                // restore original output
-                fmla = formula;
-            }
-        } catch (err) {
+		try {
+			fmla = pp?.cmd ?
+				execFileSync(pp.cmd, args, { encoding: "utf-8" })
+				: formula;
+			if (fmla?.trim()?.startsWith("[{")) {
+				const diags: {
+					range: {
+						start: { line: number, character: number },
+						end: { line: number, character: number }
+					},
+					message: string,
+					severity: string
+				}[] = JSON.parse(fmla);
+				console.dir("[language-utils] External prettyprinter returned an error");
+				console.dir(diags);
+				// restore original output
+				fmla = formula;
+			}
+		} catch (err) {
             console.log(`[${generateTimestamp()}] `+`[language-utils] Error while trying to use external prettyprinter (${pp.cmd} ${args.join(" ")})`, err);
-            // restore original output
-            fmla = formula;
-        }
-        return fmla;
-    }
-    return formula;
+			// restore original output
+			fmla = formula;
+		}
+		return fmla;
+	}
+	return formula;
 }
 /**
  * Utility function, prettyprints the sequent label
  */
 function labelToString (label: string, opt?: {
-    useColors?: boolean, 
-    colorTheme?: XTermColorTheme,
-    htmlEncoding?: boolean
+	useColors?: boolean,
+	colorTheme?: XTermColorTheme,
+	htmlEncoding?: boolean
 }): string {
 	opt = opt || {};
-    const colorTheme: XTermColorTheme = opt.colorTheme || "dark";
-    const color: PvsColor = getColor(PvsColor.green, colorTheme);
+	const colorTheme: XTermColorTheme = opt.colorTheme || "dark";
+	const color: PvsColor = getColor(PvsColor.green, colorTheme);
 	return (opt && opt.useColors)?
 		`\n${colorText(`${label} :`, color)}\n`
-			: `\n${label} :\n`;
+		: `\n${label} :\n`;
 }
 /**
  * Utility function, prettyprints user comments included in the sequent returned by the prover
  */
 function commentToString (txt: string, opt?: {
-     useColors?: boolean,
-     colorTheme?: XTermColorTheme,
-     htmlEncoding?: boolean
+	useColors?: boolean,
+	colorTheme?: XTermColorTheme,
+	htmlEncoding?: boolean
 }): string {
 	opt = opt || {};
-    const colorTheme: XTermColorTheme = opt.colorTheme || "dark";
-    const color: PvsColor = getColor(PvsColor.yellow, colorTheme);
+	const colorTheme: XTermColorTheme = opt.colorTheme || "dark";
+	const color: PvsColor = getColor(PvsColor.yellow, colorTheme);
 	const content: string = (opt && opt.useColors)? 
 		`${colorText(`${txt}`, color)}`
-			: `${txt}`;
+		: `${txt}`;
 	return opt.htmlEncoding ? `<br>${content}<br>` : `\n${content}\n`;
 }
 /**
  * Utility function, prettyprints the commentary string included in the sequent returned by the prover
  */
 export function commentaryToString (commentary: string | string[], opt?: {
-    useColors?: boolean,
-    colorTheme?: XTermColorTheme,
-    htmlEncoding?: boolean
+	useColors?: boolean,
+	colorTheme?: XTermColorTheme,
+	htmlEncoding?: boolean
 }): string {
 	function looksLikeASequent(msg: string): boolean {
 		let lines: string[] = msg.split('\n');
@@ -2354,41 +2369,41 @@ export function commentaryToString (commentary: string | string[], opt?: {
 	}
 
 	let res = "";
-    if (commentary) {
-        const colorTheme: XTermColorTheme = opt.colorTheme || "dark";
-        const gray: PvsColor = getColor(PvsColor.gray, colorTheme);
-        const yellow: PvsColor = getColor(PvsColor.yellow, colorTheme);
-        const green: PvsColor = getColor(PvsColor.green, colorTheme);
-        if (typeof commentary === "string") {
-            commentary = commentary.trim().endsWith(",") ? commentary.trim().slice(0, -1) : commentary.trim();
-            res += opt.htmlEncoding ? `<br>${commentary}<br>` 
-                : opt.useColors ? `\n${colorText(`${commentary}`, commentary.includes("This completes the proof") ? yellow : gray)}\n`
-                    : `\n${commentary}\s`;
-        } else {
-            res += opt.htmlEncoding ? "<br>" : "\n";
-            for (let i = 0; i < commentary.length; i++) {
-                let line: string = commentary[i];
+	if (commentary) {
+		const colorTheme: XTermColorTheme = opt.colorTheme || "dark";
+		const gray: PvsColor = getColor(PvsColor.gray, colorTheme);
+		const yellow: PvsColor = getColor(PvsColor.yellow, colorTheme);
+		const green: PvsColor = getColor(PvsColor.green, colorTheme);
+		if (typeof commentary === "string") {
+			commentary = commentary.trim().endsWith(",") ? commentary.trim().slice(0, -1) : commentary.trim();
+			res += opt.htmlEncoding ? `<br>${commentary}<br>`
+				: opt.useColors ? `\n${colorText(`${commentary}`, commentary.includes("This completes the proof") ? yellow : gray)}\n`
+					: `\n${commentary}\s`;
+		} else {
+			res += opt.htmlEncoding ? "<br>" : "\n";
+			for (let i = 0; i < commentary.length; i++) {
+				let line: string = commentary[i];
 
 								if(looksLikeASequent(line)) {
 									if (i === commentary.length - 1 || i == 0 || looksLikeASequent(commentary[i-1]))
-									// Ignore the last commentary if it looks like a sequent,
-									// because it's the same sequent being informed in the 
-									// proof status @M3.
-										line = null;
-								} else {
-								  if (i === commentary.length - 1)	
-										line = line.trim().endsWith(",") ? line.trim().slice(0, -1) : line.trim();
-								}
-								if (line)
-                	res += opt.htmlEncoding ? `${line}<br>` 
-                  	  : opt.useColors ? `${colorText(`${line}`, 
-											line.includes("This completes the proof") ? yellow :
-											line.includes("Q.E.D.") ? green : gray)}\n`
-                      	  : `${line}\n`;
-            }
-        }
-    }
-    return res;
+						// Ignore the last commentary if it looks like a sequent,
+						// because it's the same sequent being informed in the 
+						// proof status @M3.
+						line = null;
+				} else {
+					if (i === commentary.length - 1)
+						line = line.trim().endsWith(",") ? line.trim().slice(0, -1) : line.trim();
+				}
+				if (line)
+					res += opt.htmlEncoding ? `${line}<br>`
+						: opt.useColors ? `${colorText(`${line}`,
+							line.includes("This completes the proof") ? yellow :
+								line.includes("Q.E.D.") ? green : gray)}\n`
+							: `${line}\n`;
+			}
+		}
+	}
+	return res;
 }
 
 export function formatPvsIoState (pvsioState: string, opt?: { useColors?: boolean, showAction?: boolean }): string {
@@ -2400,9 +2415,9 @@ export function formatPvsIoState (pvsioState: string, opt?: { useColors?: boolea
 }
 
 export function formatHiddenFormulas (proofState: PvsProofState, opt?: { 
-    useColors?: boolean, 
-    showAction?: boolean,
-    colorizeParens?: boolean
+	useColors?: boolean,
+	showAction?: boolean,
+	colorizeParens?: boolean
 }): string {
 	if (proofState) {
 		opt = opt || {};
@@ -2453,13 +2468,13 @@ export function sformulas2string (desc: PvsProofState): string {
  */
 export function formatSequent (desc: PvsProofState, opt?: {
 	useColors?: boolean,
-  colorizeParens?: boolean,
-  colorTheme?: XTermColorTheme,
+	colorizeParens?: boolean,
+	colorTheme?: XTermColorTheme,
 	showAction?: boolean,
 	htmlEncoding?: boolean,
 	formulasOnly?: boolean,
-  ignoreCommentary?: boolean,
-  prettyPrinter?: PrettyPrinter
+	ignoreCommentary?: boolean,
+	prettyPrinter?: PrettyPrinter
 }): string {
 	if (desc) {
 		opt = opt || {};
@@ -2513,8 +2528,8 @@ export function containsNasalib(libPath: string): boolean {
 	const pvsLibFile : string = readFile(pvsLibFileName);
 	let match : RegExpMatchArray = pvsLibIdRE.exec(pvsLibFile);
 	if(match && match.length > 0 && match[1] === 'NASALib') {
-			match = pvsLibVersionRE.exec(pvsLibFile);
-			return (match && match.length > 0 && match[1] === '8.0')
+		match = pvsLibVersionRE.exec(pvsLibFile);
+		return (match && match.length > 0 && match[1] === '8.0')
 	}
 	return false;
 }
@@ -2534,12 +2549,16 @@ export function containsNasalib(libPath: string): boolean {
 export function getNasalibPath(pvsLibraryPath: string): string | undefined {
 	let result: string | undefined = undefined;
 	if (pvsLibraryPath) {
-		pvsLibraryPath.split(path.delimiter).forEach( (libPath) => {
+		let found = false;
+		pvsLibraryPath.split(path.delimiter).forEach((libPath) => {
+			if (!found) {
 				libPath = tildeExpansion(libPath);
-				if(folderExists(libPath) && containsNasalib(libPath)){
+				if (folderExists(libPath) && containsNasalib(libPath)) {
 					result = libPath;
-					console.log(`[${generateTimestamp()}] `+`[getNasalibPath] NASALib v8.0 found at ${libPath}`);
-				} // else console.log(`[${generateTimestamp()}] `+`[nasalibInstallationWizard] omitting ${libPath} from PVS_LIBRARY_PATH (folder not found)`);
+					found = true;
+					console.log(`[getNasalibPath] NASALib v8.0 found at ${libPath}`);
+				}
+			} // else console.log(`[nasalibInstallationWizard] omitting ${libPath} from PVS_LIBRARY_PATH (folder not found)`);
 		});
 	}
 	return result;
@@ -2550,10 +2569,10 @@ export function prunePvsLibraryPath(pvsLibraryPath: string): string {
 	if (pvsLibraryPath) {
 		let paths: string[] = pvsLibraryPath.split(path.delimiter);
 		paths.forEach( (libPath: string, idx: number) => {
-				libPath = tildeExpansion(libPath);
-				if(!folderExists(libPath)){
-					paths[idx] = undefined;
-				} 
+			libPath = tildeExpansion(libPath);
+			if(!folderExists(libPath)){
+				paths[idx] = undefined;
+			}
 		});
 		result = paths.filter(Boolean).join(path.delimiter);
 	}
@@ -2622,4 +2641,55 @@ export function generateTimestamp(): string {
 	const seconds = String(now.getSeconds()).padStart(2, '0');
 
 	return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+}
+
+function AvailablePort(port: number): Promise<boolean> {
+	return new Promise((resolve, reject) => {
+		function tryPort(port: number): void {
+			const server: net.Server = net.createServer();
+
+			server.once('error', (err: NodeJS.ErrnoException) => {
+				resolve(false);
+			});
+
+			server.once('listening', () => {
+				server.close(() => {
+					resolve(true);
+				});
+			});
+
+			server.listen(port);
+		}
+
+		tryPort(port);
+	});
+}
+
+export async function findAvailablePort(startPort: number = 23456) {
+	try {
+		/* const ports = new Set<number>();
+		let port = startPort;
+		let found = false;
+		const out = execSync('ps aux | grep ssh').toString();
+		const tunnelRegex = /ssh -L\s+(\d+):/g;
+		let match;
+		while ((match = tunnelRegex.exec(out)) !== null) {
+			ports.add(parseInt(match[1], 10));
+		}
+		while (!found) {
+			if (ports.has(port)) {
+				port = port + 1;
+			} else {
+				const portAvl = await AvailablePort(port);
+				if (portAvl) {
+					found = true;
+				} else {
+					port = port + 1;
+				}
+			}
+		} */
+		return 23456;
+	} catch (err) {
+		console.error('Error finding existing SSH tunnels:', err);
+	}
 }
