@@ -382,6 +382,9 @@ class PvsIoProcess {
 	}
 }
 
+/**
+ * @deprecated The interaction with PVSio should be made through the PvsProxy @M3
+ */
 export class PvsIoProxy {
 	/**
 	 * pvs path

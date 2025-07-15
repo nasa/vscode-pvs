@@ -539,11 +539,17 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
             this.client.onRequest(serverEvent.startEvaluatorResponse, (data: { response: PvsResponse, args: PvsTheory, error?: string }) => {
               console.log(`[${fsUtils.generateTimestamp()}] `+`[vscodePvsXTerm] responding request ${serverEvent.startEvaluatorResponse} - param: ${data} `); // #DEBUG
                 if (data?.response) {
-                    const banner: string = colorUtils.colorText(utils.pvsioBannerAlt, colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme));
+                    const banner: string = colorUtils.colorText(
+                        (data.response.result?.version?
+                            utils.pvsioBannerAlt.replace("PVSio Evaluator",`PVSio Evaluator ${data.response.result?.version}`) :
+                            utils.pvsioBannerAlt), 
+                        colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme));
                     const hints: HintsObject = getHints(this.sessionType, {
                         theoryContent: this.target?.fileContent
                     });
                     this.log(banner, { hints });
+                    const promptIn: string = data.response.result?.promptIn?.trim();
+                    if(promptIn) this.setPrompt(promptIn);
                     this.showPrompt();
                     this.showWelcomeMessage();
                     this.enableTerminalInput();
@@ -575,15 +581,54 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                 this.target = null;
                 // reset global vscode-pvs variables so other views can be updated properly
                 vscodeUtils.resetGlobals();
-            } else {
-                if (data.res) {
+            } else if(data.res) {
+                if (typeof data.res === "string") {
                     const hints: HintsObject = getHints(this.sessionType, {
                         lastState: data.res, 
                         theoryContent: this.target?.fileContent
                     });
-                    this.log("\n" + data.res, { hints });
+                    this.log(data.res, { hints });
                     // trigger event for interested listeners, e.g., pvsioweb
                     this.trigger(XTermPvsEvent.DidReceiveEvaluatorResponse, data);
+                } else {
+                    let butFirstBL: string = '';
+                    if(data.res.debugMsg && data.res.debugMsg.length){
+                        this.log(colorUtils.colorText(data.res.debugMsg.trim(), colorUtils.getColor(colorUtils.PvsColor.green, this.colorTheme)));
+                        butFirstBL = '\n'}
+                    if(data.res.tccMsg && data.res.tccMsg.length){
+                        this.log(colorUtils.colorText(butFirstBL+data.res.tccMsg.trim(), colorUtils.getColor(colorUtils.PvsColor.lightblue, this.colorTheme)));
+                        butFirstBL = '\n'}
+                    if(data.res.errOut && data.res.errOut.length){
+                        this.log(colorUtils.colorText(butFirstBL+data.res.errOut.trim(), colorUtils.getColor(colorUtils.PvsColor.darkyellow, this.colorTheme)));
+                        butFirstBL = '\n'}
+                    if(data.res.stdOut && data.res.stdOut.length) {
+                        this.log(colorUtils.colorText(butFirstBL+data.res.stdOut.trim(), colorUtils.getColor(colorUtils.PvsColor.gray, this.colorTheme)));
+                        butFirstBL = '\n'}
+                    if(data.res.pvsResult){
+                        const pvsResult: string = data.res.pvsResult.trim();
+                        if (pvsResult.length) {
+                            const hints: HintsObject = getHints(this.sessionType, {
+                                lastState: pvsResult, 
+                                theoryContent: this.target?.fileContent
+                            });
+                            this.log(colorUtils.colorText(butFirstBL+data.res.promptOut, colorUtils.getColor(colorUtils.PvsColor.gold, this.colorTheme))
+                             + colorUtils.colorText(pvsResult, colorUtils.getColor(colorUtils.PvsColor.white, this.colorTheme)), {hints});
+                        }
+                    }
+                    if(data.res.lispResult){
+                        const lispResult: string = data.res.lispResult.trim();
+                        if (lispResult.length){
+                            const hints: HintsObject = getHints(this.sessionType, {
+                                lastState: lispResult, 
+                                theoryContent: this.target?.fileContent
+                            });
+                            this.log(colorUtils.colorText(butFirstBL+lispResult, colorUtils.getColor(colorUtils.PvsColor.white, this.colorTheme)), {hints});
+                        }
+                    }
+                    const promptIn: string = data.res.promptIn?.trim();
+                    if(promptIn){
+                        this.setPrompt(promptIn);
+                    }
                 }
                 this.showPrompt();
                 this.showWelcomeMessage();
@@ -1009,15 +1054,6 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
     /**
      * Utility function, shows all available commands and some brief info for each command
      */
-    helpStar (): void {
-        const message: XTermMessage = {
-            command: XTermCommands.helpStar
-        };
-        this.panel?.webview?.postMessage(message);
-    }
-    /**
-     * Utility function, shows all available commands and some brief info for each command
-     */
     helpVSCodePlot (): void {
         const message: XTermMessage = {
             command: XTermCommands.helpVSCodePlot
@@ -1123,9 +1159,6 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                                             this.showPrompt();
                                                         }
                                                     }
-                                                } else if (utils.isHelpStarCommand(message.data)) {
-                                                    this.helpStar();
-                                                    this.showPrompt();
                                                 } else if (utils.isHelpVSCodePlot(message.data)) {
                                                     this.helpVSCodePlot();
                                                     this.showPrompt();
@@ -1264,7 +1297,6 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         XTermCommands.showHelpMessage,
                         XTermCommands.running,
                         XTermCommands.autocompleteWithEnter,
-                        XTermCommands.helpStar,
                         XTermCommands.helpVSCodePlot
                     ],
                     xtermEvents: [

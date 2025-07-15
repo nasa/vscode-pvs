@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.66-eta-202506090551",
+	"version": "1.0.66-eta-202507151428",
 	"author": "NASA LaRC Formal Methods Team",
 	"displayName": "PVS",
 	"icon": "icons/pvs-icon-alt.png",
@@ -74,16 +74,19 @@
 					"pvs.path": {
 						"type": "string",
 						"default": "",
+						"scope": "machine",
 						"description": "PVS installation folder"
 					},
 					"pvs.pvsLibraryPath": {
 						"type": "string",
 						"default": "",
+						"scope": "machine",
 						"description": "PVS library path (colon-separated list of folders, e.g., usr/libs/L1:usr/libs/L2)"
 					},
 					"pvs.pvsWorkspaces": {
 						"type": "string",
 						"default": "Workspaces",
+						"scope": "machine",
 						"description": "PVS workspaces folder (path is relative to your home folder; leave blank to disable the use of a default workspace)"
 					},
 					"pvs.pvsWorkspaceTheoriesFromActiveFile": {
@@ -175,6 +178,29 @@
 						"type": "number",
 						"default": 23456,
 						"description": "Port number to use to communicate with the PVS server (default: 23456). If you change this value, the new port number will be used the next time the PVS server is restarted. Tip: you can restart the server using 'M-x reboot-server'"
+					},
+					"pvs.activateRemote": {
+						"type": "boolean",
+						"default": false,
+						"description": "Enables running PVS Server on a remote machine. All requests sent to PVS Server will be processed on a remote server instead of local machine."
+					},
+					"pvs.remoteServerHostName": {
+						"type": "string",
+						"description": "Enter the IP Address/Hostname of your Remote Server",
+						"when": "pvs.activateRemote === true"
+					},
+					"pvs.remoteServerPort": {
+						"type": "number",
+						"description": "Enter the port number where remote pvs server is listening",
+						"when": "pvs.activateRemote === true"
+					},
+					"pvs.privateSSHKeyPath": {
+						"type": "string",
+						"description": "Absolute path of private key which will be used in RSYNC operations with remote servers"
+					},
+					"pvs.remoteHostUsername": {
+						"type": "string",
+						"description": "Enter username for remote server"
 					}
 				}
 			}
@@ -1036,6 +1062,18 @@
 				},
 				"enablement": "in-checker == true && proof-mate.sketchpad-empty == false",
 				"category": "pvs"
+			},
+			{
+				"command": "vscode-pvs.open-devcontainer-config",
+				"title": "Open Devcontainer Config",
+				"category": "pvs",
+				"enablement": "runtime-window === other"
+			},
+			{
+				"command": "vscode-pvs.open-devcontainer",
+				"title": "Open PVS Devcontainer",
+				"category": "pvs",
+				"enablement": "runtime-window === other"
 			}
 		],
 		"menus": {
@@ -1247,6 +1285,16 @@
 					"command": "vscode-pvs.reboot-pvs",
 					"when": "false && view == workspace-explorer-view && viewItem == workspace-overview",
 					"group": "context-menu/ctrl-1.7"
+				},
+				{
+					"command": "vscode-pvs.open-devcontainer-config",
+					"when": "false && view == workspace-explorer-view && viewItem == workspace-overview",
+					"group": "context-menu/ctrl-1.8"
+				},
+				{
+					"command": "vscode-pvs.open-devcontainer",
+					"when": "false && view == workspace-explorer-view && viewItem == workspace-overview",
+					"group": "context-menu/ctrl-1.8"
 				},
 				{
 					"command": "proof-explorer.run-subtree",
@@ -1863,6 +1911,16 @@
 					"command": "vscode-pvs.reboot-pvs",
 					"when": "view == workspace-explorer-view",
 					"group": "ctrl-1.8"
+				},
+				{
+					"command": "vscode-pvs.open-devcontainer-config",
+					"when": "view == workspace-explorer-view",
+					"group": "ctrl-1.9"
+				},
+				{
+					"command": "vscode-pvs.open-devcontainer",
+					"when": "view == workspace-explorer-view",
+					"group": "ctrl-1.9"
 				},
 				{
 					"command": "proof-mate.pause-proof",

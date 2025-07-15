@@ -704,9 +704,9 @@ export interface InstallWithProgressResponse {
 };
 
 export interface EvaluatorCommandResponse {
-	res: string | "bye!",
+	res: string | "bye!" | { pvsResult?: string, debugMsg?: string, inputKind: string, inputExpr: string, sessionId: string, tccMsg?: string, lispResult?: string, promptOut?: string, stdOut?: string, errOut?: string, promptIn?: string },
 	req: PvsioEvaluatorCommand,
-	state: string
+	state?: string
 }
 export interface ProofCommandResponse {
 	res: PvsProofState | "Q.E.D." | "bye!",
@@ -1221,3 +1221,22 @@ export interface PvsDocDescriptor {
     outputFolder: string,
     mainFile: string
 };
+
+interface remoteDetails {
+	port: number;
+	ip: string;
+	ssh_path: string;
+	token: string;
+	hostname: string;
+	workspace: string;
+}
+
+export type remoteDetailsDesc = remoteDetails | {};
+
+export interface ClientMessage  {
+	type: string;
+	token_str?: string;
+  	workspacePaths?: string[];
+  	libPaths?: string[];
+	workspace?: string;
+}

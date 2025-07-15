@@ -1,8 +1,0 @@
-(in-package :pvs)
-(defun lisp-rule (lexp)
-  #'(lambda (ps)
-      (declare (ignore ps))
-      (let ((*suppress-printing* nil))
-	(let ((result (eval lexp)))
-	  (format-if (if (stringp result) "~%~a~%" "~%~s~%") result)))
-      (values 'X nil nil)))

@@ -56,7 +56,8 @@ import {
 	InstallWithProgressResponse, RebootPvsServerRequest, NASALibDownloader, NASALibDownloaderRequest, 
 	NASALibDownloaderResponse, ListVersionsWithProgressRequest, ListVersionsWithProgressResponse, 
 	StatusProofChain, DumpPvsFilesRequest, DumpPvsFilesResponse, UndumpPvsFilesRequest, 
-	UndumpPvsFilesResponse, DumpFileDescriptor, PvsDocRequest, PvsDocKind, PvsDocDescriptor, PvsDocResponse
+	UndumpPvsFilesResponse, DumpFileDescriptor, PvsDocRequest, PvsDocKind, PvsDocDescriptor, PvsDocResponse,
+	remoteDetailsDesc
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -154,6 +155,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * Data structures used for performance improvements
 	 */
 	protected lastParsedContext: string = ""; // this is used to avoid re-parsing a context
+
+	/** Extension Path to access needed resources (scp-pvslib.ps1) @M3 */
+	protected extensionPath: string;
 
 	/**
 	 * @constructor
@@ -488,23 +492,30 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 */
 	async pvsioEvaluatorCommandRequest (req: PvsioEvaluatorCommand): Promise<void> {
 		req = fsUtils.decodeURIComponents(req);
-		// const channelID: string = utils.desc2id(req);
-		const response: PvsResponse = await this.pvsioProxy?.evalCommand(req, {
-			cb: (res: string | "bye!", state: string) => {
-				// const result: PvsResult = {
-				// 	jsonrpc: "2.0",
-				// 	id: channelID,
-				// 	result: res
-				// };
-				// this.cliGateway?.publish({ type: "pvs.event.evaluator-state", channelID, data: result });
+		let pvsIoInput: string = req.cmd;
+		// @M3 if the inputs ends in ";" the user wants to evaluate it as a PVS expression,
+		//     if it ends with a "!", as a lisp expression.
+		const lastCharIdx: number = pvsIoInput.length-1;
+		let tailChar: string = pvsIoInput.charAt(lastCharIdx);
+		if (pvsIoInput === "quit"){
+			tailChar = ";";
+		}	else	
+			pvsIoInput = pvsIoInput.substring(0, lastCharIdx)
+		let response: PvsResponse;
+		if (tailChar === ";")
+				response = await this.pvsProxy.evaluateInPvsIoSession({expr: pvsIoInput, evaluateAsLisp: false});
+		else if(tailChar === "!")
+				response = await this.pvsProxy.evaluateInPvsIoSession({expr: pvsIoInput, evaluateAsLisp: true});
+		else {
+				this.pvsErrorManager?.handleEvaluationError({ request: req, response: {jsonrpc: "2.0", id: "N/A", error: { code: -1, message: `Input ${[pvsIoInput]} cannot be evaluated: Unknown termination char`}}});	
+				return; }
+
 				const data: EvaluatorCommandResponse = {
 					req,
-					res,
-					state
+					res: (response && response.result ? response.result : response.error)
 				};
 				this.connection.sendRequest(serverEvent.evaluatorCommandResponse, data);
-			}
-		});
+
 		if (response && response.error) {
 			this.pvsErrorManager?.handleEvaluationError({ request: req, response: <PvsError> response });
 		}
@@ -527,25 +538,25 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		theory = fsUtils.decodeURIComponents(theory);
 		// send feedback to the front-end
 		const taskId: string = `pvsio-${theory.fileName}@${theory.theoryName}`;
-		// const channelID: string = utils.desc2id(theory);
 		this.notifyStartImportantTask({ id: taskId, msg: `Loading files necessary to evaluate theory ${theory.theoryName}` });
 		// make sure the theory typechecks before starting the evaluator
-		const response: PvsResponse = await this.typecheckFile(theory);
+		let file: PvsTheory = { ...theory};
+		delete file.theoryName;
+		let response: PvsResponse = await this.typecheckFile(file);
 		if (response && response.result) {
 			// start pvsio evaluator
-			let pvsioResponse: PvsResponse = await this.pvsioProxy?.startEvaluator(theory, {
-				pvsLibraryPath: this.pvsLibraryPath
-			});
-			// replace standard banner
-			// const banner: string = utils.colorText(utils.pvsioBanner, utils.vscodeColor.green);// + "\n\n" + utils.pvsioPrompt;
-			// this.cliGateway?.publish({ type: "pvs.event.evaluator-ready", channelID, banner });
-			this.connection?.sendRequest(serverEvent.startEvaluatorResponse, { response: pvsioResponse, args: theory });
+			response = await this.pvsProxy.startPvsIo(theory);
+
+			if (response && response.result) {
+				this.connection?.sendRequest(serverEvent.startEvaluatorResponse, { response, args: theory });
 			this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });
 			this.notifyServerMode("pvsio");
-		} else {
+			}
+		} 
+		
+		if ( !response || response.error) {
 			this.connection?.sendRequest(serverEvent.startEvaluatorResponse, { error: response?.error?.data?.error_string, args: theory });
 			this.pvsErrorManager?.handleEvaluationError({ request: theory, response: <PvsError> response, taskId });
-			// this.cliGateway?.publish({ type: "pvs.event.quit", channelID });
 		}
 	}
 	/**
@@ -769,7 +780,8 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * Typecheck file request handler
 	 */
 	async typecheckFileRequest (request: PvsFile): Promise<void> {
-
+		console.log(`[pvsLanguageServer.typecheckFileRequest] request: ${JSON.stringify(request)}`);
+		
 		const mode: string = await this.getMode();
 		if (mode !== "lisp") {
 			return;
@@ -791,7 +803,16 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking -- pvs-server is not able for now tho.
 			// proceed with typechecking
 			const response: PvsResponse = await this.typecheckFile(request, { progressReporter: (msg: string) => {this.notifyProgressImportantTask({ id: taskId, msg: msg, increment: -1})}});
-			this.connection?.sendRequest(serverEvent.typecheckFileResponse, { response, args: request });
+			console.log("Sending typecheckFileResponse:");
+			console.log("  → Event:", serverEvent.typecheckFileResponse);
+			console.log("  → Response:", response);
+			console.log("  → Args (request):", request);
+
+			this.connection?.sendRequest(serverEvent.typecheckFileResponse, {
+				response,
+				args: request
+			});
+
 			// // send diagnostics
 			if (response) {
 				if (response.result) {
@@ -1055,12 +1076,10 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				if (!opt.quiet) {
 					this.notifyStartImportantTask({ id: taskId, msg: `Generating typecheck conditions for ${shortName}`});
 				}
-				// parse files first, so front-end is updated with stats
-				// await this.parseWorkspaceRequest(request); // this could be done in parallel with typechecking, pvs-server is not able to do this tho.
-				// then generate tccs
+	
 				const response: PvsContextDescriptor = await this.pvsProxy.generateTccs(desc);
 				this.connection?.sendNotification((opt.showTccsRequest) ? serverRequest.showTccs : serverRequest.generateTccs, { response, args: request });
-
+	
 				let nTccs: number = 0;
 				let nProved: number = 0;
 				if (response && response.fileDescriptors && response.fileDescriptors[fname] && response.fileDescriptors[fname].theories) {
@@ -1146,6 +1165,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					if (this.lastParsedContext !== request.contextFolder) {
 						this.lastParsedContext = request.contextFolder;
 						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: request.contextFolder });
+						console.log(`[pvsLanguageServer.parseFileRequest] sending req context update ${JSON.stringify(cdesc)}`);
 						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 					}
 					
@@ -1266,6 +1286,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					if (!this.isSameWorkspace(contextFolder)) {
 						this.lastParsedContext = contextFolder;
 						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
+						console.log(`[pvsLanguageServer.workspaceActionRequest] sending req context update ${JSON.stringify(cdesc)}`);
 						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 					}
 
@@ -1762,76 +1783,76 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				let fname: string = fnames[i];
 
 				if(fsUtils.fileExists(fname)) {
-					const response: PvsResponse = (this.diags && this.diags[fname]) ? this.diags[fname].pvsResponse : null;
-					if (response && response["error"]) {
-						const info: PvsError = <PvsError> response;
+				const response: PvsResponse = (this.diags && this.diags[fname]) ? this.diags[fname].pvsResponse : null;
+				if (response && response["error"]) {
+					const info: PvsError = <PvsError> response;
 
-						// old pvs parser (legacy code)
-						if (info.error && info.error.data && info.error.data.place && info.error.data.place.length >= 2) {
-							const errorStart: Position = {
-								line: info.error.data.place[0], 
-								character: info.error.data.place[1]
+					// old pvs parser (legacy code)
+					if (info.error && info.error.data && info.error.data.place && info.error.data.place.length >= 2) {
+						const errorStart: Position = {
+							line: info.error.data.place[0], 
+							character: info.error.data.place[1]
+						};
+						const errorEnd: Position = (info.error.data.place.length > 3) ? { 
+							line: info.error.data.place[2], 
+							character: info.error.data.place[3]
+						} : {
+							...errorStart
+						};
+						const txt: string = await fsUtils.readFile(fname);
+						if (txt) {
+							// error message
+							const message: string = info.error.data.error_string;
+							// error range
+							const errorRange: Range = getErrorRange(txt, errorStart, errorEnd, message);
+							// diagnostics
+							const diag: Diagnostic = {
+								severity: DiagnosticSeverity.Error,
+								range: {
+									start: { line: errorRange.start.line - 1, character: errorRange.start.character },
+									end: { line: errorRange.end.line - 1, character: errorRange.end.character },
+								},
+								message,
+								source: `\n${source} error`
 							};
-							const errorEnd: Position = (info.error.data.place.length > 3) ? { 
-								line: info.error.data.place[2], 
-								character: info.error.data.place[3]
-							} : {
-								...errorStart
-							};
-							const txt: string = await fsUtils.readFile(fname);
-							if (txt) {
-								// error message
-								const message: string = info.error.data.error_string;
-								// error range
-								const errorRange: Range = getErrorRange(txt, errorStart, errorEnd, message);
-								// diagnostics
-								const diag: Diagnostic = {
-									severity: DiagnosticSeverity.Error,
-									range: {
-										start: { line: errorRange.start.line - 1, character: errorRange.start.character },
-										end: { line: errorRange.end.line - 1, character: errorRange.end.character },
-									},
-									message,
-									source: `\n${source} error`
-								};
-								this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ diag ] });
-							} else {
-								console.error(`[pvs-language-server] Warning: unable to send error diagnostics for file ${fname}`);
-							}
+							this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ diag ] });
+						} else {
+							console.error(`[pvs-language-server] Warning: unable to send error diagnostics for file ${fname}`);
 						}
-
-						// new pvs parser
-						else if (info.error && info.error.data && info.error.data.length > 0) {
-							let diagnostics: Diagnostic[];
-							if (typeof info.error.data == "string") {
-								diagnostics = [ {
-									range: {
-										start: { line: 0, character: 0 }, 
-										end: { line: 0, character: 0 }
-									},
-									message: info.error.data,
-									severity: DiagnosticSeverity.Error
-								} ];
-							} else {
-								let data: Diagnostic[] = info.error.data;
-
-								diagnostics = <Diagnostic[]> data.map(diag => {
-									return {
-										range: {
-											start: { line: diag.range.start.line - 1, character: diag.range.start.character }, // lines in the editor start from 0
-											end: { line: diag.range.end.line - 1, character: diag.range.end.character }
-										},
-										message: diag.message,
-										severity: diag.severity
-									}
-								});
-							}
-							this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics });
-						}
-					} else {
-						// send clean diagnostics
-						this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ ] });
 					}
+
+					// new pvs parser
+					else if (info.error && info.error.data && info.error.data.length > 0) {
+						let diagnostics: Diagnostic[];
+						if (typeof info.error.data == "string") {
+							diagnostics = [ {
+								range: {
+									start: { line: 0, character: 0 }, 
+									end: { line: 0, character: 0 }
+								},
+								message: info.error.data,
+								severity: DiagnosticSeverity.Error
+							} ];
+						} else {
+							let data: Diagnostic[] = info.error.data;
+
+							diagnostics = <Diagnostic[]> data.map(diag => {
+								return {
+									range: {
+										start: { line: diag.range.start.line - 1, character: diag.range.start.character }, // lines in the editor start from 0
+										end: { line: diag.range.end.line - 1, character: diag.range.end.character }
+									},
+									message: diag.message,
+									severity: diag.severity
+								}
+							});
+						}
+						this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics });
+					}
+				} else {
+					// send clean diagnostics
+					this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ ] });
+				}
 				} else {
 						// @M3 send clean diagnostics and remove diagnostics of non-existent file
 						this.connection?.sendDiagnostics({ uri: `file://${fname}`, diagnostics: [ ] });
@@ -1942,18 +1963,8 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * Internal function, checks that all dependencies necessary to run pvs are installed
 	 */
 	async checkDependencies (): Promise<boolean> {
-		console.log(`[${fsUtils.generateTimestamp()}] `+`[pvs-server] Checking dependencies...`);
+		console.log(`[pvs-server] Checking dependencies...`);
 		const osVersion: { version?: string, error?: string } = getOs();
-		if (osVersion && (osVersion.version !== "Linux" && osVersion.version !== "MacOSX")) {
-			let msg: string = `VSCode-PVS currently runs only under Linux or MacOSX.\nPlease use a virtual machine to run VSCode-PVS under ${osVersion.version}.`;
-			console.error(msg);
-			this.pvsErrorManager?.notifyPvsFailure({
-				msg,
-				error_type: "dependency",
-				src: "pvs-language-server"
-			});
-			return false;
-		}
 		if (!osVersion || osVersion.error) {
 			console.error(osVersion.error);
 			this.pvsErrorManager?.notifyPvsFailure({
@@ -1982,7 +1993,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * Utility function, starts pvs-server
 	 */
 	async startPvsServer (
-		desc: { pvsPath?: string, pvsLibraryPath?: string, contextFolder?: string, externalServer?: boolean, webSocketPort: number }, 
+		desc: { pvsPath?: string, pvsLibraryPath?: string, contextFolder?: string, externalServer?: boolean, webSocketPort: number, remote: remoteDetailsDesc }, 
 		opt?: { verbose?: boolean, debugMode?: boolean, forceKill?: boolean }): Promise<boolean> {
 		if (desc) {
 			opt = opt || {};
@@ -2009,11 +2020,13 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 						{ connection: this.connection, 
 							pvsLibraryPath: this.pvsLibraryPath, 
 							externalServer: externalServer,
-							webSocketPort: desc.webSocketPort } );
+							webSocketPort: desc.webSocketPort,
+							remote: desc.remote,
+							extensionPath : this.extensionPath
+						 } );
 					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath });
 					this.createServiceProviders();
 				}	
-				// #TODO @M3 shouldn't we activate pvsioProxy as well?
 				const success: ProcessCode = await this.pvsProxy?.activate({
 					debugMode: opt.debugMode, 
 					verbose: opt.debugMode !== false,
@@ -2044,7 +2057,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * @param desc 
 	 */
 	protected async startPvsServerRequest (
-		desc: { pvsPath: string, pvsLibraryPath: string, contextFolder?: string, externalServer?: boolean, webSocketPort: number }
+		desc: { pvsPath: string, pvsLibraryPath: string, contextFolder?: string, externalServer?: boolean, webSocketPort: number, remote: remoteDetailsDesc }
 	): Promise<boolean> {
 		// make sure that all dependencies are installed; an error will be shown to the user if some dependencies are missing
 		const dependencies: boolean = await this.checkDependencies();
@@ -2111,7 +2124,12 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 */
 	protected setupConnectionManager () {
 		this.connection?.onInitialize((params: InitializeParams): { capabilities: ServerCapabilities } => {
-			// console.log(`[${fsUtils.generateTimestamp()}] `+`--------- Client capabilities ---------\n`, params.capabilities);
+			if (params.initializationOptions && (params.initializationOptions as any).extensionPath) {
+	        	this.extensionPath = (params.initializationOptions as any).extensionPath;
+				console.log(`[setupConnectionManager] Received extension path on server: ${this.extensionPath}`);
+			}
+
+			// console.log(`--------- Client capabilities ---------\n`, params.capabilities);
 			const capabilities = params.capabilities;
 			this.clientCapabilities = {
 				hasConfigurationCapability: capabilities.workspace && !!capabilities.workspace.configuration,
@@ -2240,7 +2258,8 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				pvsLibraryPath: string, 
 				contextFolder?: string, 
 				externalServer?: boolean, 
-				webSocketPort: number
+				webSocketPort: number,
+				remote: remoteDetailsDesc
 			}) => {
 				console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.startPvsServer} - param: ${JSON.stringify(request)} `); // #DEBUG
 				// setting the error manager here so I can report errors on starting-up
@@ -2257,6 +2276,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 							// TODO: send loading message to workspace explorer
 							// ...
 							const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder });
+							console.log(`[pvsLanguageServer.onRequest(startPVSServer)] sending req context update ${JSON.stringify(cdesc)}`);
 							this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);
 						}
 					}
@@ -2270,9 +2290,10 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				pvsLibraryPath?: string, 
 				contextFolder?: string, 
 				externalServer?: boolean,
-				webSocketPort: number
+				webSocketPort: number,
+				remote: remoteDetailsDesc
 			}) => {
-				console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.rebootPvsServer} ${(req? `- param: ${req}`: "")} `); // #DEBUG
+				console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.rebootPvsServer} ${(req? `- param: ${JSON.stringify(req)}`: "")} `); // #DEBUG
 				this.connection?.sendNotification("server.status.restart-server");
 				await this.startPvsServer(req, { forceKill: true});
 			});
@@ -2305,7 +2326,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				this.typecheckWorkspaceRequest(request, { generateTCCs: true }); // async call
 			});
 			this.connection?.onRequest(serverRequest.statusProofChain, async (req: PvsFormula) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.statusProofChain} - param: ${req} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.statusProofChain} - param: ${JSON.stringify(req)} `); // #DEBUG
 				this.statusProofChainRequest(req); // async call
 			});
 			this.connection?.onRequest(serverRequest.hp2pvs, async (request: PvsFile) => {
@@ -2365,35 +2386,35 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				await this.listContextFilesRequest(request);
 			});
 			this.connection?.onRequest(serverRequest.proveFormula, async (req: ProveFormulaRequest) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.proveFormula} - param: ${req} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.proveFormula} - param: ${JSON.stringify(req)} `); // #DEBUG
 				await this.proveFormulaRequest(req);
 			});
 			this.connection?.onRequest(serverRequest.getImportChainTheorems, async (args: PvsTheory) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.getImportChainTheorems} - param: ${args} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.getImportChainTheorems} - param: ${JSON.stringify(args)} `); // #DEBUG
 				await this.getImportChainTheoremsRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.getTheorems, async (args: PvsTheory) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.getTheorems} - param: ${args} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.getTheorems} - param: ${JSON.stringify(args)} `); // #DEBUG
 				await this.getTheoremsRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.getTccs, async (args: PvsTheory) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.getTccs} - param: ${args} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.getTccs} - param: ${JSON.stringify(args)} `); // #DEBUG
 				await this.getTccsRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.autorunFormula, async (req: PvsFormula) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.autorunFormula} - param: ${req} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.autorunFormula} - param: ${JSON.stringify(req)} `); // #DEBUG
 				await this.proveFormulaRequest(req, { autorun: true, quiet: true });
 			});
 			this.connection?.onRequest(serverRequest.autorunFormulaFromJprf, async (req: PvsFormula) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.autorunFormulaFromJprf} - param: ${req} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.autorunFormulaFromJprf} - param: ${JSON.stringify(req)} `); // #DEBUG
 				await this.proveFormulaRequest(req, { autorun: true, useJprf: true, quiet: true });
 			});
 			this.connection?.onRequest(serverRequest.showProofLite, async (args: PvsFormula) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.showProofLite} - param: ${args} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.showProofLite} - param: ${JSON.stringify(args)} `); // #DEBUG
 				await this.showProofLiteRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.proofCommand, async (args: PvsProofCommand) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.proofCommand} - param: ${args} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.proofCommand} - param: ${JSON.stringify(args)} `); // #DEBUG
 				await this.proofExplorer?.proofCommandRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.getGatewayConfig, async () => {
@@ -2411,23 +2432,23 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			});
 
 			this.connection?.onRequest(serverRequest.getNasalibDownloader, async (req: NASALibDownloaderRequest) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.getNasalibDownloader} - param: ${req} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.getNasalibDownloader} - param: ${JSON.stringify(req)} `); // #DEBUG
 				const downloader: NASALibDownloader = await PvsPackageManager.getNasalibDownloader(req);
 				const res: NASALibDownloaderResponse = { downloader };
 				this.connection?.sendNotification(serverRequest.getNasalibDownloader, { req, res });
 			});
 			this.connection?.onRequest(serverRequest.listVersionsWithProgress, async (req: ListVersionsWithProgressRequest) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.listVersionsWithProgress} - param: ${req} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.listVersionsWithProgress} - param: ${JSON.stringify(req)} `); // #DEBUG
 				const res: ListVersionsWithProgressResponse = await PvsPackageManager.listDownloadableVersionsWithProgress(this.connection, req);
 				this.connection?.sendNotification(serverRequest.listVersionsWithProgress, { req, res });
 			});
 			this.connection?.onRequest(serverRequest.installWithProgress, async (req: InstallWithProgressRequest) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.installWithProgress} - param: ${req} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.installWithProgress} - param: ${JSON.stringify(req)} `); // #DEBUG
 				const res: InstallWithProgressResponse = await PvsPackageManager.installWithProgress(this.connection, req);
 				this.connection?.sendNotification(serverRequest.installWithProgress, { req, res });
 			});
 			this.connection?.onRequest(serverRequest.downloadWithProgress, async (req: DownloadWithProgressRequest) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.downloadWithProgress} - param: ${req} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.downloadWithProgress} - param: ${JSON.stringify(req)} `); // #DEBUG
 				const res: DownloadWithProgressResponse = await PvsPackageManager.downloadWithProgress(this.connection, req);
 				this.connection?.sendNotification(serverRequest.downloadWithProgress, { req, res });
 			});
@@ -2442,30 +2463,30 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				this.connection?.sendRequest(serverEvent.downloadLicensePageResponse, { response: licensePage });
 			});
 			this.connection?.onRequest(serverRequest.startEvaluator, async (args: PvsioEvaluatorCommand) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.startEvaluator} - param: ${args} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.startEvaluator} - param: ${JSON.stringify(args)} `); // #DEBUG
 				await this.startEvaluatorRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.quitEvaluator, async (args: PvsTheory) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.quitEvaluator} - param: ${args} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.quitEvaluator} - param: ${JSON.stringify(args)} `); // #DEBUG
 				await this.quitEvaluatorRequest(args);
 				this.connection.sendRequest(serverEvent.quitEvaluatorResponse);
 			});
 			this.connection?.onRequest(serverRequest.evaluatorCommand, async (args: PvsioEvaluatorCommand) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.evaluatorCommand} - param: ${args} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.evaluatorCommand} - param: ${JSON.stringify(args)} `); // #DEBUG
 				await this.pvsioEvaluatorCommandRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.evalExpression, async (args: EvalExpressionRequest) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.evalExpression} - param: ${args} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.evalExpression} - param: ${JSON.stringify(args)} `); // #DEBUG
 				await this.evalExpressionRequest(args);
 			});
 			this.connection?.onRequest(serverRequest.pvsDoc, async (req: PvsDocRequest) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.pvsDoc} - param: ${req} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.pvsDoc} - param: ${JSON.stringify(req)} `); // #DEBUG
 				await this.pvsDocRequest(req);
 			});
 
 			// search request
 			this.connection?.onRequest(serverRequest.search, async (req: SearchRequest) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.search} - param: ${req} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.search} - param: ${JSON.stringify(req)} `); // #DEBUG
 				const ans: SearchResult[] = 
 					req?.library === "nasalib" ? await this.searchNasalib(req)
 					: req?.library === "pvslib" ? await this.searchPvsLibraryPath(req)
@@ -2476,7 +2497,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 
 			// find declaration request
 			this.connection?.onRequest(serverRequest.findSymbolDeclaration, async (req: FindSymbolDeclarationRequest) => {
-			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.findSymbolDeclaration} - param: ${req} `); // #DEBUG
+			  console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.findSymbolDeclaration} - param: ${JSON.stringify(req)} `); // #DEBUG
 				const ans: PvsDefinition[] = await this.definitionProvider.findSymbolDefinitionInTheory(req?.theory, req?.symbolName);
 				const res: FindSymbolDeclarationResponse = { req, ans };
 				this.connection?.sendRequest(serverEvent.findSymbolDeclarationResponse, res);
@@ -2630,6 +2651,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					const wsEdit: WorkspaceEdit = await this.renameProvider.provideRename({ txt, uri, position: args.position, newName: args.newName });
 					if (wsEdit && wsEdit.changes && Object.keys(wsEdit.changes) && Object.keys(wsEdit.changes).length) {
 						const cdesc: PvsContextDescriptor = await this.getContextDescriptor({ contextFolder: fsUtils.getContextFolder(uri) });
+						console.log(`[pvsLanguageServer.onRenameRequest] sending req context update ${JSON.stringify(cdesc)}`);
 						this.connection?.sendRequest(serverEvent.contextUpdate, cdesc);	
 					}
 					return {};

@@ -1150,7 +1150,7 @@ export interface DidAutocompleteEvent extends AutocompleteData {
     }
 
     /**
-     * Utility function, pushes the given command to the history, if the command is not present alreayd.
+     * Utility function, pushes the given command to the history, if the command is not present already.
      * Additionally, the function clears the current command and resets the index
      */
     push (cmd: string, opt?: { successHistory?: boolean }): void {

@@ -155,7 +155,7 @@ export class EventsDispatcher {
             state: string
         }) => {
             console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.evaluatorCommandResponse} - param: ${data}`); //DEBUG
-            // do nothing -- this is just a placeholder, the actual handler is in vscoePvsioWeb.ts
+            // do nothing -- this is just a placeholder, the actual handler is in vscodePvsioWeb.ts
         });
 		this.client.onRequest(serverEvent.pvsVersionInfo, async (version: PvsVersionDescriptor) => {
 		  console.log(`[${fsUtils.generateTimestamp()}] `+`[eventsDispatcher] responding request ${serverEvent.pvsVersionInfo} - param: ${version} `); // #DEBUG

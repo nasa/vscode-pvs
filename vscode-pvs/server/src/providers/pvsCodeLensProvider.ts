@@ -109,7 +109,7 @@ export class PvsCodeLensProvider {
                             command: {
                                 title: "typecheck-file",
                                 command: "vscode-pvs.typecheck-file",
-                                arguments: [ theory ]
+                                arguments: [ pvsFile ]
                             }
                         });
                         codeLens.push({

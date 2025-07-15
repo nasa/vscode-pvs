@@ -38,7 +38,7 @@
 import * as path from 'path';
 import { 
 	TextDocument, window, workspace, ExtensionContext, TextEditor, TextDocumentChangeEvent, 
-	commands, ConfigurationChangeEvent, Uri, FileRenameEvent, WindowState
+	commands, ConfigurationChangeEvent, Uri, FileRenameEvent, WindowState, env
 } from 'vscode';
 import { LanguageClient, LanguageClientOptions, TransportKind, ServerOptions, CancellationToken } from 'vscode-languageclient';
 import { VSCodePvsDecorationProvider } from './providers/vscodePvsDecorationProvider';
@@ -60,7 +60,7 @@ import { VSCodePvsSearch } from './views/vscodePvsSearch';
 import { VSCodePvsioWeb } from './views/vscodePvsioWeb';
 import { VSCodePvsXTerm } from './views/vscodePvsXTerm';
 import { XTermColorTheme } from './common/colorUtils';
-import { getActivePvsEditor } from './utils/vscode-utils';
+import { getActivePvsEditor, registerDevContainerCommands, setDevContainerConfig, setRuntimeEnvContext } from './utils/vscode-utils';
 import { VSCodePvsFileViewer } from './views/vscodePvsFileViewer';
 
 const server_path: string = path.join('server', 'out', 'pvsLanguageServer.js');
@@ -136,6 +136,8 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 	protected getPvsPath (): string {
 		return vscodeUtils.getConfiguration("pvs.path");
 	}
+
+	tunnelPidList: number[];
 
 	/**
 	 * Internal function, autosaves pvs files with frequency AUTOSAVE_INTERVAL
@@ -272,7 +274,11 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				pvsLibraryPath = fsUtils.prunePvsLibraryPath(vscodeUtils.getPvsLibraryPath());
 				pvsLibraryPathChanged = (this.pvsLibraryPath !== pvsLibraryPath);
 			}
-			if(pvsPathChanged || pvsLibraryPathChanged){
+			let remoteDetailsChanged: boolean = false;
+			if (event.affectsConfiguration("pvs.activateRemote")||event.affectsConfiguration("pvs.remoteServerIP")||event.affectsConfiguration("pvs.remoteServerPort")||event.affectsConfiguration("pvs.privateSSHKeyPath")||event.affectsConfiguration("pvs.remoteHostname")){
+				remoteDetailsChanged = true;
+			}
+			if(pvsPathChanged || pvsLibraryPathChanged || remoteDetailsChanged){
 				let pvsServerHasToBeRestarted: boolean = true;
 				if (this.pvsPath === '' && pvsPath !== ''){
 					// If pvsPath was set, and pvsLibraryPath was empty and NASALib is not in the pvsLibraryPath, we suggest the user to get it
@@ -286,19 +292,33 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				} else {
 					// if the pvs path was cleared, we'll suggest NASALib again when a new PVS is selected
 					this.alreadySuggestedNASALib = this.alreadySuggestedNASALib && !(pvsPath === undefined || pvsPath === '');
-				}	
+				}
 				this.pvsPath = pvsPath || this.pvsPath; // #TODO this prevents removing the PVS folder... is this what we want?
 				this.pvsLibraryPath = pvsLibraryPath;
 				if (this.pvsPath && pvsServerHasToBeRestarted) {
 					const msg: string = `Restarting PVS from ${this.pvsPath}`;
+					const remoteDetails = vscodeUtils.getRemoteDetail(this.context);
 					this.statusBar.showProgress(msg);
 					// window.showInformationMessage(msg);
 					this.client.sendRequest(serverRequest.startPvsServer, {
 						pvsPath: this.pvsPath, 
 						pvsLibraryPath: this.pvsLibraryPath, 
 						externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
-						webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber")
+						webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber"),
+						remote: remoteDetails
 					}); // the server will use the last context folder it was using	
+				} else if (remoteDetailsChanged) {
+					const msg: string = `Restarting PVS from ${this.pvsPath}`;
+					const remoteDetails = vscodeUtils.getRemoteDetail(this.context);
+					this.statusBar.showProgress(msg);
+					// window.showInformationMessage(msg);
+					this.client.sendRequest(serverRequest.startPvsServer, {
+						pvsPath: this.pvsPath, 
+						pvsLibraryPath: this.pvsLibraryPath, 
+						externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
+						webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber"),
+						remote: remoteDetails
+					});
 				}
 			}
 
@@ -372,7 +392,10 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			synchronize: {
 				// Notify the server about file changes to '.clientrc files contained in the workspace
 				fileEvents: workspace.createFileSystemWatcher('**/.clientrc')
-			}
+			},
+			initializationOptions: {
+            	extensionPath: context.extensionPath
+        	}
 		};
 		// Create the language client and start the client.
 		this.client = new LanguageClient(
@@ -463,6 +486,20 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			});
 			this.eventsDispatcher.activate(context);
 			
+			// add default container file to appopriate path in globalStorage if it doesn't exist and add commands for devcontainer
+			try{
+			const remoteName = env.remoteName;
+			if (!remoteName){
+				setRuntimeEnvContext('other');
+				registerDevContainerCommands(this.context);
+				setDevContainerConfig(this.context);
+			} else {
+				setRuntimeEnvContext(remoteName);
+			}
+			} catch (error){
+				console.log(error);
+			}
+
 			// start PVS
 			// the server will respond with one of the following events: pvsServerReady, pvsNotPresent, pvsIncorrectVersion
 			var contextFolder;
@@ -476,12 +513,15 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 			this.pvsPath = vscodeUtils.getConfiguration("pvs.path");
 			this.alreadySuggestedNASALib = this.alreadySuggestedNASALib && !(this.pvsPath === undefined || this.pvsPath === '');
 			this.pvsLibraryPath = vscodeUtils.getPvsLibraryPath();
+			const remoteDetails = vscodeUtils.getRemoteDetail(context);
+			console.log(`Remote details: ${remoteDetails.remoteServerIP}, ${remoteDetails.remoteServerPort}, ${remoteDetails.privateSSHKeyPath}, ${remoteDetails.remoteHostname}`);
 			this.client.sendRequest(serverRequest.startPvsServer, {
 				pvsPath: this.pvsPath,
 				pvsLibraryPath: this.pvsLibraryPath,
 				contextFolder,
 				externalServer: vscodeUtils.getConfigurationFlag("pvs.externalServer"),
 				webSocketPort: vscodeUtils.getConfigurationValue("pvs.initialPortNumber"),
+				remote: remoteDetails
 			});
 			// set vscode context variable pvs-server-active to true -- this will create the PVS icon on the activity bar
 			commands.executeCommand('setContext', 'pvs-server-active', true);
@@ -525,6 +565,15 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 					}
 				}
 			});
+			this.client.onRequest("update-token", (token: string) => {
+				context.globalState.update('sessionTokenPVS', token);
+			});
+			this.client.onRequest("pvs.tunnelPid", (pid) => {
+				if (this.tunnelPidList===undefined){
+					this.tunnelPidList= new Array<number>;
+				}
+				this.tunnelPidList.push(parseInt(pid));
+			});
 		});
 	}
 	/**
@@ -557,6 +606,13 @@ export function activate(context: ExtensionContext) {
 
 export function deactivate(): Thenable<void> {
 	return new Promise((resolve, reject) => {
+		pvsLanguageClient.tunnelPidList.forEach(pid => {
+			try{
+			process.kill(pid,"SIGKILL");
+			} catch (err){
+				console.log("Error while deleting pid: ",pid);
+			}
+		});
 		pvsLanguageClient.stop().then(() => {
 			resolve();
 		});
