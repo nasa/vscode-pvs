@@ -1460,7 +1460,7 @@ export class EventsDispatcher {
             if (desc?.theoryName && formulaName) {
                 opt = opt || {};
                 // ask the user confirmation before discharging
-                const yesno: string[] = [ `Match ${formulaName}`, "All TTCs", "No" ];
+                const yesno: string[] = [ `Match ${formulaName}`, "All TCCs", "No" ];
                 const msg: string = opt.useJprf ? `Discharge TCCs using J-PRF?` : `Discharge TCCs?`;
                 const ans: string = await vscode.window.showInformationMessage(msg, { modal: true, detail: "Press 'Esc' to Cancel" }, yesno[0], yesno[1]);
                 if (ans === yesno[0] || ans === yesno[1]) {

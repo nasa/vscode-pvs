@@ -1366,6 +1366,7 @@ export class VSCodePvsWorkspaceExplorer extends Explorer { //implements TreeData
 				if (response && response.error) {
 					vscodeUtils.showErrorMessage(response.error);
 					vscodeUtils.showProblemsPanel();
+					return reject(null);
 				}
 				return response ? resolve(response.theorems) : resolve(null);
 			});

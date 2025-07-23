@@ -954,7 +954,12 @@ export async function getPvsTheory (resource: PvsFormula | PvsTheory | FormulaIt
                     };
                 }
             }
-            return resource;
+            return {
+                        contextFolder: resource.contextFolder,
+                        fileName: resource.fileName,
+                        fileExtension: resource.fileExtension,
+                        theoryName: resource.theoryName
+                    };
         }
     }
     return null;

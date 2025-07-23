@@ -308,7 +308,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 */
 	async getImportChainTheoremsRequest (theory: PvsTheory): Promise<void> {
 		if (this.pvsProxy) {
-			const res: PvsResponse = await this.typecheckFile(theory);
+			const res: PvsResponse = await this.typecheckFile(this.getPvsFile(theory));
 			if (res && !res.error) {
 				const theorems: PvsFormula[] = await this.pvsProxy?.getTheorems(theory, { includeImportChain: true });
 				this.connection?.sendRequest(serverEvent.getImportChainTheoremsResponse, { theorems });
@@ -326,7 +326,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			const fname: string = fsUtils.desc2fname(theory);
 			const taskId: string = `typecheck-${fname}`;
 			this.notifyStartImportantTask({ id: taskId, msg: `Typechecking ${fname}`, taskName: serverRequest.typecheckFile, affectedObject: fname });
-			const res: PvsResponse = await this.typecheckFile(theory, { progressReporter: (msg: string) => {this.notifyProgressImportantTask({ id: taskId, msg: msg, increment: -1})}});
+			const res: PvsResponse = await this.typecheckFile(this.getPvsFile(theory), { progressReporter: (msg: string) => {this.notifyProgressImportantTask({ id: taskId, msg: msg, increment: -1})}});
 			if (res && !res.error) {
 				this.notifyEndImportantTask({ id: taskId, msg: `${theory.fileName}${theory.fileExtension} typechecks successfully!` });
 				const theorems: PvsFormula[] = await this.pvsProxy?.getTheorems(theory);
@@ -345,7 +345,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 */
 	async getTccsRequest (theory: PvsTheory): Promise<void> {
 		if (this.pvsProxy) {
-			const res: PvsResponse = await this.typecheckFile(theory);
+			const res: PvsResponse = await this.typecheckFile(this.getPvsFile(theory));
 			if (res && !res.error) {
 				const theorems: PvsFormula[] = await this.pvsProxy?.getTheorems(theory, { tccsOnly: true });
 				this.connection?.sendRequest(serverEvent.getTccsResponse, { theorems });
@@ -527,6 +527,21 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		await this.pvsioProxy?.quitEvaluator(theory);
 	}
 	/**
+	 * 
+	 * @param theory a non-null PvsTheory
+	 * @returns the file information from the given theory
+	 * @author @m3
+	 */
+	getPvsFile(theory: PvsTheory): PvsFile {
+		let file: PvsTheory = { ...theory};
+		delete file.theoryName;
+		return { 
+			fileName: theory.fileName, 
+			fileExtension: theory.fileExtension, 
+			contextFolder: theory.contextFolder,
+			fileContent: (theory.fileContent? theory.fileContent : undefined) };
+	}
+	/**
 	 * Start pvsio evaluator request handler
 	 */
 	async startEvaluatorRequest (theory: PvsTheory): Promise<void> {
@@ -540,9 +555,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 		const taskId: string = `pvsio-${theory.fileName}@${theory.theoryName}`;
 		this.notifyStartImportantTask({ id: taskId, msg: `Loading files necessary to evaluate theory ${theory.theoryName}` });
 		// make sure the theory typechecks before starting the evaluator
-		let file: PvsTheory = { ...theory};
-		delete file.theoryName;
-		let response: PvsResponse = await this.typecheckFile(file);
+		let response: PvsResponse = await this.typecheckFile(this.getPvsFile(theory));
 		if (response && response.result) {
 			// start pvsio evaluator
 			response = await this.pvsProxy.startPvsIo(theory);
@@ -1134,7 +1147,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * Parse file request handler
 	 */
 	async statusProofChainRequest (req: PvsFormula): Promise<void> {
-		await this.typecheckFile(req);
+		await this.typecheckFile(this.getPvsFile(req));
 		await this.generateTccsRequest(req);
 		const ans: PvsResponse = await this.pvsProxy?.statusProofChain(req);
 		const res: StatusProofChain = {
