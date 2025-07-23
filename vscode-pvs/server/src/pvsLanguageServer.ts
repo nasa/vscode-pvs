@@ -71,7 +71,6 @@ import * as path from 'path';
 import { PvsProxy } from './pvsProxy';
 import { PvsResponse, PvsError, ImportingDecl, TypedDecl, FormulaDecl } from './common/pvs-gui';
 import { PvsPackageManager } from './providers/pvsPackageManager';
-import { PvsIoProxy } from './pvsioProxy';
 import { PvsErrorManager } from './pvsErrorManager';
 import { ProcessCode } from './pvsProcess';
 import { PvsProofExplorer } from './providers/pvsProofExplorer';
@@ -119,7 +118,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	protected timers: { [ key:string ]: NodeJS.Timer } = {};
 	// proxy servers
 	protected pvsProxy: PvsProxy;
-	protected pvsioProxy: PvsIoProxy; // this is necessary for the moment because pvs-server does not have APIs for pvsio
 	// connection to the client
 	protected connection: Connection;
 	// list of documents opened in the editor
@@ -483,9 +481,13 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 */
 	async evalExpressionRequest (req: EvalExpressionRequest): Promise<void> {
 		req = fsUtils.decodeURIComponents(req);
-		const workspaceFolders: WorkspaceFolder[] = await this.connection?.workspace?.getWorkspaceFolders();
-		const res: PvsResponse = await this.pvsioProxy?.evalExpression(req, { workspaceFolders, pvsLibraryPath: this.pvsLibraryPath });
-		this.connection?.sendNotification(serverRequest.evalExpression, { req, res });
+		const	pvsIoStartResponse = await this.pvsProxy.startPvsIo(this.createPvsTheory(req));
+		if (pvsIoStartResponse && pvsIoStartResponse.result) {
+			const response = await this.pvsProxy.evaluateInPvsIoSession({sessionId: pvsIoStartResponse.result.id, expr: req.expr, evaluateAsLisp: false});
+			await this.pvsProxy.evaluateInPvsIoSession({sessionId: pvsIoStartResponse.result.id, expr: "quit", evaluateAsLisp: false});
+			this.connection?.sendNotification(serverRequest.evalExpression, { req, response });
+		} else
+				this.connection?.sendNotification(serverRequest.evalExpression, { req, pvsIoStartResponse });
 	}
 	/**
 	 * Evaluator command handler -- this is used during interactive pvsio sessions
@@ -503,9 +505,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			pvsIoInput = pvsIoInput.substring(0, lastCharIdx)
 		let response: PvsResponse;
 		if (tailChar === ";")
-				response = await this.pvsProxy.evaluateInPvsIoSession({expr: pvsIoInput, evaluateAsLisp: false});
+				response = await this.pvsProxy.evaluateInPvsIoSession({sessionId: this.pvsioCurrentSessionId, expr: pvsIoInput, evaluateAsLisp: false});
 		else if(tailChar === "!")
-				response = await this.pvsProxy.evaluateInPvsIoSession({expr: pvsIoInput, evaluateAsLisp: true});
+				response = await this.pvsProxy.evaluateInPvsIoSession({sessionId: this.pvsioCurrentSessionId, expr: pvsIoInput, evaluateAsLisp: true});
 		else {
 				this.pvsErrorManager?.handleEvaluationError({ request: req, response: {jsonrpc: "2.0", id: "N/A", error: { code: -1, message: `Input ${[pvsIoInput]} cannot be evaluated: Unknown termination char`}}});	
 				return; }
@@ -523,8 +525,21 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	/**
 	 * Quit pvsio evaluator request handler
 	 */
-	async quitEvaluatorRequest (theory: PvsTheory): Promise<void> {
-		await this.pvsioProxy?.quitEvaluator(theory);
+	async quitEvaluatorRequest (theory: PvsTheory): Promise<PvsResponse> {
+		return (this.pvsioCurrentSessionId? await this.pvsProxy.evaluateInPvsIoSession({sessionId: this.pvsioCurrentSessionId, expr: "quit", evaluateAsLisp: false}): null);
+	}
+	/**
+	 * Function to create a PvsTheory object from any of its descendents
+	 * @param theory 
+	 * @returns 
+	 */
+	createPvsTheory(theory: PvsTheory): PvsTheory {
+		return { 
+			fileName: theory.fileName, 
+			fileExtension: theory.fileExtension, 
+			contextFolder: theory.contextFolder,
+			fileContent: (theory.fileContent? theory.fileContent : undefined),
+			theoryName: theory.theoryName };
 	}
 	/**
 	 * 
@@ -533,14 +548,18 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 	 * @author @m3
 	 */
 	getPvsFile(theory: PvsTheory): PvsFile {
-		let file: PvsTheory = { ...theory};
-		delete file.theoryName;
 		return { 
 			fileName: theory.fileName, 
 			fileExtension: theory.fileExtension, 
 			contextFolder: theory.contextFolder,
 			fileContent: (theory.fileContent? theory.fileContent : undefined) };
 	}
+
+	/**
+	 * persistent pvsio session (used for pvsio console interaction) @m3
+	 */
+	pvsioCurrentSessionId: string;
+
 	/**
 	 * Start pvsio evaluator request handler
 	 */
@@ -561,9 +580,10 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			response = await this.pvsProxy.startPvsIo(theory);
 
 			if (response && response.result) {
+				this.pvsioCurrentSessionId = response.result?.id; // #TODO @M3 error handling!
 				this.connection?.sendRequest(serverEvent.startEvaluatorResponse, { response, args: theory });
-			this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });
-			this.notifyServerMode("pvsio");
+				this.notifyEndImportantTask({ id: taskId, msg: "PVSio evaluator session ready!" });
+				this.notifyServerMode("pvsio");
 			}
 		} 
 		
@@ -779,8 +799,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 						}
 					}
 				}
-				// clear pvsio cache
-				this.pvsioProxy.clearCache();
 				return response;
 			} catch (ex) {
 				console.error('[pvs-language-server.typecheckFile] Error: pvsProxy has thrown an exception', ex);
@@ -2037,7 +2055,6 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 							remote: desc.remote,
 							extensionPath : this.extensionPath
 						 } );
-					this.pvsioProxy = new PvsIoProxy(this.pvsPath, { connection: this.connection, pvsLibraryPath: this.pvsLibraryPath });
 					this.createServiceProviders();
 				}	
 				const success: ProcessCode = await this.pvsProxy?.activate({

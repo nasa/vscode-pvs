@@ -1675,20 +1675,16 @@ export class PvsProxy {
 		return "untried";
 	}
 
-	// #TODO @M3 pvsProxy shouldn't be responsible to carry this info
-	pvsioCurrentSessionId: string;
-
-	async evaluateInPvsIoSession(desc: { sessionId?: string, expr: string, evaluateAsLisp: boolean }): Promise<PvsResponse> {
+	async evaluateInPvsIoSession(desc: { sessionId: string, expr: string, evaluateAsLisp: boolean }): Promise<PvsResponse> {
 		if (desc) {
 			const res: PvsResponse = await this.pvsRequest('pvsio-eval', 
-				[desc.sessionId || this.pvsioCurrentSessionId, desc.expr, (desc.evaluateAsLisp?"lisp":"pvs")]);
+				[desc.sessionId, desc.expr, (desc.evaluateAsLisp?"lisp":"pvs")]);
 			return res;
 		} else return null;
 	}
 
 	async startPvsIo(theory: PvsTheory): Promise<PvsResponse> {
 		let res: PvsResponse = await this.pvsRequest("pvsio-start", [theory]);
-		this.pvsioCurrentSessionId = res.result?.id; // #TODO @M3 error handling!
 		return res;
 	}
 	/**

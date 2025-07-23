@@ -44,6 +44,7 @@ import * as utils from '../common/languageUtils';
 import * as path from 'path';
 import * as Handlebars from "handlebars";
 import { Uri } from "vscode";
+import * as vscodeUtils from '../utils/vscode-utils';
 
 const MAX_INNER_LABEL_LEN: number = 128;
 const MAX_TAB_LABEL_LEN: number = 24;
@@ -119,39 +120,49 @@ export class VSCodePvsPlotter {
                 const expr: string = desc.expr;
                 const label: string = expr.length > MAX_INNER_LABEL_LEN ? expr.substring(0, MAX_TAB_LABEL_LEN) + "..." : expr;
                 // @M3 The plotter needs the result not to be expressed as decimals (as is the default now in PVSio)
-                desc.expr = "push[bool](PP_RATIONALS,false); " + desc.expr;
-                // create webview
-                this.panel = vscode.window.createWebviewPanel(
-                    'vscode-pvs.plot-expression', // Identifies the type of the webview. Used internally
-                    `plot-expression ${label}`, // Title of the panel displayed to the user
-                    vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
-                    {
-                        enableScripts: true,
-                        retainContextWhenHidden: true
-                    } // Webview options.
-                );
-                // set panel icon
-                this.panel.iconPath = {
-                    light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png")),
-                    dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png"))
-                };
-                // set webview content
-                this.panel.webview.html = this.createContent({ expr });
+                desc.expr = `prog(push[bool](PP_RATIONALS,false),${desc.expr})`;
                 // send request to server
                 this.client.sendRequest(serverRequest.evalExpression, desc);
                 this.client.onNotification(serverRequest.evalExpression, async (desc: {
                     req: PvsioEvaluatorCommand,
-                    res: PvsResponse
+                    response: PvsResponse
                 }) => {
-                    var data: string = desc?.res?.result || desc?.res?.error;
+                    var data: string = desc?.response.result?.pvsResult;
+                    const errorMsg: string = desc?.response.result?.errOut || desc?.response.result?.stdOut || desc?.response.error;
                     // remove output prompts and new lines @M3
                     data = data?.replace(/\n/g, '').replace(/==>/g, '');
                     // update plot
-                    this.panel.webview.html = this.createContent({
-                        expr,
-                        data: data
-                    });
-                    resolve(true);
+                    if (data) {
+                        // create webview
+                        this.panel = vscode.window.createWebviewPanel(
+                            'vscode-pvs.plot-expression', // Identifies the type of the webview. Used internally
+                            `plot-expression ${label}`, // Title of the panel displayed to the user
+                            vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
+                            {
+                                enableScripts: true,
+                                retainContextWhenHidden: true
+                            } // Webview options.
+                        );
+                        // set panel icon
+                        this.panel.iconPath = {
+                            light: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png")),
+                            dark: Uri.file(path.join(__dirname, "..", "..", "..", "icons", "pvs-file-icon.png"))
+                        };
+                        // set webview content
+                        // this.panel.webview.html = this.createContent({ expr });
+
+                        this.panel.webview.html = this.createContent({
+                            expr,
+                            data: data
+                        });
+                        resolve(true);
+                    } else {
+                        if (errorMsg) 
+                            vscodeUtils.showErrorMessage(`Error when evaluating the expression ${expr}: ${errorMsg}`, -1);
+                        else 
+                            vscodeUtils.showErrorMessage(`No response received when trying to evaluate the expression ${expr}`, -1);
+                        reject(false);
+                    }
                 });
             } else {
                 resolve(false);

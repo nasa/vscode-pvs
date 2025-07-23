@@ -393,8 +393,11 @@ export async function showInformationMessageWithOpenFile (msg: string, desc: Fil
 /**
  * Utility function, shows a dialog presenting an error message.
  */
-export function showErrorMessage (message: string, timeout?: number): void {
-    showInformationMessage(`${utils.icons.bang} ${message}`, { timeout: timeout || 6000 });
+export async function showErrorMessage (message: string, timeout?: number): Promise<void> {
+    if (timeout < 0){
+        await vscode.window.showInformationMessage(message, { modal: true });  
+    } else
+        showInformationMessage(`${utils.icons.bang} ${message}`, { timeout: timeout || 6000 });
 }
 /**
  * Utility function, shows a dialog presenting a warning message.
