@@ -49,7 +49,8 @@ import {
 	PvsFile, ProofExecDidImportProof, ProofExecRewind,
 	ProofExecDidStopRunning, ProofCommandResponse, ProofOrigin, PvsProofState,
 	ProveFormulaRequest, ProofExecDidQuitProof, FileDescriptor, ProofEditDidUpdateDirtyFlag,
-	serverRequest, SaveProofResponse, ProofExecRunSubtree, ProofEditJumpHere
+	serverRequest, SaveProofResponse, ProofExecRunSubtree, ProofEditJumpHere,
+	PvsTheory
 } from '../common/serverInterface';
 import * as languageUtils from '../common/languageUtils';
 import * as fsUtils from '../common/fsUtils';
@@ -2482,14 +2483,9 @@ export class PvsProofExplorer {
 				console.error(msg);
 			} else {
 				// save proof to prf file
-				const theoryRef: string = this.formula.fileName + this.formula.fileExtension + "#" + this.formula.theoryName;
-				let response: PvsResponse;
-				if (this.pvsProxy.remoteActive) {
-					response = await this.pvsProxy.pvsRequestRemote("save-all-proofs", [theoryRef]);
-
-				} else {
-					response = await this.pvsProxy?.saveAllModifiedProofsIntoPrfFile(theoryRef);
-				}
+				let pvsTheory = {...this.formula};
+				delete pvsTheory.formulaName;
+				let response: PvsResponse = await this.pvsProxy.pvsRequest("save-all-proofs", [<PvsTheory>pvsTheory]);
 				success = !!(response?.result);
 				if (!success) {
 					msg = response?.error?.data?.error_string;
