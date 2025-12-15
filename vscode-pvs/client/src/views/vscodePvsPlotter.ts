@@ -120,17 +120,21 @@ export class VSCodePvsPlotter {
                 const expr: string = desc.expr;
                 const label: string = expr.length > MAX_INNER_LABEL_LEN ? expr.substring(0, MAX_TAB_LABEL_LEN) + "..." : expr;
                 // @M3 The plotter needs the result not to be expressed as decimals (as is the default now in PVSio)
-                desc.expr = `prog(push[bool](PP_RATIONALS,false),${desc.expr})`;
+                // desc.expr = `prog(push[bool](PP_RATIONALS,false),${desc.expr})`;
+                // @PM the latest version of PVSio pretty prints rationals with an overbar and umlat
+                // e.g., 1.414998¨ 0.6̅
+                desc.expr = `LET rat = set(PP_RATIONALS,true) IN ${desc.expr}`;
                 // send request to server
                 this.client.sendRequest(serverRequest.evalExpression, desc);
                 this.client.onNotification(serverRequest.evalExpression, async (desc: {
                     req: PvsioEvaluatorCommand,
                     response: PvsResponse
                 }) => {
-                    var data: string = desc?.response.result?.pvsResult;
-                    const errorMsg: string = desc?.response.result?.errOut || desc?.response.result?.stdOut || desc?.response.error?.data;
-                    // remove output prompts and new lines @M3
-                    data = data?.replace(/\n/g, '').replace(/==>/g, '');
+                    const errorMsg: string = desc?.response?.result?.errOut || desc?.response?.result?.stdOut || desc?.response?.error?.data;
+                    // remove new lines and overbars @PM
+                    const overbar: string = '\u0305';
+                    const umlat: string = '¨';
+                    const data: string = desc?.response?.result?.pvsResult?.replace(/\n/g, '')?.replace(new RegExp(overbar, 'g'), '')?.replace(new RegExp(umlat, 'g'), '');
                     // update plot
                     if (data) {
                         // create webview
