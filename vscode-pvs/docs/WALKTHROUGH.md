@@ -58,8 +58,8 @@ When a pvs file is open in the editor, the editor will automatically highlight k
 - Parsing errors are automatically detected and are underlined with a red squiggle
 
 ## Typechecking theories
-To typecheck a theory, click the `build` icon in the editor toolbar
-Alternatively, you can also use an inline actionable command 'typecheck' available next to the theory name.
+To typecheck a theory, click the typecheck icon (![check](../icons/svg-typecheck-file-white-icon.svg "typecheck")) in the editor toolbar. 
+Alternatively, you can also use the inline actionable command `typecheck` shown at the top of the pvs file above the theory name.
 - If typecheck errors are detected, the errors will be underlined with a red squiggle in the editor, and also shown in the Problems panel
 - If the theory typechecks correctly, you can proceed to proving theorems
 

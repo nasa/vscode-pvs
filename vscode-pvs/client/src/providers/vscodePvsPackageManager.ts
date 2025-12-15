@@ -310,6 +310,12 @@ export class VSCodePvsPackageManager {
 					// update pvsPath with the current version info
 					pvsPath = path.join(baseFolder, `pvs-${info.version}`);
 					let pvsExecutable: string = path.join(pvsPath, "pvs");
+                    // @PM if the user is asking to (re-)install PVS, we need to clean up the folder in case there's already an installation there
+                    if (fsUtils.fileExists(pvsExecutable) && item.title === this.messages.downloadPvs) {
+                        console.log(`Cleaning up installation folder ${pvsPath}`);
+                        const success: boolean = fsUtils.deleteFolder(pvsPath);
+                        console.log(`Clean success: ${success}`);
+                    }
 					if (!fsUtils.fileExists(pvsExecutable) || opt?.update || opt?.force) {
 						this.terminal.log(colorText(`Installing PVS to ${pvsPath}`, PvsColor.blue), { addNewLine: true });
 						const makefileOnDisk: string = path.join(this.context.extensionPath, 'extra/Makefile-PVS8');
@@ -687,7 +693,7 @@ export class VSCodePvsPackageManager {
 								'install-nasalib',
                                 `-f ${makefileOnDisk}`,
                                 `PVS_PATH=${pvsPath}`,
-                                `NASALIB_FOLDEr=${nasalibFolderName}`,
+                                `NASALIB_FOLDER=${nasalibFolderName}`,
                                 `NASALIB_PATH=${targetFolder}`
 							]
 						};
