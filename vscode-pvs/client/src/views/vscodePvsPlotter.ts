@@ -55,7 +55,7 @@ const htmlTemplate: string = `
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{title}}</title>
+    <title>{{expr}}</title>
     {{#if style}}
     <style type="text/css">{{style}}</style>
     {{/if}}
@@ -158,7 +158,7 @@ export class VSCodePvsPlotter {
                         this.panel.webview.html = this.createContent({
                             expr,
                             data: data
-                        });
+                        }, { title: desc?.response?.result?.pvsResult }); // show original results in the title
                         resolve(true);
                     } else {
                         if (errorMsg) 
@@ -188,12 +188,12 @@ export class VSCodePvsPlotter {
     /**
      * Internal function, returns the html code for rendering the plot with plotly.js
      */
-    protected getBody (desc: { expr: string, data?: string }, opt?: { title?: string, mode?: utils.PlotMode }): string {
+    protected getBody (desc: { expr: string, data?: string }, opt?: { title?: string, expr?: string, mode?: utils.PlotMode }): string {
         const plotData: utils.PlotData[] = this.getPlotData(desc?.data);
         const plotDataString: string = JSON.stringify(plotData);
-        let title: string = opt?.title || "";
-        title = title.replace(utils.commentRegexp, "").replace(/\s\s+/g, " ").replace(/\n/g, "");
-        title = title.length > MAX_INNER_LABEL_LEN ? title.substring(0, MAX_INNER_LABEL_LEN) + "..." : title;
+        let expr: string = opt?.expr || opt?.title || "";
+        expr = expr.replace(utils.commentRegexp, "").replace(/\s\s+/g, " ").replace(/\n/g, "");
+        expr = expr.length > MAX_INNER_LABEL_LEN ? expr.substring(0, MAX_INNER_LABEL_LEN) + "..." : expr;
         const body: string = desc.data ?`
             <p class="card-text">
                 <label class="btn btn-sm btn-secondary active">
@@ -229,7 +229,7 @@ export class VSCodePvsPlotter {
                             type: opt.yScale || "linear",
                             autorange: true
                         },
-                        title: "${title?.length > 32 ? title?.substring(0,32) + "..." : title}"
+                        title: "${expr?.length > 32 ? expr?.substring(0,32) + "..." : expr}"
                     }, {
                         editable: true,
                         scrollZoom: true,
@@ -256,13 +256,17 @@ export class VSCodePvsPlotter {
      */
     protected createContent (series: { expr: string, data?: string }, opt?: { title?: string }): string {
         opt = opt || {};
-        const title: string = opt.title || series.data || series.expr || "plot-expression";
+        const data: string = series.data || series.expr || "plot-expression"
+        const title: string = opt.title || data;
+        const expr: string = series.expr || series.data;
         // const bootstrapJsOnDisk: vscode.Uri = vscode.Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js'));
         const bootstrapCssOnDisk: vscode.Uri = vscode.Uri.file(path.join(this.context.extensionPath, 'client/node_modules/bootstrap/dist/css/bootstrap.min.css'));
         // const plotlyOnDisk: vscode.Uri = vscode.Uri.file(path.join(this.context.extensionPath, 'client/node_modules/plotly.js/dist/plotly.min.js'));
-        const body: string = this.getBody(series, { title: opt.title || series.expr });
+        const body: string = this.getBody(series, { title, expr });
         const html: string = Handlebars.compile(htmlTemplate, { noEscape: true })({
             title,
+            expr,
+            data,
             js: [
                 // this.panel?.webview?.asWebviewUri(plotlyOnDisk)
             ],
