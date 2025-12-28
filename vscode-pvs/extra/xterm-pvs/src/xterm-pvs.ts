@@ -1,5 +1,6 @@
 import { IBufferRange, ITheme, Terminal as XTerm } from '@xterm/xterm';
-import { CanvasAddon } from '@xterm/addon-canvas';
+// import { CanvasAddon } from '@xterm/addon-canvas'; // this addon no longer exists and we recommend using either the DOM renderer or WebGL
+import { WebglAddon } from '@xterm/addon-webgl'; 
 // import { SearchAddon } from '@xterm/addon-search';
 import { CommandDescriptor, CommandsMap, MathObjects, HintsObject, Position } from './common/serverInterface';
 import * as colorUtils from './common/colorUtils';
@@ -2090,8 +2091,8 @@ export class XTermPvs extends Backbone.Model {
         this.xterm.open(document.getElementById(this.parent));
         // $(".terminal").append(cursorStyle);
 
-        // use the canvas addon to improve performance
-        this.xterm.loadAddon(new CanvasAddon());
+        // use the webgl addon to improve performance
+        this.xterm.loadAddon(new WebglAddon());
         // uncomment the following to use the search addon
         // this.xterm.loadAddon(new SearchAddon());
 

@@ -3,9 +3,8 @@
 	"author": "Paolo Masci",
 	"version": "0.0.2",
 	"dependencies": {
-		"@xterm/addon-canvas": "^0.6.0",
-		"@xterm/addon-search": "^0.14.0",
-		"@xterm/xterm": ">=5.4.0",
+		"@xterm/addon-webgl": "^0.19.0",
+		"@xterm/xterm": "^6.0.0",
 		"animate.css": "^4.1.1",
 		"backbone": "^1.4.0",
 		"bootstrap": "^4.6.0",
