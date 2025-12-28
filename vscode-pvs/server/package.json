@@ -21,7 +21,6 @@
 	},
 	"dependencies": {
 		"typescript": "^5.9.3",
-		"vscode": "^1.1.37",
 		"vscode-languageserver": "^5.2.1",
 		"ws": "^8.18.0"
 	},
