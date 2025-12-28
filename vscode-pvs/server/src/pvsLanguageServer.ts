@@ -452,7 +452,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 					this.proofExplorer?.loadInitialSequent(result);
 
 					// start proof in proof explorer
-					this.proofExplorer?.startProof({ autorun: !!opt.autorun });
+					await this.proofExplorer?.startProof({ autorun: !!opt.autorun });
 
 					// if (result.length > 1) {
 					// 	for (let i = 1; i < response.result.length; i++) {
