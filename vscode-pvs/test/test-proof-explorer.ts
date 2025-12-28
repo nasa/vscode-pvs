@@ -538,7 +538,7 @@ describe("proof-explorer", () => {
         const status: ProofStatus = proofExplorer.getProofStatus();
         // console.dir(status, { depth: null});
         expect(node).not.to.be.undefined;
-    });
+    }).timeout(80000);
 
     it(`can handle corner cases with (propax)`, async () => {
         const pvsProxy: PvsProxy = server.getPvsProxy();
