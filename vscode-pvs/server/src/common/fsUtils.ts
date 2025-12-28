@@ -568,9 +568,23 @@ export function isImageFile(desc: string | { fileName: string, fileExtension: st
  */
 export function isAdobePdfFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
 	if (desc) {
-		const ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
+		let ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
 		if (ext) {
+			ext = ext.toLowerCase();
 			return ext.endsWith(".pdf");
+		}
+	}
+	return false;
+}
+/**
+ * Utility function, returns true if the file extension indicates this is an audio/video file (.mov/.mp4/.mp3)
+ */
+export function isAVFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
+	if (desc) {
+		let ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
+		if (ext) {
+			ext = ext.toLowerCase();
+			return ext.endsWith(".mov") || ext.endsWith(".mp4") || ext.endsWith(".mp3");
 		}
 	}
 	return false;
@@ -580,8 +594,9 @@ export function isAdobePdfFile(desc: string | { fileName: string, fileExtension:
  */
 export function isMarkdownFile(desc: string | { fileName: string, fileExtension: string, contextFolder: string }): boolean {
 	if (desc) {
-		const ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
+		let ext: string = (typeof desc === "string") ? desc : desc?.fileExtension;
 		if (ext) {
+			ext = ext.toLowerCase();
 			return ext.endsWith(".md");
 		}
 	}
@@ -718,8 +733,8 @@ export function desc2fname (desc: FileDescriptor): string {
 export function getCommandOpenWithExternalApp (desc: FileDescriptor): string {
 	const os: OsVersion = getOs();
 	const fname: string = desc2fname(desc);
-	return os?.version === "Linux" ? `xdg-open ${fname}`
-		: os?.version === "MacOSX" ? `open ${fname}`
+	return os?.version === "Linux" ? `xdg-open '${fname}'`
+		: os?.version === "MacOSX" ? `open '${fname}'`
 			: "";
 }
 /**

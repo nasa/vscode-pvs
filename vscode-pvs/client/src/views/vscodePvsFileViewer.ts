@@ -120,15 +120,15 @@ export class VSCodePvsFileViewer {
     /**
      * preview file
      */
-    async open (desc: FileDescriptor): Promise<boolean> {
+    async open (desc: FileDescriptor, opt?: { useDialog?: boolean }): Promise<boolean> {
         return new Promise(async (resolve, reject) => {
             if (desc?.fileName && desc?.contextFolder) {
                 if (fsUtils.isMarkdownFile(desc)) {
                     this.openAsMarkdownPreview(desc);
                 } else if (fsUtils.isPvsFile(desc)) {
                     vscodeUtils.openPvsFile(desc);
-                } else if (fsUtils.isAdobePdfFile(desc) || fsUtils.isImageFile(desc)) {
-                    this.openWithExternalApp(desc); // async call
+                } else if (fsUtils.isAdobePdfFile(desc) || fsUtils.isAVFile(desc)) { // image files are now supported natively in the latest version of vscode, no need to use external viewer
+                    opt?.useDialog ? this.openWithExternalAppDialog(desc) : this.openWithExternalApp(desc); // async call
                 } else {
                     // create webview
                     this.panel = window.createWebviewPanel(
@@ -231,7 +231,7 @@ export class VSCodePvsFileViewer {
      * Utility function, opens a document with an external app
      */
     async openWithExternalApp (fdesc: FileDescriptor, opt?: { message?: string }): Promise<boolean> {
-        const message: string = opt?.message || `Opening with default system app`;
+        const message: string = opt?.message || `Opening ${fdesc.fileExtension} file with default system app`;
         vscodeUtils.showInformationMessage(message);
         this.client?.sendRequest(serverRequest.openFileWithExternalApp, fdesc);
         const success: boolean = await new Promise((resolve, reject) => {
@@ -246,8 +246,8 @@ export class VSCodePvsFileViewer {
      * Utility function, asks the user if they want to open a given file with an external app
      */
     async openWithExternalAppDialog (fdesc: FileDescriptor, opt?: { query?: string, opening?: string }): Promise<boolean> {
-        const file: string = fsUtils.getFileName(fsUtils.desc2fname(fdesc), { keepExtension: true })
-        const message: string = opt?.query || `Open ${file}?`;
+        // const file: string = fsUtils.getFileName(fsUtils.desc2fname(fdesc), { keepExtension: true })
+        const message: string = opt?.query || `Open ${fdesc.fileExtension} file with default system app?`;
         const ans: vscodeUtils.YesCancel = await vscodeUtils.showYesCancelDialog(message);
         if (ans === "yes") {
             return await this.openWithExternalApp(fdesc);
