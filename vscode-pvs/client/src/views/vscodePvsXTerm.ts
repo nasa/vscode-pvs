@@ -73,6 +73,7 @@ export enum XTermPvsEvent {
 
 const HELP_PANEL_LINE_HEIGHT: number = 20; //px
 const DEFAULT_HELP_PANEL_LINES: number = 2;
+const SEARCH_PANEL_LINE_HEIGHT: number = 20; //px
 
 function getHtmlTemplate (sessionType: SessionType, opt?: { integratedHelpSize?: number }): string {
     const lines: number = opt?.integratedHelpSize || vscodeUtils.getIntegratedHelpSetting() || DEFAULT_HELP_PANEL_LINES;
@@ -95,6 +96,9 @@ function getHtmlTemplate (sessionType: SessionType, opt?: { integratedHelpSize?:
     {{/each}}
 
     <style>
+    .terminal-search {
+        height:${SEARCH_PANEL_LINE_HEIGHT}px;
+    }
     .terminal-help {
         height:${lines * HELP_PANEL_LINE_HEIGHT}px;
     }
@@ -107,6 +111,7 @@ function getHtmlTemplate (sessionType: SessionType, opt?: { integratedHelpSize?:
     <!--<div id="terminal" class="animate__animated animate__fadeIn"></div>-->
     <div id="terminal"></div>
     <div class="spacer"></div>
+    <div class="terminal-search p-0"></div>
     <div class="terminal-help p-0"></div>
 
     <script>
