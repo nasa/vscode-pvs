@@ -1224,18 +1224,18 @@ border: 1px solid var(--vscode-input-border, transparent);
 }
 </style>
 <div class="xterm-pvs-find-widget">
-<div class="simple-find-part visible visible-transition" aria-hidden="false">
-<div class="monaco-findInput">
-<div class="monaco-inputbox idle" data-keybinding-context="19" style="background-color: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border, transparent);">
-<div class="ibwrapper">
-<input id="searchInput" class="monaco-input empty" autocorrect="off" autocapitalize="off" spellcheck="false" type="text" wrap="off" aria-label="Find" placeholder="Find in prover console..." style="background-color: inherit; color: var(--vscode-input-foreground); width: calc(100% + 0px);"></div>
+<div class="find-widget simple-find-part visible visible-transition" aria-hidden="false">
+<div class="find-widget monaco-findInput">
+<div class="find-widget monaco-inputbox idle" data-keybinding-context="19" style="background-color: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border, transparent);">
+<div class="find-widget ibwrapper">
+<input id="searchInput" class="find-widget monaco-input empty" autocorrect="off" autocapitalize="off" spellcheck="false" type="text" wrap="off" aria-label="Find" placeholder="Find in prover console..." style="background-color: inherit; color: var(--vscode-input-foreground); width: calc(100% + 0px);"></div>
 </div>
-<div class="controls" style="display: none;"></div>
+<div class="find-widget controls" style="display: none;"></div>
 </div>
-<div id="searchPrev" tabindex="-1" class="button codicon codicon-find-previous-match unselectable" role="button" aria-label="Previous Match">&#8593;</div>
-<div id="searchNext" tabindex="-1" class="button codicon codicon-find-next-match unselectable" role="button" aria-label="Next Match">&#8595;</div>
-<!-- <div tabindex="0" class="button codicon codicon-widget-close unselectable" role="button" aria-label="Close">&#9747;</div> -->
-<div class="monaco-sash mac vertical" style="width: 1px; left: -0.5px;"></div>
+<div id="searchPrev" tabindex="-1" class="find-widget button codicon codicon-find-previous-match unselectable" role="button" aria-label="Previous Match">&#8593;</div>
+<div id="searchNext" tabindex="-1" class="find-widget button codicon codicon-find-next-match unselectable" role="button" aria-label="Next Match">&#8595;</div>
+<!-- <div tabindex="0" class="find-widget button codicon codicon-widget-close unselectable" role="button" aria-label="Close">&#9747;</div> -->
+<div class="find-widget monaco-sash mac vertical" style="width: 1px; left: -0.5px;"></div>
 </div></div>
 `;
 
@@ -3143,6 +3143,21 @@ export class XTermPvs extends Backbone.Model {
         });
         // prevent default for ctrl+f / meta+f
         $(window).on("keydown", (evt: JQuery.KeyDownEvent) => {
+            if ((evt.ctrlKey || evt.metaKey) && evt.key === "f") {
+                // stop propagation, we are using a custom search widget instead of the default vscode search widget
+                // ideally, we would like to use the default vscode search widget, but there seems to be no way to make it trigger events or get data out of it with the current APIs
+                console.log("xterm-pvs search / keydown event on window", { evt });
+                evt.stopPropagation();
+            }
+            if (evt.key === "Enter") {
+                const searchInput: string | number | string[] = $(document).find("#searchInput")?.val();//document.getElementById('searchInput').val;
+                const val: string = typeof searchInput === "string" ? searchInput
+                : typeof searchInput === "number" ? `${searchInput}`
+                : searchInput[0];
+                this.search?.findPrevious(val.trim()); // the current sequent is at the bottom of the document so we need to use find previous to start from the current sequent
+            }
+        });
+        $(".find-widget").on("keydown", (evt: JQuery.KeyDownEvent) => {
             if ((evt.ctrlKey || evt.metaKey) && evt.key === "f") {
                 // stop propagation, we are using a custom search widget instead of the default vscode search widget
                 // ideally, we would like to use the default vscode search widget, but there seems to be no way to make it trigger events or get data out of it with the current APIs
