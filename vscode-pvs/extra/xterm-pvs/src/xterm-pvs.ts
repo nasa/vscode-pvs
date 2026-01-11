@@ -1,7 +1,7 @@
-import { IBufferRange, ITheme, Terminal as XTerm } from '@xterm/xterm';
+import { ITheme, Terminal as XTerm } from '@xterm/xterm';
 // import { CanvasAddon } from '@xterm/addon-canvas'; // this addon no longer exists and we recommend using either the DOM renderer or WebGL
 import { WebglAddon } from '@xterm/addon-webgl'; 
-import { SearchAddon } from '@xterm/addon-search';
+import { SearchAddon, ISearchOptions } from '@xterm/addon-search';
 import { CommandDescriptor, CommandsMap, MathObjects, HintsObject, Position } from './common/serverInterface';
 import * as colorUtils from './common/colorUtils';
 import { pvsColorTheme } from './common/languageKeywords';
@@ -1116,129 +1116,6 @@ const terminalHelpTemplate: string = `
 {{/if}}
 `;
 
-const searchWidgetTemplate: string = `
-<style>
-/* out-build/vs/workbench/contrib/codeEditor/browser/find/simpleFindWidget.css */
-.xterm-pvs-find-widget {
-  overflow: hidden;
-  z-index: 10;
-  /*position: absolute;*/
-  top: 0;
-  right: 18px;
-  /*max-width: calc(100% - 28px - 28px - 8px);*/
-  pointer-events: none;
-  /*padding: 0 10px 10px;*/
-}
-.simple-find-part .monaco-inputbox > .ibwrapper > input {
-  text-overflow: clip;
-}
-.simple-find-part {
-  visibility: hidden;
-  z-index: 10;
-  position: relative;
-  top: -45px;
-  display: flex;
-  /*padding: 4px;*/
-  align-items: center;
-  pointer-events: all;
-  transition: top 200ms linear;
-  background-color: var(--vscode-editorWidget-background) !important;
-  color: var(--vscode-editorWidget-foreground);
-  box-shadow: 0 0 8px 2px var(--vscode-widget-shadow);
-  border: 1px solid var(--vscode-widget-border);
-  border-bottom-left-radius: 4px;
-  border-bottom-right-radius: 4px;
-  font-size: 12px;
-}
-.monaco-workbench.monaco-reduce-motion .monaco-editor .find-widget {
-  transition: top 0ms linear;
-}
-.simple-find-part.visible {
-  visibility: visible;
-}
-.simple-find-part.suppress-transition {
-  transition: none;
-}
-.simple-find-part.visible-transition {
-  top: 0;
-}
-.simple-find-part .monaco-findInput {
-  flex: 1;
-}
-.simple-find-part .matchesCount {
-  width: 73px;
-  max-width: 73px;
-  min-width: 73px;
-  padding-left: 5px;
-}
-.simple-find-part.reduced-find-widget .matchesCount {
-  display: none;
-}
-.simple-find-part .button {
-  min-width: 20px;
-  width: 20px;
-  height: 20px;
-  line-height: 20px;
-  display: flex;
-  flex: initial;
-  justify-content: center;
-  margin-left: 3px;
-  background-position: center center;
-  background-repeat: no-repeat;
-  cursor: pointer;
-}
-div.simple-find-part div.button.disabled {
-  opacity: 0.3 !important;
-  cursor: default;
-}
-div.xterm-pvs-find-widget div.button {
-  border-radius: 5px;
-}
-.no-results.matchesCount {
-  color: var(--vscode-errorForeground);
-}
-div.xterm-pvs-find-widget div.button:hover:not(.disabled) {
-  background-color: var(--vscode-toolbar-hoverBackground);
-  outline: 1px dashed var(--vscode-toolbar-hoverOutline);
-  outline-offset: -1px;
-}
-.simple-find-part .monaco-sash {
-  left: 0 !important;
-  border-left: 1px solid;
-  border-bottom-left-radius: 4px;
-}
-.simple-find-part .monaco-sash.vertical:before {
-  width: 2px;
-  left: calc(50% - (var(--vscode-sash-hover-size) / 4));
-}
-.unselectable {
-  -webkit-user-select: none; /* Safari */
-  -moz-user-select: none;    /* Firefox */
-  -ms-user-select: none;     /* IE 10+ */
-  user-select: none;         /* Standard syntax */
-}
-.monaco-input {
-background-color: var(--vscode-input-background);
-color: var(--vscode-input-foreground);
-border: 1px solid var(--vscode-input-border, transparent);
-}
-</style>
-<div class="xterm-pvs-find-widget">
-<div class="find-widget simple-find-part visible visible-transition" aria-hidden="false">
-<div class="find-widget monaco-findInput">
-<div class="find-widget monaco-inputbox idle" data-keybinding-context="19" style="background-color: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border, transparent);">
-<div class="find-widget ibwrapper">
-<input id="searchInput" class="find-widget monaco-input empty" autocorrect="off" autocapitalize="off" spellcheck="false" type="text" wrap="off" aria-label="Find" placeholder="Find in prover console..." style="background-color: inherit; color: var(--vscode-input-foreground); width: calc(100% + 0px);"></div>
-</div>
-<div class="find-widget controls" style="display: none;"></div>
-</div>
-<div id="searchPrev" tabindex="-1" class="find-widget button codicon codicon-find-previous-match unselectable" role="button" aria-label="Previous Match">&#8593;</div>
-<div id="searchNext" tabindex="-1" class="find-widget button codicon codicon-find-next-match unselectable" role="button" aria-label="Next Match">&#8595;</div>
-<!-- <div tabindex="0" class="find-widget button codicon codicon-widget-close unselectable" role="button" aria-label="Close">&#9747;</div> -->
-<div class="find-widget monaco-sash mac vertical" style="width: 1px; left: -0.5px;"></div>
-</div></div>
-`;
-
 export interface AutocompleteData {
     substitution: string,
     match: string    
@@ -2095,6 +1972,184 @@ const xtermjsColorThemes: { dark: ITheme, light: ITheme } = {
 }
 
 /**
+ * Search logic for xterm-pvs
+ */
+export class SearchWidget {
+    // search addon
+    protected search: SearchAddon = new SearchAddon();
+    // placeholder text for search widget
+    readonly placeholder: string = "Find...";
+    // constructor
+    constructor (xterm: XTerm) {
+        xterm.loadAddon(this.search);
+        // append search widget
+        $(".terminal-search").append(this.searchWidgetTemplate);
+    }
+    // utility function, cleans the term to be searched by removing trailing spaces and converting into a string
+    normalizeTerm (term: string | number | string[]): string {
+        const val: string = typeof term === "string" ? term
+            : typeof term === "number" ? `${term}`
+            : term[0];
+        return val?.trimEnd();
+    }
+    // utility function, get input string from widget
+    getSearchInputFromWidget (): string {
+        const searchInput: string | number | string[] = $(document).find("#searchInput")?.val();
+        return this.normalizeTerm(searchInput);
+    }
+    // find previous
+    public findPrevious(term: string | number | string[], searchOptions?: ISearchOptions): boolean {
+        const searchInput: string = this.normalizeTerm(term);
+        console.log("[xterm-pvs] findPrevious", { searchInput });
+        return this.search?.findPrevious(searchInput, searchOptions); // the current sequent is at the bottom of the document so we need to use find previous to start from the current sequent
+    }
+    // find next
+    public findNext(term: string | number | string[], searchOptions?: ISearchOptions): boolean {
+        const searchInput: string = this.normalizeTerm(term);
+        console.log("[xterm-pvs] findNext", { searchInput });
+        return this.search?.findNext(searchInput, searchOptions); // the current sequent is at the bottom of the document so we need to use find previous to start from the current sequent
+    }
+    // utility function, install handlers
+    installHandlers (): void {
+        // search handlers
+        $(document).find("#searchInput").on("input", () => {
+            const searchInput: string = this.getSearchInputFromWidget();
+            this.findPrevious(searchInput); // the current sequent is at the bottom of the document so we need to use find previous to start from the current sequent
+        });
+        $(document).find("#searchNext").on("click", (evt: JQuery.ClickEvent) => {
+            const searchInput: string = this.getSearchInputFromWidget();
+            this.findNext(searchInput);
+        });
+        $(document).find("#searchPrev").on("click", (evt: JQuery.ClickEvent) => {
+            const searchInput: string = this.getSearchInputFromWidget();
+            this.findPrevious(searchInput);
+        });
+    }
+    protected searchWidgetTemplate: string = `
+<style>
+/* out-build/vs/workbench/contrib/codeEditor/browser/find/simpleFindWidget.css */
+.xterm-pvs-find-widget {
+  overflow: hidden;
+  z-index: 10;
+  /*position: absolute;*/
+  top: 0;
+  right: 18px;
+  /*max-width: calc(100% - 28px - 28px - 8px);*/
+  pointer-events: none;
+  /*padding: 0 10px 10px;*/
+}
+.simple-find-part .monaco-inputbox > .ibwrapper > input {
+  text-overflow: clip;
+}
+.simple-find-part {
+  visibility: hidden;
+  z-index: 10;
+  position: relative;
+  top: -45px;
+  display: flex;
+  /*padding: 4px;*/
+  align-items: center;
+  pointer-events: all;
+  transition: top 200ms linear;
+  background-color: var(--vscode-editorWidget-background) !important;
+  color: var(--vscode-editorWidget-foreground);
+  box-shadow: 0 0 8px 2px var(--vscode-widget-shadow);
+  border: 1px solid var(--vscode-widget-border);
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+  font-size: 12px;
+}
+.monaco-workbench.monaco-reduce-motion .monaco-editor .find-widget {
+  transition: top 0ms linear;
+}
+.simple-find-part.visible {
+  visibility: visible;
+}
+.simple-find-part.suppress-transition {
+  transition: none;
+}
+.simple-find-part.visible-transition {
+  top: 0;
+}
+.simple-find-part .monaco-findInput {
+  flex: 1;
+}
+.simple-find-part .matchesCount {
+  width: 73px;
+  max-width: 73px;
+  min-width: 73px;
+  padding-left: 5px;
+}
+.simple-find-part.reduced-find-widget .matchesCount {
+  display: none;
+}
+.simple-find-part .button {
+  min-width: 20px;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  display: flex;
+  flex: initial;
+  justify-content: center;
+  margin-left: 3px;
+  background-position: center center;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+div.simple-find-part div.button.disabled {
+  opacity: 0.3 !important;
+  cursor: default;
+}
+div.xterm-pvs-find-widget div.button {
+  border-radius: 5px;
+}
+.no-results.matchesCount {
+  color: var(--vscode-errorForeground);
+}
+div.xterm-pvs-find-widget div.button:hover:not(.disabled) {
+  background-color: var(--vscode-toolbar-hoverBackground);
+  outline: 1px dashed var(--vscode-toolbar-hoverOutline);
+  outline-offset: -1px;
+}
+.simple-find-part .monaco-sash {
+  left: 0 !important;
+  border-left: 1px solid;
+  border-bottom-left-radius: 4px;
+}
+.simple-find-part .monaco-sash.vertical:before {
+  width: 2px;
+  left: calc(50% - (var(--vscode-sash-hover-size) / 4));
+}
+.unselectable {
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none;    /* Firefox */
+  -ms-user-select: none;     /* IE 10+ */
+  user-select: none;         /* Standard syntax */
+}
+.monaco-input {
+background-color: var(--vscode-input-background);
+color: var(--vscode-input-foreground);
+border: 1px solid var(--vscode-input-border, transparent);
+}
+</style>
+<div class="xterm-pvs-find-widget">
+<div class="find-widget simple-find-part visible visible-transition" aria-hidden="false">
+<div class="find-widget monaco-findInput">
+<div class="find-widget monaco-inputbox idle" data-keybinding-context="19" style="background-color: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border, transparent);">
+<div class="find-widget ibwrapper">
+<input id="searchInput" class="find-widget monaco-input empty" autocorrect="off" autocapitalize="off" spellcheck="false" type="text" wrap="off" aria-label="Find" placeholder="${this.placeholder}" style="background-color: inherit; color: var(--vscode-input-foreground); width: calc(100% + 0px);"></div>
+</div>
+<div class="find-widget controls" style="display: none;"></div>
+</div>
+<div id="searchPrev" tabindex="-1" class="find-widget button codicon codicon-find-previous-match unselectable" role="button" aria-label="Previous Match">&#8593;</div>
+<div id="searchNext" tabindex="-1" class="find-widget button codicon codicon-find-next-match unselectable" role="button" aria-label="Next Match">&#8595;</div>
+<!-- <div tabindex="0" class="find-widget button codicon codicon-widget-close unselectable" role="button" aria-label="Close">&#9747;</div> -->
+<div class="find-widget monaco-sash mac vertical" style="width: 1px; left: -0.5px;"></div>
+</div></div>
+`;
+}
+
+/**
  * XTermPvs extends the functionalities of xterm.js by introducing:
  * - syntax highlighting for pvs
  * - virtual document for storing terminal content and command line
@@ -2160,7 +2215,7 @@ export class XTermPvs extends Backbone.Model {
     protected colorTheme: XTermColorTheme = "dark";
 
     // search addon
-    protected search: SearchAddon = new SearchAddon();
+    protected search: SearchWidget = null;
 
     // cursor position in the rendering buffer
     protected pos: Position = {
@@ -2211,8 +2266,6 @@ export class XTermPvs extends Backbone.Model {
         // update styles
         $("#terminal").append(tooltipStyle);
         $("body").append(terminalStyle);
-        // append search widget
-        $(".terminal-search").append(searchWidgetTemplate);
 
         // create the terminal panel
         this.parent = opt?.parent || "terminal";
@@ -2221,8 +2274,8 @@ export class XTermPvs extends Backbone.Model {
 
         // use the webgl addon to improve performance
         this.xterm.loadAddon(new WebglAddon());
-        // uncomment the following to use the search addon
-        this.xterm.loadAddon(this.search);
+        // create search widget
+        this.search = new SearchWidget(this.xterm);
 
         // install handlers
         this.installHandlers();
@@ -3116,31 +3169,8 @@ export class XTermPvs extends Backbone.Model {
             this.focus();
             this.xterm.clearSelection();
         });
-        // search handlers
-        $(document).find("#searchInput").on("input", () => {
-            const searchInput: string | number | string[] = $(document).find("#searchInput")?.val();//document.getElementById('searchInput').val;
-            console.log("[xterm-pvs] searchInput", { searchInput });
-            const val: string = typeof searchInput === "string" ? searchInput
-                : typeof searchInput === "number" ? `${searchInput}`
-                : searchInput[0];
-            this.search?.findPrevious(val.trim()); // the current sequent is at the bottom of the document so we need to use find previous to start from the current sequent
-        });
-        $(document).find("#searchNext").on("click", (evt: JQuery.ClickEvent) => {
-            const searchInput: string | number | string[] = $(document).find("#searchInput")?.val();//document.getElementById('searchInput').val;
-            const val: string = typeof searchInput === "string" ? searchInput
-                : typeof searchInput === "number" ? `${searchInput}`
-                : searchInput[0];
-            console.log("searchNext", { val });
-            this.search?.findNext(val.trim());
-        });
-        $(document).find("#searchPrev").on("click", (evt: JQuery.ClickEvent) => {
-            const searchInput: string | number | string[] = $(document).find("#searchInput")?.val();//document.getElementById('searchInput').val;
-            const val: string = typeof searchInput === "string" ? searchInput
-                : typeof searchInput === "number" ? `${searchInput}`
-                : searchInput[0];
-            console.log("searchPrevious", { val });
-            this.search?.findPrevious(val.trim());
-        });
+        // search event handlers
+        this.search.installHandlers();
         // prevent default for ctrl+f / meta+f
         $(window).on("keydown", (evt: JQuery.KeyDownEvent) => {
             if ((evt.ctrlKey || evt.metaKey) && evt.key === "f") {
@@ -3148,13 +3178,6 @@ export class XTermPvs extends Backbone.Model {
                 // ideally, we would like to use the default vscode search widget, but there seems to be no way to make it trigger events or get data out of it with the current APIs
                 console.log("xterm-pvs search / keydown event on window", { evt });
                 evt.stopPropagation();
-            }
-            if (evt.key === "Enter") {
-                const searchInput: string | number | string[] = $(document).find("#searchInput")?.val();//document.getElementById('searchInput').val;
-                const val: string = typeof searchInput === "string" ? searchInput
-                : typeof searchInput === "number" ? `${searchInput}`
-                : searchInput[0];
-                this.search?.findPrevious(val.trim()); // the current sequent is at the bottom of the document so we need to use find previous to start from the current sequent
             }
         });
         $(".find-widget").on("keydown", (evt: JQuery.KeyDownEvent) => {
@@ -3165,11 +3188,8 @@ export class XTermPvs extends Backbone.Model {
                 evt.stopPropagation();
             }
             if (evt.key === "Enter") {
-                const searchInput: string | number | string[] = $(document).find("#searchInput")?.val();//document.getElementById('searchInput').val;
-                const val: string = typeof searchInput === "string" ? searchInput
-                : typeof searchInput === "number" ? `${searchInput}`
-                : searchInput[0];
-                this.search?.findPrevious(val.trim()); // the current sequent is at the bottom of the document so we need to use find previous to start from the current sequent
+                const searchInput: string = this.search.getSearchInputFromWidget();
+                this.search?.findPrevious(searchInput); // the current sequent is at the bottom of the document so we need to use find previous to start from the current sequent
             }
         });
     }
