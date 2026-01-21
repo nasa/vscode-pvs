@@ -766,7 +766,7 @@ export class Content extends Backbone.Model {
     /**
      * Moves the cursor to a given position
      */
-    cursorTo (pos: Position): boolean {
+    cursorTo (pos: Position, opt?: { force?: boolean }): boolean {
         // console.log("[xterm-content] cursorTo", { pos });
         const line: number =
             pos?.line < this.base.line ? this.base.line
@@ -778,7 +778,7 @@ export class Content extends Backbone.Model {
             pos?.character < minCol ? minCol
             : pos?.character > maxCol ? maxCol
             : pos.character;
-        if (line !== this.pos.line || character !== this.pos.character) {
+        if (opt?.force || line !== this.pos.line || character !== this.pos.character) {
             this.savePos();
             this.pos = {
                 line,
@@ -792,12 +792,12 @@ export class Content extends Backbone.Model {
     /**
      * Cursor moves to the command line home position, i.e., after the command prompt.
      */
-    cursorToHome (): boolean {
-        if (this.pos.line !== this.base.line || this.pos.character !== this.base.character) {
+    cursorToHome (opt?: { force?: boolean }): boolean {
+        if (opt?.force || this.pos.line !== this.base.line || this.pos.character !== this.base.character) {
             this.savePos();
             const line: number = this.base.line;
             const character: number = this.base.character;
-            return this.cursorTo({ line, character });
+            return this.cursorTo({ line, character }, opt);
         }
         return false;
     }
@@ -2787,12 +2787,14 @@ export class XTermPvs extends Backbone.Model {
     /**
      * Moves the cursor to the home position
      */
-    moveCursorToHome (): void {
-        const success: boolean = this.content.cursorToHome();
+    moveCursorToHome (opt?: { force?: boolean }): void {
+        const success: boolean = this.content.cursorToHome(opt);
         if (success) {
             const pos: Position = this.content.cursorPosition();
             this.moveCursorTo(pos, { src: "attachCustomKeyEventHandler" });
+            console.log({ success, pos });
         }
+        console.log({ success });
     }
 
     /**
@@ -2871,10 +2873,34 @@ export class XTermPvs extends Backbone.Model {
     }
 
     /**
-     * Utility function, returns the current cursor position
+     * Utility function, returns the current cursor position (1-based)
+     * By default, the returned position is *relative* to the active prompt
+     * Use option `absolute` to get the absolute position in the visible viewport
      */
-    cursorPosition (): Position {
+    cursorPosition (opt?: { absolute?: boolean }): Position {
+        if (opt?.absolute) {
+            const cursorX: number = this.xterm.buffer.active.cursorX; //0-based position
+            const cursorY: number = this.xterm.buffer.active.cursorY; //0-based position
+            return { line: cursorY + 1, character: cursorX + 1};
+        }
         return this.content.cursorPosition();
+    }
+
+    /**
+     * Utility function, converts xy coordinates in the visible viewport to lines and characters
+     */
+    xy2lc (coords: { x: number, y: number }): Position {
+        const canvas: HTMLCanvasElement = <HTMLCanvasElement> $("#terminal canvas")[0];
+        const rect: DOMRect = canvas.getBoundingClientRect();
+        const textMetrics = canvas.getContext("2d").measureText("H");
+        // see https://developer.mozilla.org/en-US/docs/Web/API/TextMetrics
+        const actualHeight = this.fontSize + textMetrics?.hangingBaseline; //textMetrics?.actualBoundingBoxAscent + textMetrics?.actualBoundingBoxDescent;
+        const actualWidth = textMetrics?.width;
+        const canvasX: number = coords.x - rect.left;
+        const canvasY: number = coords.y - rect.top;
+        const characterNumber: number = Math.ceil(canvasX / actualWidth);
+        const lineNumber: number = Math.ceil(canvasY / actualHeight);
+        return { line: lineNumber, character: characterNumber };
     }
 
     /**
@@ -3149,10 +3175,60 @@ export class XTermPvs extends Backbone.Model {
             }
         });
         $(document).find("#terminal").on("click", (evt: JQuery.ClickEvent) => {
-            // console.log("[xterm-pvs] click");
+            // remove tooltips and focus on terminal
             this.autocomplete.deleteTooltips();
             this.focus();
             // this.trigger(XTermEvent.click);
+            // move cursor as needed within the limits of the existing text
+            const cmd: string = this.content.command();
+            console.log({ cmd });
+            if (cmd?.length) {
+                const textLines: string[] = this.content.text()?.split("\n");
+                // transform canvas coordinates into a position given as line and characters
+                const canvas: HTMLCanvasElement = <HTMLCanvasElement> $("#terminal canvas")[0];
+                const rect: DOMRect = canvas.getBoundingClientRect();
+                const textMetrics = canvas.getContext("2d").measureText("H");
+                // see https://developer.mozilla.org/en-US/docs/Web/API/TextMetrics
+                const lineHeight: number = 1.2; // this is the typical number -- is there a way to get the actual number from the canvas?
+                const actualHeight = this.fontSize * lineHeight; //textMetrics?.actualBoundingBoxAscent + textMetrics?.actualBoundingBoxDescent;// this.fontSize + textMetrics?.hangingBaseline; //
+                const actualWidth = textMetrics?.width;
+                const canvasX: number = evt.pageX - rect.left;
+                const canvasY: number = evt.pageY - rect.top;
+                const characterNumber: number = Math.ceil(canvasX / actualWidth);
+                const lineNumber: number = Math.ceil(canvasY / actualHeight);
+
+                const cursor: Position = this.cursorPosition();
+                const absoluteCursor: Position = this.cursorPosition({ absolute: true });
+                const textAtCursorLine: string = this.content.textLineAt(cursor.line);
+                // const linesAboveCursor: string[] = this.content.linesAbove(cursor);
+
+                const homePos: Position = this.content.getHomePosition();
+                const lineStartsAtChar: number = cursor.line <= homePos.line ? homePos.character : 1;
+                const deltaLine: number = lineNumber - absoluteCursor.line;
+                let targetLine: number = cursor.line + deltaLine; //lineNumber - absoluteCursor.line; //lineNumber - cursor.line - textStartsAtLine + 1;
+
+                const minChar: number = (targetLine <= homePos.line) ? this.prompt.length + 1 : 1;
+                const maxChar: number = (targetLine > 0 && targetLine <= textLines.length) ? textLines[targetLine - 1].length 
+                    : targetLine <= 0 ? minChar
+                    : textLines[textLines.length - 1].length;
+
+                let targetCharacter: number = characterNumber - lineStartsAtChar + minChar;
+                // if trying to move the cursor beyond the limits of the existing text, move cursor at beginning / end of text
+                const minLine: number = 1;
+                const maxLine: number = textLines.length;
+                if (targetLine < minLine) { targetLine = minLine; targetCharacter = minChar; }
+                if (targetLine > maxLine) { targetLine = maxLine; targetCharacter = maxChar + 1; }
+
+                // move the cursor only to positions within the bounds of the existing text
+                console.log("[xterm-pvs] click", { textMetrics, evt, homePos, canvasX, canvasY, cursor, absoluteCursor, targetCharacter, targetLine, lineNumber, actualWidth, textAtCursorLine, minChar, maxChar, maxLine, minLine });
+                // if trying to move beyond the prompt, move to the prompt
+                if (targetCharacter < minChar) { targetCharacter = minChar; }
+                // if trying to move beyond the end of the line, move to the first white space at the end of the line (unless the line is empty)
+                if (targetCharacter > maxChar ) { targetCharacter = (textAtCursorLine.length === this.prompt.length) ? minChar : maxChar + 1; }
+                // move cursor
+                this.moveCursorTo({ line: targetLine, character: targetCharacter }, { src: "attachCustomKeyEventHandler" });
+                this.content.cursorTo({ line: targetLine, character: targetCharacter });
+            }
         });
         // content event handlers
         this.content.on(ContentEvent.rebase, (evt: RebaseEvent) => {
