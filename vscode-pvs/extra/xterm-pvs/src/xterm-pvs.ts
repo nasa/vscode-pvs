@@ -1,4 +1,4 @@
-import { ITheme, Terminal as XTerm } from '@xterm/xterm';
+import { IBufferRange, ITheme, Terminal as XTerm } from '@xterm/xterm';
 // import { CanvasAddon } from '@xterm/addon-canvas'; // this addon no longer exists and we recommend using either the DOM renderer or WebGL
 import { WebglAddon } from '@xterm/addon-webgl'; 
 import { SearchAddon, ISearchOptions } from '@xterm/addon-search';
@@ -146,14 +146,18 @@ export class Content extends Backbone.Model {
     // content of the terminal
     protected lines: string[] = [];
 
-    // current cursor position
+    // current cursor position, relative to the prover/evaluator prompt
     protected pos: Position = { ...MIN_POS };
 
-    // previous cursor position
+    // previous cursor position (relative to the prover/evalutor prompt)
     protected prevPos: Position = { ...MIN_POS };
 
     // minimum index: the position of the cursor should not go below this position (text before this position is considered read-only)
+    //                this is used to signpost the position of the prover/evaluator prompt
     protected base: Position = { ...MIN_POS };
+
+    // 1-based absolute position of the cursor at rebase time
+    protected absoluteBase: Position = { line: 1, character: 1 };
 
     /**
      * Constructor
@@ -192,6 +196,13 @@ export class Content extends Backbone.Model {
             character: this.pos.character,
             line: this.pos.line
         };
+    }
+
+    /**
+     * get absolute base
+     */
+    getAbsoluteBase (): Position {
+        return this.absoluteBase;
     }
 
     /**
@@ -373,7 +384,7 @@ export class Content extends Backbone.Model {
     /**
      * Rebase the index, useful to make the text before the cursor read-only
      */
-    rebase (opt?: { prompt?: string }): void {
+    rebase (cursorXY: { cursorX: number, cursorY: number }, opt?: { prompt?: string }): void {
         // keep only the last line, which contains the ready prompt
         if (opt?.prompt) {
             if (this.lines.length) {
@@ -388,6 +399,7 @@ export class Content extends Backbone.Model {
                 };
             }
         }
+        this.absoluteBase = { character: cursorXY.cursorX + 1, line: cursorXY.cursorY + 1 };
         this.base = {
             line: this.pos.line,
             character: this.pos.character
@@ -2887,20 +2899,19 @@ export class XTermPvs extends Backbone.Model {
     }
 
     /**
-     * Utility function, converts xy coordinates in the visible viewport to lines and characters
+     * utility function, converts cursor position from absolute position to relative position
+     * absolute position = (1-based) position within the canvas used for rending the console
+     * relative position = (1-based) position wrt the command prompt
      */
-    xy2lc (coords: { x: number, y: number }): Position {
-        const canvas: HTMLCanvasElement = <HTMLCanvasElement> $("#terminal canvas")[0];
-        const rect: DOMRect = canvas.getBoundingClientRect();
-        const textMetrics = canvas.getContext("2d").measureText("H");
-        // see https://developer.mozilla.org/en-US/docs/Web/API/TextMetrics
-        const actualHeight = this.fontSize + textMetrics?.hangingBaseline; //textMetrics?.actualBoundingBoxAscent + textMetrics?.actualBoundingBoxDescent;
-        const actualWidth = textMetrics?.width;
-        const canvasX: number = coords.x - rect.left;
-        const canvasY: number = coords.y - rect.top;
-        const characterNumber: number = Math.ceil(canvasX / actualWidth);
-        const lineNumber: number = Math.ceil(canvasY / actualHeight);
-        return { line: lineNumber, character: characterNumber };
+    abs2rel (pos: { x: number, y: number }, opt?: { includePrompt?: boolean }): Position {
+        const absoluteBase: Position = this.content.getAbsoluteBase();
+        const line: number = pos.y - absoluteBase.line;
+        const res: Position = {
+            character: !opt?.includePrompt && line === 1 ? pos.x - this.prompt.length + 1 : pos.x, // remove prompt if this is the first line
+            line
+        };
+        // console.log({ absoluteBase, pos, res });
+        return res;
     }
 
     /**
@@ -2981,6 +2992,24 @@ export class XTermPvs extends Backbone.Model {
     }
 
     /**
+     * Utility function, converts xy coordinates of the terminal canvas into relative line and character positions
+     */
+    xy2lc (coord: { pageX: number, pageY: number }): Position {
+        const canvas: HTMLCanvasElement = <HTMLCanvasElement> $("#terminal canvas")[0];
+        const rect: DOMRect = canvas.getBoundingClientRect();
+        const textMetrics = canvas.getContext("2d").measureText("H");
+        // see https://developer.mozilla.org/en-US/docs/Web/API/TextMetrics
+        const lineHeight: number = 1.2; // this is the typical number -- is there a way to get the actual number from the canvas?
+        const actualHeight = this.fontSize * lineHeight; //textMetrics?.actualBoundingBoxAscent + textMetrics?.actualBoundingBoxDescent;// this.fontSize + textMetrics?.hangingBaseline; //
+        const actualWidth = textMetrics?.width;
+        const canvasX: number = coord.pageX - rect.left;
+        const canvasY: number = coord.pageY - rect.top;
+        const character: number = Math.ceil(canvasX / actualWidth);
+        const line: number = Math.ceil(canvasY / actualHeight);
+        return { line, character };
+    }
+
+    /**
      * Internal function, install relevant event handlers
      */
     protected installHandlers (): void {
@@ -3011,14 +3040,41 @@ export class XTermPvs extends Backbone.Model {
             if (this.inputEnabled && this.modKeyIsActive() && evt.key === "c") {
                 // console.log(evt);
                 if (evt.type === "keydown") { // macos fires only keydown, linux fires keydown and keyup
-                    const sel = this.xterm.getSelection();
+                    const sel: string = this.xterm.getSelection();
                     this.trigger(XTermEvent.didCopyText, { data: sel });
                 }
                 return false;
             }
             // ctrl+x / ctrl+shift+x / command+x = cut
             if (this.inputEnabled && this.modKeyIsActive() && evt.key === "x") {
-                // console.log(evt);
+                console.log(evt);
+                if (evt.type === "keydown") { // macos fires only keydown, linux fires keydown and keyup
+                    const sel: string = this.xterm.getSelection();
+                    const absSelPos: IBufferRange = this.xterm.getSelectionPosition();
+                    const selStart: { x: number, y: number } = absSelPos.start.y < absSelPos.end.y || absSelPos.start.x < absSelPos.end.x ? absSelPos.start : absSelPos.end; 
+                    const selEnd: { x: number, y: number } = absSelPos.start.y < absSelPos.end.y || absSelPos.start.x < absSelPos.end.x ? absSelPos.end : absSelPos.start; 
+                    if (sel?.length > 0) {
+                        const relSelPos: { start: Position, end: Position } = {
+                            start: this.abs2rel(selStart, { includePrompt: true }),
+                            end: this.abs2rel(selEnd, { includePrompt: true })
+                        };
+                        if (relSelPos.start.line > 0) {
+                            // split text at selection start/end
+                            const text: string = this.content.text();
+                            const textBeforeSS: string = this.content.textBefore({ ...relSelPos.start, character: relSelPos.start.character + 1 }).substring(this.prompt.length);
+                            const textAfterSE: string = this.content.textAfter({ ...relSelPos.end, character: relSelPos.end.character + 1 });
+                            console.log({ selStart, selEnd, relSelPos, text, textBeforeSS, textAfterSE });
+                            // put the two parts together
+                            const updatedText: string = textBeforeSS.concat(textAfterSE);
+                            this.content.setCommand(updatedText);
+                            this.xterm.clearSelection();
+                            this.moveCursorTo({ ...relSelPos.start, character: relSelPos.start.character + 1 }, { src: "attachCustomKeyEventHandler / ctrl+x" });
+                            this.trigger(XTermEvent.didCutText, { data: sel });
+                        } else {
+                            this.trigger(XTermEvent.didCopyText, { data: sel });
+                        }
+                    }
+                }
                 return false;
             }
             // ctrl+v / ctrl+shift+v / command+v = paste
@@ -3174,61 +3230,72 @@ export class XTermPvs extends Backbone.Model {
                 }
             }
         });
+        // mouse state variables for recognizing mouse drag events used to select text
+        let canDrag: boolean = false;
+        let isDragging: boolean = false;
+        // mouse event handlers
         $(document).find("#terminal").on("click", (evt: JQuery.ClickEvent) => {
+            console.log({ canDrag, isDragging });
             // remove tooltips and focus on terminal
             this.autocomplete.deleteTooltips();
             this.focus();
-            // this.trigger(XTermEvent.click);
-            // move cursor as needed within the limits of the existing text
-            const cmd: string = this.content.command();
-            console.log({ cmd });
-            if (cmd?.length) {
-                const textLines: string[] = this.content.text()?.split("\n");
-                // transform canvas coordinates into a position given as line and characters
-                const canvas: HTMLCanvasElement = <HTMLCanvasElement> $("#terminal canvas")[0];
-                const rect: DOMRect = canvas.getBoundingClientRect();
-                const textMetrics = canvas.getContext("2d").measureText("H");
-                // see https://developer.mozilla.org/en-US/docs/Web/API/TextMetrics
-                const lineHeight: number = 1.2; // this is the typical number -- is there a way to get the actual number from the canvas?
-                const actualHeight = this.fontSize * lineHeight; //textMetrics?.actualBoundingBoxAscent + textMetrics?.actualBoundingBoxDescent;// this.fontSize + textMetrics?.hangingBaseline; //
-                const actualWidth = textMetrics?.width;
-                const canvasX: number = evt.pageX - rect.left;
-                const canvasY: number = evt.pageY - rect.top;
-                const characterNumber: number = Math.ceil(canvasX / actualWidth);
-                const lineNumber: number = Math.ceil(canvasY / actualHeight);
+            this.trigger(XTermEvent.click);
+            if (!isDragging) {
+                // move cursor as needed within the limits of the existing text
+                const cmd: string = this.content.command();
+                console.log({ cmd });
+                if (cmd?.length) {
+                    const textLines: string[] = this.content.text()?.split("\n");
+                    // transform canvas coordinates into a position given as line and characters
+                    const pos: Position = this.xy2lc(evt);
+                    const characterNumber: number = pos.character;
+                    const lineNumber: number = pos.line;
 
-                const cursor: Position = this.cursorPosition();
-                const absoluteCursor: Position = this.cursorPosition({ absolute: true });
-                const textAtCursorLine: string = this.content.textLineAt(cursor.line);
-                // const linesAboveCursor: string[] = this.content.linesAbove(cursor);
+                    const cursor: Position = this.cursorPosition();
+                    const absoluteCursor: Position = this.cursorPosition({ absolute: true });
+                    const textAtCursorLine: string = this.content.textLineAt(cursor.line);
 
-                const homePos: Position = this.content.getHomePosition();
-                const lineStartsAtChar: number = cursor.line <= homePos.line ? homePos.character : 1;
-                const deltaLine: number = lineNumber - absoluteCursor.line;
-                let targetLine: number = cursor.line + deltaLine; //lineNumber - absoluteCursor.line; //lineNumber - cursor.line - textStartsAtLine + 1;
+                    const homePos: Position = this.content.getHomePosition();
+                    const lineStartsAtChar: number = cursor.line <= homePos.line ? homePos.character : 1;
+                    const deltaLine: number = lineNumber - absoluteCursor.line;
+                    let targetLine: number = cursor.line + deltaLine;
 
-                const minChar: number = (targetLine <= homePos.line) ? this.prompt.length + 1 : 1;
-                const maxChar: number = (targetLine > 0 && targetLine <= textLines.length) ? textLines[targetLine - 1].length 
-                    : targetLine <= 0 ? minChar
-                    : textLines[textLines.length - 1].length;
+                    const minChar: number = (targetLine <= homePos.line) ? this.prompt.length + 1 : 1;
+                    const maxChar: number = (targetLine > 0 && targetLine <= textLines.length) ? textLines[targetLine - 1].length 
+                        : targetLine <= 0 ? minChar
+                        : textLines[textLines.length - 1].length;
 
-                let targetCharacter: number = characterNumber - lineStartsAtChar + minChar;
-                // if trying to move the cursor beyond the limits of the existing text, move cursor at beginning / end of text
-                const minLine: number = 1;
-                const maxLine: number = textLines.length;
-                if (targetLine < minLine) { targetLine = minLine; targetCharacter = minChar; }
-                if (targetLine > maxLine) { targetLine = maxLine; targetCharacter = maxChar + 1; }
+                    let targetCharacter: number = characterNumber - lineStartsAtChar + minChar;
+                    // if trying to move the cursor beyond the limits of the existing text, move cursor at beginning / end of text
+                    const minLine: number = 1;
+                    const maxLine: number = textLines.length;
+                    if (targetLine < minLine) { targetLine = minLine; targetCharacter = minChar; }
+                    if (targetLine > maxLine) { targetLine = maxLine; targetCharacter = maxChar + 1; }
 
-                // move the cursor only to positions within the bounds of the existing text
-                console.log("[xterm-pvs] click", { textMetrics, evt, homePos, canvasX, canvasY, cursor, absoluteCursor, targetCharacter, targetLine, lineNumber, actualWidth, textAtCursorLine, minChar, maxChar, maxLine, minLine });
-                // if trying to move beyond the prompt, move to the prompt
-                if (targetCharacter < minChar) { targetCharacter = minChar; }
-                // if trying to move beyond the end of the line, move to the first white space at the end of the line (unless the line is empty)
-                if (targetCharacter > maxChar ) { targetCharacter = (textAtCursorLine.length === this.prompt.length) ? minChar : maxChar + 1; }
-                // move cursor
-                this.moveCursorTo({ line: targetLine, character: targetCharacter }, { src: "attachCustomKeyEventHandler" });
-                this.content.cursorTo({ line: targetLine, character: targetCharacter });
+                    // move the cursor only to positions within the bounds of the existing text
+                    // console.log("[xterm-pvs] click", { evt, homePos, cursor, absoluteCursor, targetCharacter, targetLine, lineNumber, textAtCursorLine, minChar, maxChar, maxLine, minLine });
+                    // if trying to move beyond the prompt, move to the prompt
+                    if (targetCharacter < minChar) { targetCharacter = minChar; }
+                    // if trying to move beyond the end of the line, move to the first white space at the end of the line (unless the line is empty)
+                    if (targetCharacter > maxChar ) { targetCharacter = (textAtCursorLine.length === this.prompt.length) ? minChar : maxChar + 1; }
+                    // move cursor
+                    this.moveCursorTo({ line: targetLine, character: targetCharacter }, { src: "attachCustomKeyEventHandler" });
+                    this.content.cursorTo({ line: targetLine, character: targetCharacter });
+                }
             }
+            // reset mouse state variables
+            canDrag = false;
+            isDragging = false;
+        });
+        $(document).find("#terminal").on("mousedown", (evt: JQuery.MouseDownEvent) => {
+            canDrag = true;
+            // console.log("mousedown", { canDrag, isDragging });
+        });
+        $(document).on("mousemove", (evt: JQuery.MouseMoveEvent) => {
+            if (canDrag) {
+                isDragging = true;
+            }
+            // console.log("mousemove", { canDrag, isDragging });
         });
         // content event handlers
         this.content.on(ContentEvent.rebase, (evt: RebaseEvent) => {
@@ -3398,7 +3465,7 @@ export class XTermPvs extends Backbone.Model {
         if (data) {
             this.write(data);
             // rebase to make the received data read-only
-            this.content.rebase();
+            this.content.rebase(this.xterm.buffer.active);
         }
     }
 
@@ -3722,7 +3789,7 @@ export class XTermPvs extends Backbone.Model {
         this.prompt = colorUtils.getPlainText(prompt) + " ";
         const cprompt: string = "\n\n" + this.applySyntaxHighlighting(this.prompt, this.colorTheme);
         this.log(cprompt);
-        this.content.rebase({ prompt: this.prompt });
+        this.content.rebase(this.xterm.buffer.active, { prompt: this.prompt });
         this.enableInput();
         this.xterm.options.cursorBlink = false;
         // this.autocomplete.clearHelp();
