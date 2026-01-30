@@ -35,7 +35,7 @@ interface RebaseEvent {
 export function welcomeMessage (session: SessionType, integratedHelpSize: number ): string {
     const msg: string = session === "prover" ? `
         - Please enter proof command at the prover prompt / Use <b>(help rules)</b> to view the list of available commands
-        - Double click expands definitions${integratedHelpSize > 2 ? "\n- " : ". "}Copy / Paste text with ${isLinux() ? "Ctrl+" : "Command+"}C / ${isLinux() ? "Ctrl+" : "Command+"}V
+        - Double click expands definitions${integratedHelpSize > 2 ? "\n- " : ". "}Copy / Paste text with ${isLinux() ? "Ctrl+" : "⌘ "}C / ${isLinux() ? "Ctrl+" : "⌘ "}V
         `
         : session === "evaluator" ? `
         - Please enter a PVS expression followed by ';'
@@ -47,6 +47,8 @@ export function welcomeMessage (session: SessionType, integratedHelpSize: number
 
 const MIN_VIEWPORT_COLS: number = 128;
 const MIN_VIEWPORT_ROWS: number = 8;
+
+const DEFAULT_FONT_FAMILY: string = "Menlo, Monaco, monospace";
 
 /**
  * Utility function, detects the operating system
@@ -272,6 +274,20 @@ export class Content extends Backbone.Model {
             const textLine: string = this.lines[lineIndex];
             // console.log("[xterm-content] textLineAt", { pos, textLine, lines: this.lines });
             return textLine;
+        }
+        return "";
+    }
+
+    /**
+     * get character at given position (position is 1-based)
+     */
+    characterAt (pos: Position): string {
+        const lineIndex: number = (pos?.line - 1);
+        if (lineIndex >= 0 && lineIndex < this.lines.length) {
+            const textLine: string = this.lines[lineIndex];
+            const cc: string = (pos?.character - 1) < textLine?.length ? textLine[pos.character - 1] : "";
+            // console.log("[xterm-content] characterAt", { pos, cc, lines: this.lines });
+            return cc;
         }
         return "";
     }
@@ -1126,6 +1142,44 @@ const terminalHelpTemplate: string = `
 <div class="optionals">{{footnote}}</div>
 {{/if}}
 {{/if}}
+`;
+const contextMenu: string = `
+<style>
+.xterm-pvs-context-menu {
+    display: none; /* Hidden by default */
+    position: fixed; /* Position relative to the viewport */
+    background-color: #ccc;
+    box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+    padding: 0;
+    margin: 0;
+    z-index: 1000 !important;
+    font-family: ${DEFAULT_FONT_FAMILY};
+    font-size: 12px;
+    color: black;
+    border-radius: 2px;
+}
+.dropdown-item {
+    padding-left: 0.6rem;
+    padding-right: 0.6rem;
+}
+/* Style for the shortcut text, typically right-aligned and subtle */
+.shortcut-label {
+  float: right;
+  margin-left: 20px;
+  color: #6c757d; /* Bootstrap's secondary text color */
+}
+</style>
+<div id="xterm-pvs-context-menu" class="drop-down-menu xterm-pvs-context-menu">
+    <a class="dropdown-item" href="#" data-action="cut">Cut
+        <span class="shortcut-label">${isLinux() ? "Ctrl+" : "⌘ "}x</span>
+    </a>
+    <a class="dropdown-item" href="#" data-action="copy">Copy
+        <span class="shortcut-label">${isLinux() ? "Ctrl+" : "⌘ "}c</span>
+    </a>
+    <a class="dropdown-item" href="#" data-action="paste">Paste
+        <span class="shortcut-label">${isLinux() ? "Ctrl+" : "⌘ "}v</span>
+    </a>
+</div>
 `;
 
 export interface AutocompleteData {
@@ -2192,6 +2246,7 @@ export class XTermPvs extends Backbone.Model {
 
     protected fontSize: number = 12; //px default font size used in the terminal -- this should be the same size used in the editor
     protected lineHeight: number = 1.2; // normal line height is 20% larger than font size
+    protected fontFamily: string = DEFAULT_FONT_FAMILY;
     // protected xtermLineHeight: number = 1.45; // line height rendered in xterm, measured experimentally by inspecting the DOM
 
     protected paddingBottom: number = 0;
@@ -2269,7 +2324,7 @@ export class XTermPvs extends Backbone.Model {
             cols,
             rows,
             fontSize: this.fontSize,
-            fontFamily: "Menlo, Monaco, monospace",
+            fontFamily: this.fontFamily,
             scrollback: 2048 // amount of rows retained in the view
         });
         // set color theme
@@ -2278,6 +2333,9 @@ export class XTermPvs extends Backbone.Model {
         // update styles
         $("#terminal").append(tooltipStyle);
         $("body").append(terminalStyle);
+
+        // append div for the context menu
+        $("body").append(contextMenu);
 
         // create the terminal panel
         this.parent = opt?.parent || "terminal";
@@ -2907,7 +2965,27 @@ export class XTermPvs extends Backbone.Model {
         const absoluteBase: Position = this.content.getAbsoluteBase();
         const line: number = pos.y - absoluteBase.line;
         const res: Position = {
-            character: !opt?.includePrompt && line === 1 ? pos.x - this.prompt.length + 1 : pos.x, // remove prompt if this is the first line
+            character: pos.x,
+            line
+        };
+        // const res: Position = {
+        //     character: opt?.includePrompt && line === 1 ? pos.x - this.prompt.length + 1 : pos.x, // remove prompt if this is the first line
+        //     line
+        // };
+        console.log({ absoluteBase, pos, res, line });
+        return res;
+    }
+
+    /**
+     * utility function, converts cursor position from absolute position to relative position
+     * absolute position = (1-based) position within the canvas used for rending the console
+     * relative position = (1-based) position wrt the command prompt
+     */
+    rel2abs (pos: { x: number, y: number }, opt?: { includePrompt?: boolean }): Position {
+        const absoluteBase: Position = this.content.getAbsoluteBase();
+        const line: number = pos.y + absoluteBase.line;
+        const res: Position = {
+            character: !opt?.includePrompt && pos.y === 1 ? pos.x - this.prompt.length + 1 : pos.x, // remove prompt if this is the first line
             line
         };
         // console.log({ absoluteBase, pos, res });
@@ -3010,6 +3088,75 @@ export class XTermPvs extends Backbone.Model {
     }
 
     /**
+     * internal function, copys selected text
+     */
+    protected didCopySelectedText (): string {
+        const sel: string = this.xterm.getSelection();
+        this.trigger(XTermEvent.didCopyText, { data: sel });
+        return sel;
+    }
+
+    /**
+     * internal function, cuts selected text
+     */
+    protected didCutSelectedText (): string {
+        const absCursorPosition: Position = this.cursorPosition({ absolute: true }); // 1-based char and line
+        if (!this.xterm.hasSelection()) { this.xterm.select(absCursorPosition.character - 1, absCursorPosition.line - 1, 1); } // xterm.select requires 0-based char and line
+        const sel: string = this.xterm.getSelection();
+        console.log({ sel, absCursorPosition });
+        // if selection is empty, then cut the character at the cursor position
+        const absSelPos: IBufferRange = this.xterm.getSelectionPosition();
+        const selStart: { x: number, y: number } = absSelPos.start.y < absSelPos.end.y || absSelPos.start.x < absSelPos.end.x ? absSelPos.start : absSelPos.end; 
+        const selEnd: { x: number, y: number } = absSelPos.start.y < absSelPos.end.y || absSelPos.start.x < absSelPos.end.x ? absSelPos.end : absSelPos.start; 
+        if (sel?.length > 0) {
+            const relSelPos: { start: Position, end: Position } = {
+                start: this.abs2rel(selStart, { includePrompt: true }),
+                end: this.abs2rel(selEnd, { includePrompt: true })
+            };
+            if (relSelPos.start.line > 0) {
+                // split text at selection start/end
+                const text: string = this.content.text();
+                const textBeforeSS: string = this.content.textBefore({ ...relSelPos.start, character: relSelPos.start.character + 1 }).substring(this.prompt.length);
+                const textAfterSE: string = this.content.textAfter({ ...relSelPos.end, character: relSelPos.end.character + 1 });
+                console.log({ selStart, selEnd, relSelPos, text, textBeforeSS, textAfterSE });
+                // put the two parts together
+                const updatedText: string = textBeforeSS.concat(textAfterSE);
+                this.content.setCommand(updatedText); // this will move the cursor automatically to the end of the pasted text
+                this.xterm.clearSelection();
+                const newCursorPosition: Position = { character: relSelPos.start.character + 1, line: relSelPos.start.line };
+                this.moveCursorTo(newCursorPosition, { src: "attachCustomKeyEventHandler / ctrl+x" });
+                this.content.cursorTo(newCursorPosition);
+                this.trigger(XTermEvent.didCutText, { data: sel });
+            } else {
+                this.trigger(XTermEvent.didCopyText, { data: sel });
+            }
+        }
+        return sel;
+    }
+
+    /**
+     * Internal function, triggers paste text event
+     */
+    didPasteTextFromClipboard (): void {
+        this.trigger(XTermEvent.didPasteText);
+    }
+
+    /**
+     * utility function, pastes content of the clipboard to the console
+     */
+    pasteText (txt: string): boolean {
+        if (txt?.length) {
+            const cursorPosition: Position = this.content.cursorPosition();
+            this.write(txt);
+            this.refreshCommandLine();
+            this.moveCursorTo(cursorPosition, { src: "pasteText" });
+            this.focus();
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Internal function, install relevant event handlers
      */
     protected installHandlers (): void {
@@ -3040,40 +3187,15 @@ export class XTermPvs extends Backbone.Model {
             if (this.inputEnabled && this.modKeyIsActive() && evt.key === "c") {
                 // console.log(evt);
                 if (evt.type === "keydown") { // macos fires only keydown, linux fires keydown and keyup
-                    const sel: string = this.xterm.getSelection();
-                    this.trigger(XTermEvent.didCopyText, { data: sel });
+                    this.didCopySelectedText();
                 }
                 return false;
             }
             // ctrl+x / ctrl+shift+x / command+x = cut
             if (this.inputEnabled && this.modKeyIsActive() && evt.key === "x") {
-                console.log(evt);
+                // console.log(evt);
                 if (evt.type === "keydown") { // macos fires only keydown, linux fires keydown and keyup
-                    const sel: string = this.xterm.getSelection();
-                    const absSelPos: IBufferRange = this.xterm.getSelectionPosition();
-                    const selStart: { x: number, y: number } = absSelPos.start.y < absSelPos.end.y || absSelPos.start.x < absSelPos.end.x ? absSelPos.start : absSelPos.end; 
-                    const selEnd: { x: number, y: number } = absSelPos.start.y < absSelPos.end.y || absSelPos.start.x < absSelPos.end.x ? absSelPos.end : absSelPos.start; 
-                    if (sel?.length > 0) {
-                        const relSelPos: { start: Position, end: Position } = {
-                            start: this.abs2rel(selStart, { includePrompt: true }),
-                            end: this.abs2rel(selEnd, { includePrompt: true })
-                        };
-                        if (relSelPos.start.line > 0) {
-                            // split text at selection start/end
-                            const text: string = this.content.text();
-                            const textBeforeSS: string = this.content.textBefore({ ...relSelPos.start, character: relSelPos.start.character + 1 }).substring(this.prompt.length);
-                            const textAfterSE: string = this.content.textAfter({ ...relSelPos.end, character: relSelPos.end.character + 1 });
-                            console.log({ selStart, selEnd, relSelPos, text, textBeforeSS, textAfterSE });
-                            // put the two parts together
-                            const updatedText: string = textBeforeSS.concat(textAfterSE);
-                            this.content.setCommand(updatedText);
-                            this.xterm.clearSelection();
-                            this.moveCursorTo({ ...relSelPos.start, character: relSelPos.start.character + 1 }, { src: "attachCustomKeyEventHandler / ctrl+x" });
-                            this.trigger(XTermEvent.didCutText, { data: sel });
-                        } else {
-                            this.trigger(XTermEvent.didCopyText, { data: sel });
-                        }
-                    }
+                    this.didCutSelectedText();
                 }
                 return false;
             }
@@ -3082,6 +3204,10 @@ export class XTermPvs extends Backbone.Model {
                 // remove tooltips
                 this.autocomplete.deleteTooltips();
                 // console.log(evt);
+                // if (evt.type === "keydown") { // macos fires only keydown, linux fires keydown and keyup
+                //     this.didPasteTextFromClipboard();
+                //     evt.stopPropagation();
+                // }
                 return false;
             }
             // ctrl+f / ctrl+shift+f / command+f = find
@@ -3108,7 +3234,7 @@ export class XTermPvs extends Backbone.Model {
                 this.trigger(XTermEvent.escapeKeyPressed);
                 return false;
             }
-            // ctrl+key / alt+key
+            // ctrl+key / alt+key binders
             if (this.inputEnabled && this.modKeyIsActive() && !evt?.shiftKey) {
                 switch (evt.key) {
                     case " ": {
@@ -3233,6 +3359,8 @@ export class XTermPvs extends Backbone.Model {
         // mouse state variables for recognizing mouse drag events used to select text
         let canDrag: boolean = false;
         let isDragging: boolean = false;
+        // context menu
+        const ctxMenu: HTMLElement = document.getElementById('xterm-pvs-context-menu');
         // mouse event handlers
         $(document).find("#terminal").on("click", (evt: JQuery.ClickEvent) => {
             console.log({ canDrag, isDragging });
@@ -3240,6 +3368,8 @@ export class XTermPvs extends Backbone.Model {
             this.autocomplete.deleteTooltips();
             this.focus();
             this.trigger(XTermEvent.click);
+            // remove context menu
+            ctxMenu.style.display = 'none';
             if (!isDragging) {
                 // move cursor as needed within the limits of the existing text
                 const cmd: string = this.content.command();
@@ -3297,6 +3427,67 @@ export class XTermPvs extends Backbone.Model {
             }
             // console.log("mousemove", { canDrag, isDragging });
         });
+        // right mouse clicks (contextmenu events)
+        $(document).find("#terminal").on("contextmenu", (evt: JQuery.ContextMenuEvent) => {
+            // Override default context menu, and show custom context menu.
+            // Baseline menu has cut/copy/paste operations
+            // Advanced menu options may include items that would be presented with a double click on the highlighted text
+            evt.stopPropagation();
+            evt.preventDefault();
+
+            // Get mouse coordinates (clientX/Y work well for fixed positioning relative to the viewport)
+            const mouseX = evt.clientX;
+            const mouseY = evt.clientY;
+
+            // Position the custom menu
+            ctxMenu.style.top = `${mouseY}px`;
+            ctxMenu.style.left = `${mouseX}px`;
+
+            // Display the custom menu
+            ctxMenu.style.display = 'block';
+            // ctxMenu.querySelectorAll('.dropdown-item').forEach(item => {
+            //     $(item).on("click", () => {
+            //         const action: string = item.getAttribute('data-action');
+            //         console.log({ action });
+            //         // Perform the action
+            //         switch (action) {
+            //             case "cut": {
+            //                 this.didCutSelectedText();
+            //                 break;
+            //             }
+            //             case "copy": {
+            //                 this.didCopySelectedText();
+            //                 break;
+            //             }
+            //             case "paste": {
+            //                 this.didPasteTextFromClipboard();
+            //                 break;
+            //             }
+            //             default: {
+            //                 console.warn(`#terminal contextmenu - Warning: unrecognized data-action ${action}`);
+            //             }
+            //         }
+            //         // Hide the menu after selection
+            //         ctxMenu.style.display = 'none';
+            //     });
+            // });
+        });
+        // install context menu handlers
+        $('[data-action="cut"]').on("click", () => {
+            this.didCutSelectedText();
+            // Hide the menu after selection
+            ctxMenu.style.display = 'none';
+        });
+        $('[data-action="copy"]').on("click", () => {
+            this.didCopySelectedText();
+            // Hide the menu after selection
+            ctxMenu.style.display = 'none';
+        });
+        $('[data-action="paste"]').on("click", () => {
+            this.didPasteTextFromClipboard();
+            // Hide the menu after selection
+            ctxMenu.style.display = 'none';
+        });
         // content event handlers
         this.content.on(ContentEvent.rebase, (evt: RebaseEvent) => {
             this.onRebaseContent(evt);
@@ -3323,6 +3514,7 @@ export class XTermPvs extends Backbone.Model {
                 evt.stopPropagation();
             }
         });
+        // 'find widget' handlers
         $(".find-widget").on("keydown", (evt: JQuery.KeyDownEvent) => {
             if ((evt.ctrlKey || evt.metaKey) && evt.key === "f") {
                 // stop propagation, we are using a custom search widget instead of the default vscode search widget
@@ -3673,11 +3865,13 @@ export class XTermPvs extends Backbone.Model {
     protected moveCursorTo (pos: Position, opt: { src: string, temp?: boolean }): void {
         if (pos && pos.character && pos.line) {
             const deltaY: number = pos.line - this.pos.line;
+            // console.log({ deltaY });
             if (deltaY) {
                 (deltaY > 0) ? this.cursorDown(deltaY) : this.cursorUp(-deltaY);
                 if (!opt?.temp) { this.pos.line += deltaY; }
             }
             const deltaX: number = pos.character - this.pos.character;
+            // console.log({ deltaX });
             if (deltaX) {
                 (deltaX > 0) ? this.cursorRight(deltaX) : this.cursorLeft(-deltaX);
                 if (!opt?.temp) { this.pos.character += deltaX; }

@@ -7,6 +7,7 @@ export enum XTermEvent {
     escapeKeyPressed = "escapeKeyPressed",
     didCopyText = "didCopyText",
     didCutText = "didCutText",
+    didPasteText = "didPasteText",
     proofExplorerBack = "proof-explorer.back", // F4
     proofExplorerForward = "proof-explorer.forward", //F6
     proofExplorerRun = "proof-explorer.run", // F5
@@ -32,7 +33,8 @@ export enum XTermCommands {
     running = "running",
     autocompleteWithEnter = "autocompleteWithEnter",
     helpStar = "helpStar",
-    helpVSCodePlot = "helpVSCodePlot"
+    helpVSCodePlot = "helpVSCodePlot",
+    pasteText = "pasteText"
 };
 
 export interface XTermMessage {

@@ -1226,6 +1226,18 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                             }
                                             break;
                                         }
+                                        case XTermEvent.didPasteText: {
+                                            const txt: string = await vscodeUtils.readFromClipboard();
+                                            if (txt?.length) {
+                                                vscodeUtils.showStatusBarMessage(`Clipboard content pasted to console.`);
+                                                const message: XTermMessage = {
+                                                    command: XTermCommands.pasteText,
+                                                    data: txt
+                                                };
+                                                this.panel?.webview?.postMessage(message);
+                                            }
+                                            break;
+                                        }
                                         case XTermEvent.click: {
                                             this.focus();
                                             break;
@@ -1335,7 +1347,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         XTermCommands.showHelpMessage,
                         XTermCommands.running,
                         XTermCommands.autocompleteWithEnter,
-                        XTermCommands.helpVSCodePlot
+                        XTermCommands.helpVSCodePlot,
+                        XTermCommands.pasteText
                     ],
                     xtermEvents: [
                         XTermEvent.sendText,
@@ -1346,6 +1359,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         XTermEvent.proofExplorerEdit,
                         XTermEvent.didCopyText,
                         XTermEvent.didCutText,
+                        XTermEvent.didPasteText,
                         XTermEvent.escapeKeyPressed,
                         XTermEvent.click
                     ],
