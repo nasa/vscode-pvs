@@ -3151,9 +3151,9 @@ export class XTermPvs extends Backbone.Model {
             this.write(txt);
             this.refreshCommandLine();
             this.focus();
-            console.log("moving cursor to ",  { cursorPosition });
-            this.moveCursorTo(cursorPosition, { src: "pasteText" });
-            this.content.cursorTo(cursorPosition);
+            // console.log("moving cursor to ",  { cursorPosition });
+            // this.moveCursorTo(cursorPosition, { src: "pasteText" });
+            // this.content.cursorTo(cursorPosition);
             return true;
         }
         return false;
@@ -3645,7 +3645,8 @@ export class XTermPvs extends Backbone.Model {
             data = data.replace(/\t/g, " ".repeat(this.TAB_SIZE));
             // console.log("[xterm-pvs] wrap lines", { data });
             data = LineWrapper.wrapLines(data);
-            // console.log("[xterm-pvs] write content", { data });
+            const nLines: number = data?.split("\n")?.length;
+            console.log("[xterm-pvs] write content", { data, nLines });
             this.content.writeData(data);
             // console.log("[xterm-pvs] render ", { data });
             this.renderData(data);
@@ -3691,6 +3692,12 @@ export class XTermPvs extends Backbone.Model {
                 }
                 this.resizeCol(maxCol);
                 // const maxLine: number = Math.max(this.content.maxLineNumber(), this.xterm.rows);
+                // add rows if needed
+                if (renderLines.length) {
+                    this.saveCursorPosition();
+                    this.xterm.write("\r\n".repeat(renderLines.length));
+                    this.restoreCursorPosition();
+                }
 
                 // apply syntax highlighting if the text does not already contain any syntax highlighting
                 content = colorUtils.isPlainText(content) ? this.applySyntaxHighlighting(content, this.colorTheme) : content;
