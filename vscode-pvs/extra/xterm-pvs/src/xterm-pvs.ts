@@ -2831,8 +2831,11 @@ export class XTermPvs extends Backbone.Model {
         //     evt, 
         //     history: this.autocomplete?.history?.getHistory()
         // });
+        const currCmd: string = this.content.command();
+        const nlines: number = currCmd?.split("\n")?.length;
+        // console.log({ currCmd, nlines });
         if (this.autocomplete.history.size() && this.content.cursorIsAtHomePosition() 
-                && !this.autocomplete.tooltipVisible() && (evt.domEvent.key === "ArrowUp" || evt.domEvent.key === "ArrowDown")) {
+                && !this.autocomplete.tooltipVisible() && (evt.domEvent.key === "ArrowUp" || evt.domEvent.key === "ArrowDown") && nlines <= 1) {
             // get command from the history
             const cmd: string = evt.domEvent.key === "ArrowUp" ? this.autocomplete.history.prev()
                     : this.autocomplete.history.next();
@@ -3209,7 +3212,7 @@ export class XTermPvs extends Backbone.Model {
             }
         });
         this.xterm.attachCustomKeyEventHandler ((evt: KeyboardEvent): boolean => {
-            console.log("[xterm-pvs] attachCustomKeyEventHandler", { evt, sessionType: this.sessionType, inputEnabled: this.inputEnabled });
+            // console.log("[xterm-pvs] attachCustomKeyEventHandler", { evt, sessionType: this.sessionType, inputEnabled: this.inputEnabled });
             this.modKeys = {
                 alt: !!evt?.altKey,
                 ctrl: !!evt?.ctrlKey,
@@ -3392,7 +3395,7 @@ export class XTermPvs extends Backbone.Model {
         const ctxMenu: HTMLElement = document.getElementById('xterm-pvs-context-menu');
         // mouse event handlers
         $(document).find("#terminal").on("click", (evt: JQuery.ClickEvent) => {
-            console.log({ canDrag, isDragging });
+            // console.log({ canDrag, isDragging });
             // remove tooltips and focus on terminal
             this.autocomplete.deleteTooltips();
             this.focus();
@@ -3646,7 +3649,7 @@ export class XTermPvs extends Backbone.Model {
             // console.log("[xterm-pvs] wrap lines", { data });
             data = LineWrapper.wrapLines(data);
             const nLines: number = data?.split("\n")?.length;
-            console.log("[xterm-pvs] write content", { data, nLines });
+            // console.log("[xterm-pvs] write content", { data, nLines });
             this.content.writeData(data);
             // console.log("[xterm-pvs] render ", { data });
             this.renderData(data);
