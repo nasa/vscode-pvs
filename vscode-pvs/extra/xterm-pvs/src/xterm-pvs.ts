@@ -3219,6 +3219,18 @@ export class XTermPvs extends Backbone.Model {
                 evt.stopPropagation();
                 return false;
             }
+            // ctrl+ArrowDown / ctrl+shift+ArrowDown / command+ArrowDown = proof-explorer.forward
+            if (this.inputEnabled && this.modKeyIsActive() && (evt.key === "ArrowDown" || evt.key === "ArrowRight")) {
+                this.trigger(XTermEvent.proofExplorerForward);
+                evt.stopPropagation();
+                return false;
+            }
+            // ctrl+ArrowUp / ctrl+shift+ArrowUp / command+ArrowUp = proof-explorer.back
+            if (this.inputEnabled && this.modKeyIsActive() && (evt.key === "ArrowUp" || evt.key === "ArrowLeft")) {
+                this.trigger(XTermEvent.proofExplorerBack);
+                evt.stopPropagation();
+                return false;
+            }
             // page up/down scroll contente
             if (evt.key === "PageUp") {
                 this.xterm.scrollLines(-4);
@@ -3295,28 +3307,6 @@ export class XTermPvs extends Backbone.Model {
                         break;
                     }
                 }
-                return false;
-            }
-            // F4 = proof-explorer.back
-            if (this.inputEnabled && evt.key === "F4") {
-                // this shortcut is already captured by vscode, no need to trigger events
-                // this.trigger(XTermEvent.proofExplorerBack);
-                return false;
-            }
-            // F5 = proof-explorer.run
-            if (this.inputEnabled && evt.key === "F5") {
-                // this shortcut is already captured by vscode, no need to trigger events
-                // this.trigger(XTermEvent.proofExplorerRun);
-                return false;
-            }
-            // F6 = proof-explorer.forward
-            if (this.inputEnabled && evt.key === "F6") {
-                // this shortcut is already captured by vscode, no need to trigger events
-                return false;
-            }
-            // F2 = proof-explorer.edit
-            if (this.inputEnabled && evt.key === "F2") {
-                // this shortcut is already captured by vscode, no need to trigger events
                 return false;
             }
             return this.inputEnabled && 
@@ -3445,32 +3435,6 @@ export class XTermPvs extends Backbone.Model {
 
             // Display the custom menu
             ctxMenu.style.display = 'block';
-            // ctxMenu.querySelectorAll('.dropdown-item').forEach(item => {
-            //     $(item).on("click", () => {
-            //         const action: string = item.getAttribute('data-action');
-            //         console.log({ action });
-            //         // Perform the action
-            //         switch (action) {
-            //             case "cut": {
-            //                 this.didCutSelectedText();
-            //                 break;
-            //             }
-            //             case "copy": {
-            //                 this.didCopySelectedText();
-            //                 break;
-            //             }
-            //             case "paste": {
-            //                 this.didPasteTextFromClipboard();
-            //                 break;
-            //             }
-            //             default: {
-            //                 console.warn(`#terminal contextmenu - Warning: unrecognized data-action ${action}`);
-            //             }
-            //         }
-            //         // Hide the menu after selection
-            //         ctxMenu.style.display = 'none';
-            //     });
-            // });
         });
         // install context menu handlers
         $('[data-action="cut"]').on("click", () => {
