@@ -3101,10 +3101,10 @@ export class XTermPvs extends Backbone.Model {
      */
     protected didCutSelectedText (): string {
         const absCursorPosition: Position = this.cursorPosition({ absolute: true }); // 1-based char and line
+        // if selection is empty, then cut the character at the cursor position
         if (!this.xterm.hasSelection()) { this.xterm.select(absCursorPosition.character - 1, absCursorPosition.line - 1, 1); } // xterm.select requires 0-based char and line
         const sel: string = this.xterm.getSelection();
         console.log({ sel, absCursorPosition });
-        // if selection is empty, then cut the character at the cursor position
         const absSelPos: IBufferRange = this.xterm.getSelectionPosition();
         const selStart: { x: number, y: number } = absSelPos.start.y < absSelPos.end.y || absSelPos.start.x < absSelPos.end.x ? absSelPos.start : absSelPos.end; 
         const selEnd: { x: number, y: number } = absSelPos.start.y < absSelPos.end.y || absSelPos.start.x < absSelPos.end.x ? absSelPos.end : absSelPos.start; 
@@ -3146,14 +3146,51 @@ export class XTermPvs extends Backbone.Model {
      */
     pasteText (txt: string): boolean {
         if (txt?.length) {
+            // paste text at cursor position
             const cursorPosition: Position = this.content.cursorPosition();
             this.write(txt);
             this.refreshCommandLine();
-            this.moveCursorTo(cursorPosition, { src: "pasteText" });
             this.focus();
+            console.log("moving cursor to ",  { cursorPosition });
+            this.moveCursorTo(cursorPosition, { src: "pasteText" });
+            this.content.cursorTo(cursorPosition);
             return true;
         }
         return false;
+    }
+
+    /**
+     * utility function, deletes selected text, if any is selected
+     */
+    deleteSelectedText(): string {
+        if (this.xterm.hasSelection()) {
+            const sel: string = this.xterm.getSelection();
+            const absSelPos: IBufferRange = this.xterm.getSelectionPosition();
+            const selStart: { x: number, y: number } = absSelPos.start.y < absSelPos.end.y || absSelPos.start.x < absSelPos.end.x ? absSelPos.start : absSelPos.end; 
+            const selEnd: { x: number, y: number } = absSelPos.start.y < absSelPos.end.y || absSelPos.start.x < absSelPos.end.x ? absSelPos.end : absSelPos.start; 
+            const relSelPos: { start: Position, end: Position } = {
+                start: this.abs2rel(selStart, { includePrompt: true }),
+                end: this.abs2rel(selEnd, { includePrompt: true })
+            };
+            if (relSelPos.start.line > 0) {
+                // split text at selection start/end
+                const text: string = this.content.text();
+                const textBeforeSS: string = this.content.textBefore({ ...relSelPos.start, character: relSelPos.start.character + 1 }).substring(this.prompt.length);
+                const textAfterSE: string = this.content.textAfter({ ...relSelPos.end, character: relSelPos.end.character + 1 });
+                console.log({ selStart, selEnd, relSelPos, text, textBeforeSS, textAfterSE });
+                // put the two parts together
+                const updatedText: string = textBeforeSS.concat(textAfterSE);
+                this.content.setCommand(updatedText); // this will move the cursor automatically to the end of the pasted text
+                this.xterm.clearSelection();
+                const newCursorPosition: Position = { character: relSelPos.start.character + 1, line: relSelPos.start.line };
+                const success: boolean = this.content.cursorTo(newCursorPosition);
+                if (success) {
+                    this.moveCursorTo(newCursorPosition, { src: "attachCustomKeyEventHandler / ctrl+v" });
+                }
+            }
+            return sel;
+        }
+        return null;
     }
 
     /**
@@ -3203,11 +3240,13 @@ export class XTermPvs extends Backbone.Model {
             if (this.inputEnabled && this.modKeyIsActive() && evt.key === "v") {
                 // remove tooltips
                 this.autocomplete.deleteTooltips();
+                // delete selected text, if any is selected
+                this.deleteSelectedText();
                 // console.log(evt);
-                // if (evt.type === "keydown") { // macos fires only keydown, linux fires keydown and keyup
-                //     this.didPasteTextFromClipboard();
-                //     evt.stopPropagation();
-                // }
+                if (evt.type === "keydown") { // macos fires only keydown, linux fires keydown and keyup
+                    this.didPasteTextFromClipboard();
+                    evt.stopPropagation(); // stop propagation otherwise vscode will capture the event and paste text twice
+                }
                 return false;
             }
             // ctrl+f / ctrl+shift+f / command+f = find
@@ -3220,13 +3259,13 @@ export class XTermPvs extends Backbone.Model {
                 return false;
             }
             // ctrl+ArrowDown / ctrl+shift+ArrowDown / command+ArrowDown = proof-explorer.forward
-            if (this.inputEnabled && this.modKeyIsActive() && (evt.key === "ArrowDown" || evt.key === "ArrowRight")) {
+            if (this.inputEnabled && this.modKeyIsActive() && (!isLinux() && evt?.metaKey || isLinux() && evt?.ctrlKey) && (evt.key === "ArrowDown" || evt.key === "ArrowRight")) {
                 this.trigger(XTermEvent.proofExplorerForward);
                 evt.stopPropagation();
                 return false;
             }
             // ctrl+ArrowUp / ctrl+shift+ArrowUp / command+ArrowUp = proof-explorer.back
-            if (this.inputEnabled && this.modKeyIsActive() && (evt.key === "ArrowUp" || evt.key === "ArrowLeft")) {
+            if (this.inputEnabled && this.modKeyIsActive() && (!isLinux() && evt?.metaKey || isLinux() && evt?.ctrlKey) && (evt.key === "ArrowUp" || evt.key === "ArrowLeft")) {
                 this.trigger(XTermEvent.proofExplorerBack);
                 evt.stopPropagation();
                 return false;
@@ -3438,16 +3477,21 @@ export class XTermPvs extends Backbone.Model {
         });
         // install context menu handlers
         $('[data-action="cut"]').on("click", () => {
+            // trigger cut event
             this.didCutSelectedText();
             // Hide the menu after selection
             ctxMenu.style.display = 'none';
         });
         $('[data-action="copy"]').on("click", () => {
+            // trigger copy event
             this.didCopySelectedText();
             // Hide the menu after selection
             ctxMenu.style.display = 'none';
         });
         $('[data-action="paste"]').on("click", () => {
+            // delete selected text, if any is selected
+            this.deleteSelectedText();
+            // trigger paste event
             this.didPasteTextFromClipboard();
             // Hide the menu after selection
             ctxMenu.style.display = 'none';
