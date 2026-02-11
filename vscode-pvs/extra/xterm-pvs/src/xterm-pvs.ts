@@ -1,4 +1,4 @@
-import { IBufferRange, ITheme, Terminal as XTerm } from '@xterm/xterm';
+import { IBufferCellPosition, IBufferRange, ITheme, Terminal as XTerm } from '@xterm/xterm';
 // import { CanvasAddon } from '@xterm/addon-canvas'; // this addon no longer exists and we recommend using either the DOM renderer or WebGL
 import { WebglAddon } from '@xterm/addon-webgl'; 
 import { SearchAddon, ISearchOptions } from '@xterm/addon-search';
@@ -3363,10 +3363,7 @@ export class XTermPvs extends Backbone.Model {
         });
         $(document).find("#terminal").on("dblclick", (evt: JQuery.DoubleClickEvent) => {
             if (this.sessionType === "prover") {
-                // this give the raw position of the cursor, in px, how do we convert this into lines/cols?
-                // const pos: IBufferRange = this.xterm.getSelectionPosition();
                 const sel: string = this.xterm.getSelection();
-                // console.log("[xterm-pvs] dblclick", { evt: evt, pos, sel });
                 if (sel && this.autocomplete.validSymbol(sel)) {
                     this.autocomplete.showTooltip([
                         `(expand "${sel}")`,
@@ -3402,52 +3399,6 @@ export class XTermPvs extends Backbone.Model {
             this.trigger(XTermEvent.click);
             // remove context menu
             ctxMenu.style.display = 'none';
-            if (!isDragging) {
-                // move cursor as needed within the limits of the existing text
-                const cmd: string = this.content.command();
-                console.log({ cmd });
-                if (cmd?.length) {
-                    const textLines: string[] = this.content.text()?.split("\n");
-                    // transform canvas coordinates into a position given as line and characters
-                    const pos: Position = this.xy2lc(evt);
-                    const characterNumber: number = pos.character;
-                    const lineNumber: number = pos.line;
-
-                    const cursor: Position = this.cursorPosition();
-                    const absoluteCursor: Position = this.cursorPosition({ absolute: true });
-                    const textAtCursorLine: string = this.content.textLineAt(cursor.line);
-
-                    const homePos: Position = this.content.getHomePosition();
-                    const lineStartsAtChar: number = cursor.line <= homePos.line ? homePos.character : 1;
-                    const deltaLine: number = lineNumber - absoluteCursor.line;
-                    let targetLine: number = cursor.line + deltaLine;
-
-                    const minChar: number = (targetLine <= homePos.line) ? this.prompt.length + 1 : 1;
-                    const maxChar: number = (targetLine > 0 && targetLine <= textLines.length) ? textLines[targetLine - 1].length 
-                        : targetLine <= 0 ? minChar
-                        : textLines[textLines.length - 1].length;
-
-                    let targetCharacter: number = characterNumber - lineStartsAtChar + minChar;
-                    // if trying to move the cursor beyond the limits of the existing text, move cursor at beginning / end of text
-                    const minLine: number = 1;
-                    const maxLine: number = textLines.length;
-                    if (targetLine < minLine) { targetLine = minLine; targetCharacter = minChar; }
-                    if (targetLine > maxLine) { targetLine = maxLine; targetCharacter = maxChar + 1; }
-
-                    // move the cursor only to positions within the bounds of the existing text
-                    // console.log("[xterm-pvs] click", { evt, homePos, cursor, absoluteCursor, targetCharacter, targetLine, lineNumber, textAtCursorLine, minChar, maxChar, maxLine, minLine });
-                    // if trying to move beyond the prompt, move to the prompt
-                    if (targetCharacter < minChar) { targetCharacter = minChar; }
-                    // if trying to move beyond the end of the line, move to the first white space at the end of the line (unless the line is empty)
-                    if (targetCharacter > maxChar ) { targetCharacter = (textAtCursorLine.length === this.prompt.length) ? minChar : maxChar + 1; }
-                    // move cursor
-                    this.moveCursorTo({ line: targetLine, character: targetCharacter }, { src: "attachCustomKeyEventHandler" });
-                    this.content.cursorTo({ line: targetLine, character: targetCharacter });
-                }
-            }
-            // reset mouse state variables
-            canDrag = false;
-            isDragging = false;
         });
         $(document).find("#terminal").on("mousedown", (evt: JQuery.MouseDownEvent) => {
             canDrag = true;
@@ -3458,6 +3409,70 @@ export class XTermPvs extends Backbone.Model {
                 isDragging = true;
             }
             // console.log("mousemove", { canDrag, isDragging });
+        });
+        $(document).on("mousedown", (evt: JQuery.MouseDownEvent) => {
+            // move cursor as needed within the limits of the existing text
+            const cmd: string = this.content.command();
+            console.log({ cmd });
+            if (cmd?.length) {
+                const textLines: string[] = this.content.text()?.split("\n");
+                // transform canvas coordinates into a position given as line and characters
+                const pos: Position = this.xy2lc(evt);
+                const characterNumber: number = pos.character;
+                const lineNumber: number = pos.line;
+
+                const cursor: Position = this.cursorPosition();
+                const absoluteCursor: Position = this.cursorPosition({ absolute: true });
+                const textAtCursorLine: string = this.content.textLineAt(cursor.line);
+
+                const homePos: Position = this.content.getHomePosition();
+                const lineStartsAtChar: number = cursor.line <= homePos.line ? homePos.character : 1;
+                const deltaLine: number = lineNumber - absoluteCursor.line;
+                let targetLine: number = cursor.line + deltaLine;
+
+                const minChar: number = (targetLine <= homePos.line) ? this.prompt.length + 1 : 1;
+                const maxChar: number = (targetLine > 0 && targetLine <= textLines.length) ? textLines[targetLine - 1].length 
+                    : targetLine <= 0 ? minChar
+                    : textLines[textLines.length - 1].length;
+
+                let targetCharacter: number = characterNumber - lineStartsAtChar + minChar;
+                // if trying to move the cursor beyond the limits of the existing text, move cursor at beginning / end of text
+                const minLine: number = 1;
+                const maxLine: number = textLines.length;
+                if (targetLine < minLine) { targetLine = minLine; targetCharacter = minChar; }
+                if (targetLine > maxLine) { targetLine = maxLine; targetCharacter = maxChar + 1; }
+
+                // move the cursor only to positions within the bounds of the existing text
+                // if trying to move beyond the prompt, move to the prompt
+                if (targetCharacter < minChar) { targetCharacter = minChar; }
+                // if trying to move beyond the end of the line, move to the first white space at the end of the line (unless the line is empty)
+                if (targetCharacter > maxChar ) { targetCharacter = (textAtCursorLine.length === this.prompt.length) ? minChar : maxChar + 1; }
+                // move cursor
+                this.moveCursorTo({ line: targetLine, character: targetCharacter }, { src: "mousedown event" });
+                this.content.cursorTo({ line: targetLine, character: targetCharacter });
+            }            
+        });
+        $(document).on("mouseup", (evt: JQuery.MouseUpEvent) => {
+            if (isDragging && this.xterm.hasSelection()) {
+                // move mouse to selection end
+                const selStart: Position = this.abs2rel(this.xterm.getSelectionPosition().start);
+                const selEnd: Position = this.abs2rel(this.xterm.getSelectionPosition().end);
+                const absPosition: Position = this.xy2lc(evt);
+                const candidatePosition: Position = this.abs2rel({ x: absPosition.character, y: absPosition.line - 1 });
+                // the position returned by this.xy2lc(evt) is approximate -- to have a consistent behavior, place cursor at selection start / end instead of using the approximate position  
+                const targetPosition: Position = Math.abs(selStart.line - candidatePosition.line) < Math.abs(selEnd.line - candidatePosition.line) ?
+                    Math.abs(selStart.character - candidatePosition.character) < Math.abs(selEnd.character - candidatePosition.character) ?
+                        selStart : selEnd
+                            : selEnd;
+                // console.log({ targetPosition });
+                if (targetPosition.line > 0 || (targetPosition.line === 0 && targetPosition.character > this.prompt.length)) {
+                    this.moveCursorTo(targetPosition, { src: "mouseup event"});
+                    this.content.cursorTo(targetPosition);
+                }
+            }
+            // reset mouse state variables
+            canDrag = false;
+            isDragging = false;
         });
         // right mouse clicks (contextmenu events)
         $(document).find("#terminal").on("contextmenu", (evt: JQuery.ContextMenuEvent) => {
