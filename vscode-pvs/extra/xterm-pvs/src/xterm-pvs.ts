@@ -2396,7 +2396,7 @@ export class XTermPvs extends Backbone.Model {
     darkMode (): void {
         // console.log("[xterm-pvs] darkMode");
         this.xterm.options.theme = xtermjsColorThemes.dark;
-        this.xterm.options.cursorStyle = "block";
+        this.xterm.options.cursorStyle = "bar";
         $("body").css({
             color: xtermjsColorThemes.dark.foreground,
             background: xtermjsColorThemes.dark.background
@@ -2964,7 +2964,7 @@ export class XTermPvs extends Backbone.Model {
      * absolute position = (1-based) position within the canvas used for rending the console
      * relative position = (1-based) position wrt the command prompt
      */
-    abs2rel (pos: { x: number, y: number }, opt?: { includePrompt?: boolean }): Position {
+    abs2rel (pos: { x: number, y: number }/*, opt?: { includePrompt?: boolean }*/): Position {
         const absoluteBase: Position = this.content.getAbsoluteBase();
         const line: number = pos.y - absoluteBase.line;
         const res: Position = {
@@ -2972,10 +2972,10 @@ export class XTermPvs extends Backbone.Model {
             line
         };
         // const res: Position = {
-        //     character: opt?.includePrompt && line === 1 ? pos.x - this.prompt.length + 1 : pos.x, // remove prompt if this is the first line
+        //     character: /*opt?.includePrompt && */line === 1 ? pos.x - this.prompt.length + 1 : pos.x, // remove prompt if this is the first line
         //     line
         // };
-        console.log({ absoluteBase, pos, res, line });
+        console.log("abs2rel", { absoluteBase, pos, res, line });
         return res;
     }
 
@@ -2984,14 +2984,21 @@ export class XTermPvs extends Backbone.Model {
      * absolute position = (1-based) position within the canvas used for rending the console
      * relative position = (1-based) position wrt the command prompt
      */
-    rel2abs (pos: { x: number, y: number }, opt?: { includePrompt?: boolean }): Position {
+    rel2abs (pos: { x: number, y: number } | { character: number, line: number }/*, opt?: { includePrompt?: boolean }*/): Position {
         const absoluteBase: Position = this.content.getAbsoluteBase();
-        const line: number = pos.y + absoluteBase.line;
+        const cc: number = pos["x"] || pos["character"];
+        const ll: number = pos["y"] || pos["line"];
+        const line: number = ll + absoluteBase.line;
         const res: Position = {
-            character: !opt?.includePrompt && pos.y === 1 ? pos.x - this.prompt.length + 1 : pos.x, // remove prompt if this is the first line
+            character: cc,
             line
         };
-        // console.log({ absoluteBase, pos, res });
+
+        // const res: Position = {
+        //     character: /*!opt?.includePrompt &&*/ ll === 1 ? cc + this.prompt.length + 1 : cc, // add prompt if this is the first line
+        //     line
+        // };
+        console.log("rel2abs", { absoluteBase, pos, res });
         return res;
     }
 
@@ -3102,7 +3109,7 @@ export class XTermPvs extends Backbone.Model {
     /**
      * internal function, cuts selected text
      */
-    protected didCutSelectedText (): string {
+    protected didCutSelectedText (opt?: { keepPreviousClipboard?: boolean }): string {
         const absCursorPosition: Position = this.cursorPosition({ absolute: true }); // 1-based char and line
         // if selection is empty, then cut the character at the cursor position
         if (!this.xterm.hasSelection()) { this.xterm.select(absCursorPosition.character - 1, absCursorPosition.line - 1, 1); } // xterm.select requires 0-based char and line
@@ -3113,8 +3120,8 @@ export class XTermPvs extends Backbone.Model {
         const selEnd: { x: number, y: number } = absSelPos.start.y < absSelPos.end.y || absSelPos.start.x < absSelPos.end.x ? absSelPos.end : absSelPos.start; 
         if (sel?.length > 0) {
             const relSelPos: { start: Position, end: Position } = {
-                start: this.abs2rel(selStart, { includePrompt: true }),
-                end: this.abs2rel(selEnd, { includePrompt: true })
+                start: this.abs2rel(selStart),
+                end: this.abs2rel(selEnd)
             };
             if (relSelPos.start.line > 0) {
                 // split text at selection start/end
@@ -3129,9 +3136,9 @@ export class XTermPvs extends Backbone.Model {
                 const newCursorPosition: Position = { character: relSelPos.start.character + 1, line: relSelPos.start.line };
                 this.moveCursorTo(newCursorPosition, { src: "attachCustomKeyEventHandler / ctrl+x" });
                 this.content.cursorTo(newCursorPosition);
-                this.trigger(XTermEvent.didCutText, { data: sel });
+                this.trigger(XTermEvent.didCutText, { data: opt?.keepPreviousClipboard ? "" : sel });
             } else {
-                this.trigger(XTermEvent.didCopyText, { data: sel });
+                this.trigger(XTermEvent.didCopyText, { data: opt?.keepPreviousClipboard ? "" : sel });
             }
         }
         return sel;
@@ -3172,8 +3179,8 @@ export class XTermPvs extends Backbone.Model {
             const selStart: { x: number, y: number } = absSelPos.start.y < absSelPos.end.y || absSelPos.start.x < absSelPos.end.x ? absSelPos.start : absSelPos.end; 
             const selEnd: { x: number, y: number } = absSelPos.start.y < absSelPos.end.y || absSelPos.start.x < absSelPos.end.x ? absSelPos.end : absSelPos.start; 
             const relSelPos: { start: Position, end: Position } = {
-                start: this.abs2rel(selStart, { includePrompt: true }),
-                end: this.abs2rel(selEnd, { includePrompt: true })
+                start: this.abs2rel(selStart),
+                end: this.abs2rel(selEnd)
             };
             if (relSelPos.start.line > 0) {
                 // split text at selection start/end
@@ -3288,8 +3295,25 @@ export class XTermPvs extends Backbone.Model {
                 this.trigger(XTermEvent.escapeKeyPressed);
                 return false;
             }
+            if (this.inputEnabled && !this.modKeyIsActive() && evt.type === "keydown") {
+                switch (evt.key) {
+                    case "Delete":
+                    case "Backspace": {
+                        // delete selected text, if any
+                        if (this.xterm.hasSelection()) {
+                            this.didCutSelectedText({ keepPreviousClipboard: true });
+                            evt.stopPropagation(); // stop propagation -- we need to delete only the selected text
+                            return false;
+                        }
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
+                }
+            }
             // ctrl+key / alt+key binders
-            if (this.inputEnabled && this.modKeyIsActive() && !evt?.shiftKey) {
+            if (this.inputEnabled && this.modKeyIsActive() && !evt?.shiftKey && evt.type === "keydown") {
                 switch (evt.key) {
                     case " ": {
                         // ctrl+space shows all autocompletions
@@ -3343,6 +3367,72 @@ export class XTermPvs extends Backbone.Model {
                         // ctrl+Delete or ctrl+Backspace deletes entire line
                         // console.log("[xterm-pvs] attachCustomKeyEventHandler @clearCommandLine")
                         this.clearCommandLine();
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
+                }
+            }
+            // shift+key binders
+            if (this.inputEnabled && !this.modKeyIsActive() && evt?.shiftKey && evt.type === "keydown") {
+                switch (evt.key) {
+                    case "ArrowLeft": {
+                        // shift+ArrowLeft adds one character to the left of the current selection
+                        const sel: string = this.xterm.getSelection();
+                        const absSelPos: IBufferRange = this.xterm.getSelectionPosition();
+                        const absCursorPosition: Position = this.cursorPosition({ absolute: true }); // 1-based char and line
+                        const hasSelection: boolean = this.xterm.hasSelection();
+                        const startY: number = hasSelection ? absSelPos.start.y : absCursorPosition.line - 1; // line where selection start
+                        const startX: number = hasSelection ? absSelPos.start.x : absCursorPosition.character - 1; // character where selection starts
+                        const endX: number = hasSelection ? absSelPos.end.x : absCursorPosition.character - 1; // character where selection ends
+                        const relCursorPosition: Position = this.cursorPosition();
+                        const newPos: Position = { character: relCursorPosition.character - 1, line: relCursorPosition.line };
+                        const success: boolean = this.content.cursorTo(newPos);
+                        // const relpos: Position = this.abs2rel({ x, y });
+                        // const success: boolean = this.content.cursorTo(relpos);
+                        if (success) {
+                            this.moveCursorTo(newPos, { src: "shift+ArrowLeft"});
+                            const absNewPos: Position = this.rel2abs(newPos);
+                            console.log({ absCursorPosition, relCursorPosition, newPos, absNewPos, startX, hasSelection });
+                            if (!hasSelection || absNewPos.character <= startX) {
+                                // expand selection
+                                console.log("expanding", { absSelPos, startX, absNewPos });
+                                this.xterm.select(startX - 1, startY, sel.length + 1);
+                            } else {
+                                // contract selection
+                                console.log("contracting", { absSelPos, startX, absNewPos });
+                                this.xterm.select(startX, startY, sel.length - 1);
+                            }
+                        }
+                        break;
+                    }
+                    case "ArrowRight": {
+                        // shift+ArrowRight adds one character to the right of the current selection
+                        const sel: string = this.xterm.getSelection();
+                        const absSelPos: IBufferRange = this.xterm.getSelectionPosition();
+                        const absCursorPosition: Position = this.cursorPosition({ absolute: true }); // 1-based char and line
+                        const hasSelection: boolean = this.xterm.hasSelection();
+                        const startY: number = hasSelection ? absSelPos.start.y : absCursorPosition.line - 1;
+                        const startX: number = hasSelection ? absSelPos.start.x : absCursorPosition.character - 1;
+                        const endX: number = hasSelection ? absSelPos.end.x : absCursorPosition.character - 1;
+                        const relCursorPosition: Position = this.cursorPosition();
+                        const newPos: Position = { character: relCursorPosition.character + 1, line: relCursorPosition.line };
+                        const success: boolean = this.content.cursorTo(newPos);
+                        if (success) {
+                            this.moveCursorTo(newPos, { src: "shift+ArrowRight"});
+                            const absNewPos: Position = this.rel2abs(newPos);
+                            console.log({ absCursorPosition, absNewPos, startX, hasSelection });
+                            if (!hasSelection || absNewPos.character > endX + 1) {
+                                // expand selection
+                                console.log("expanding", { absSelPos, endX, absNewPos });
+                                this.xterm.select(startX, startY, sel.length + 1);
+                            } else {
+                                // contract selection
+                                console.log("contracting", { absSelPos, endX, absNewPos });
+                                this.xterm.select(startX + 1, startY, sel.length - 1);
+                            }
+                        }
                         break;
                     }
                     default: {
