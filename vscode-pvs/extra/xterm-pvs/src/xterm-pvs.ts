@@ -2159,6 +2159,10 @@ export class SearchWidget {
             const searchInput: string = this.getSearchInputFromWidget();
             this.findPrevious(searchInput);
         });
+        $(document).find("#closeSearch").on("click", (evt: JQuery.ClickEvent) => {
+            console.log("closing search...");
+            $(document).find(".simple-find-part.visible-transition").css({ top: "45px" });
+        });
     }
     protected searchWidgetTemplate: string = `
 <style>
@@ -2180,7 +2184,7 @@ export class SearchWidget {
   visibility: hidden;
   z-index: 10;
   position: relative;
-  top: -45px;
+  top: 45px;
   display: flex;
   /*padding: 4px;*/
   align-items: center;
@@ -2204,7 +2208,7 @@ export class SearchWidget {
   transition: none;
 }
 .simple-find-part.visible-transition {
-  top: 0;
+  top: 45px;
 }
 .simple-find-part .monaco-findInput {
   flex: 1;
@@ -2268,19 +2272,20 @@ border: 1px solid var(--vscode-input-border, transparent);
 }
 </style>
 <div class="xterm-pvs-find-widget">
-<div class="find-widget simple-find-part visible visible-transition" aria-hidden="false">
-<div class="find-widget monaco-findInput">
-<div class="find-widget monaco-inputbox idle" data-keybinding-context="19" style="background-color: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border, transparent);">
-<div class="find-widget ibwrapper">
-<input id="searchInput" class="find-widget monaco-input empty" autocorrect="off" autocapitalize="off" spellcheck="false" type="text" wrap="off" aria-label="Find" placeholder="${this.placeholder}" style="background-color: inherit; color: var(--vscode-input-foreground); width: calc(100% + 0px);"></div>
+    <div class="find-widget simple-find-part visible visible-transition" aria-hidden="false">
+    <div class="find-widget monaco-findInput">
+    <div class="find-widget monaco-inputbox idle" data-keybinding-context="19" style="background-color: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border, transparent);">
+    <div class="find-widget ibwrapper">
+    <input id="searchInput" class="find-widget monaco-input empty" autocorrect="off" autocapitalize="off" spellcheck="false" type="text" wrap="off" aria-label="Find" placeholder="${this.placeholder}" style="background-color: inherit; color: var(--vscode-input-foreground); width: calc(100% + 0px);"></div>
+    </div>
+    <div class="find-widget controls" style="display: none;"></div>
+    </div>
+    <div id="searchPrev" tabindex="-1" class="find-widget button codicon codicon-find-previous-match unselectable" role="button" aria-label="Previous Match">&#8593;</div>
+    <div id="searchNext" tabindex="-1" class="find-widget button codicon codicon-find-next-match unselectable" role="button" aria-label="Next Match">&#8595;</div>
+    <div id="closeSearch" tabindex="0" class="find-widget button codicon codicon-widget-close unselectable" role="button" aria-label="Close">&#9747;</div>
+    <div class="find-widget monaco-sash mac vertical" style="width: 1px; left: -0.5px;"></div>
+    </div>
 </div>
-<div class="find-widget controls" style="display: none;"></div>
-</div>
-<div id="searchPrev" tabindex="-1" class="find-widget button codicon codicon-find-previous-match unselectable" role="button" aria-label="Previous Match">&#8593;</div>
-<div id="searchNext" tabindex="-1" class="find-widget button codicon codicon-find-next-match unselectable" role="button" aria-label="Next Match">&#8595;</div>
-<!-- <div tabindex="0" class="find-widget button codicon codicon-widget-close unselectable" role="button" aria-label="Close">&#9747;</div> -->
-<div class="find-widget monaco-sash mac vertical" style="width: 1px; left: -0.5px;"></div>
-</div></div>
 `;
 }
 
@@ -3347,6 +3352,7 @@ export class XTermPvs extends Backbone.Model {
                 // stop propagation, we are using a custom search widget instead of the default vscode search widget
                 // ideally, we would like to use the default vscode search widget, but there seems to be no way to make it trigger events or get data out of it with the current APIs
                 console.log("xterm-pvs search", { evt });
+                $(document).find(".simple-find-part.visible-transition").css({ top: "0px" });
                 $(document).find("#searchInput").trigger("focus");
                 evt.stopPropagation();
                 return false;
