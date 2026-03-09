@@ -1,4 +1,4 @@
-import { IBufferCellPosition, IBufferRange, ITheme, Terminal as XTerm } from '@xterm/xterm';
+import { IBufferRange, ITheme, Terminal as XTerm } from '@xterm/xterm';
 // import { CanvasAddon } from '@xterm/addon-canvas'; // this addon no longer exists and we recommend using either the DOM renderer or WebGL
 import { WebglAddon } from '@xterm/addon-webgl'; 
 import { SearchAddon, ISearchOptions } from '@xterm/addon-search';
@@ -400,7 +400,7 @@ export class Content extends Backbone.Model {
     /**
      * Rebase the index, useful to make the text before the cursor read-only
      */
-    rebase (cursorXY: { cursorX: number, cursorY: number }, opt?: { prompt?: string }): void {
+    rebase (cursorXY: { cursorX: number, cursorY: number, baseY: number, viewportY: number }, opt?: { prompt?: string }): void {
         // keep only the last line, which contains the ready prompt
         if (opt?.prompt) {
             if (this.lines.length) {
@@ -415,7 +415,8 @@ export class Content extends Backbone.Model {
                 };
             }
         }
-        this.absoluteBase = { character: cursorXY.cursorX + 1, line: cursorXY.cursorY + 1 };
+        console.log({ cursorXY });
+        this.absoluteBase = { character: cursorXY.cursorX + 1, line: cursorXY.baseY + cursorXY.cursorY + 1 };
         this.base = {
             line: this.pos.line,
             character: this.pos.character
@@ -1196,7 +1197,7 @@ export interface DidAutocompleteEvent extends AutocompleteData {
 /**
  * Utility class for command line history
  */
- export class History {
+export class History {
     // session type
     protected sessionType: SessionType;
     // list of previous commands entered at the command line
@@ -1316,7 +1317,75 @@ export interface DidAutocompleteEvent extends AutocompleteData {
         }
         return this.history;
     }
+}
 
+/**
+ * Utility class for undo/redo words in the current command line.
+ * A word is defined as a sequence of non-blank characters.
+ */
+declare type UndoRedoState = { text: string, cursorPosition: Position };
+export class UndoRedo {
+    protected state: UndoRedoState[] = [];
+    protected index: number = 0; // pointer to the current undo/redo state
+    protected undoing: boolean = false;
+    protected redoing: boolean = false;
+
+    /**
+     * undo a word, i.e., return a string without the last word entered by the user at the command prompt
+     */
+    undoWord (): UndoRedoState {
+        if (this.undoing && this.index > 0) { this.index--; }
+        const undoIndex: number = this.index - 1;
+        const undoState: UndoRedoState = undoIndex >= 0 ?
+            this.state[undoIndex]
+                : { text: "", cursorPosition: { line: 1, character: 1 }};
+        this.undoing = true;
+        this.redoing = false;
+        console.dir({ undoState, index: this.index });
+        return undoState;
+    }
+
+    /**
+     * redo a word, i.e., return a string with an additional word based on the history of word entered by the user at the command prompt
+     */
+    redoWord (): UndoRedoState {
+        if (this.redoing && this.index < this.state.length) { this.index++; }
+        const redoIndex: number = this.index;
+        const redoState: UndoRedoState = redoIndex < this.state.length ?
+            this.state[redoIndex]
+                : this.state[this.state.length - 1];
+        this.redoing = true;
+        this.undoing = false;
+        console.dir({ redoState, index: this.index });
+        return redoState;
+    }
+
+    /**
+     * update state variables for text before/after cursor position 
+     */
+    update (desc: { text: string, cursorPosition: Position }): void {
+        this.undoing = false;
+        this.redoing = false;
+        if (desc) {
+            // update state history
+            this.state[this.index++] = desc;
+            if (this.index > 0 && this.index < this.state.length) {
+                console.log("trimming at " + this.index);
+                // state history after index is outdated -- trim it
+                this.state = this.state.slice(0, this.index);
+            }
+            console.dir({ state: this.state, index: this.index });
+        }
+    }
+
+    /**
+     * clear undo/redo history
+     */
+    clear (): void {
+        this.state = [];
+        this.index = 0;
+        this.undoing = this.redoing = false;
+    }
 }
 
 /**
@@ -2290,6 +2359,10 @@ export class XTermPvs extends Backbone.Model {
         character: MIN_POS.character
     };
 
+    // undo/redo history
+    protected undo: UndoRedo;
+
+
     /**
      * Constructor
      */
@@ -2311,6 +2384,7 @@ export class XTermPvs extends Backbone.Model {
             integratedHelpSize: opt?.integratedHelpSize,
             frequentCommands: opt?.frequentCommands
         });
+        this.undo = new UndoRedo;
 
         this.paddingBottom = opt?.paddingBottom || 0;
 
@@ -2925,7 +2999,25 @@ export class XTermPvs extends Backbone.Model {
                     this.autocomplete.deleteTooltips();
                 }
             }
+            if (key === " ") {
+                // update undo history
+                this.updateUndoOnBlankKeyPress();
+            }
         }
+    }
+
+    /**
+     * Utility function, updates undo/redo history with a new word
+     */
+    updateUndoOnBlankKeyPress() {
+        const cursorPosition: Position = this.content.cursorPosition();
+        let text: string = this.content.text();
+        console.log({ text });
+        if (text?.startsWith(this.prompt)) {
+            text = text.slice(this.prompt.length);
+        }
+        console.log({ textAfter: text });
+        this.undo.update({ text, cursorPosition });
     }
 
     /**
@@ -2953,7 +3045,7 @@ export class XTermPvs extends Backbone.Model {
     cursorPosition (opt?: { absolute?: boolean }): Position {
         if (opt?.absolute) {
             const cursorX: number = this.xterm.buffer.active.cursorX; //0-based position
-            const cursorY: number = this.xterm.buffer.active.cursorY; //0-based position
+            const cursorY: number = this.xterm.buffer.active.cursorY + this.xterm.buffer.active.baseY; //0-based position
             return { line: cursorY + 1, character: cursorX + 1};
         }
         return this.content.cursorPosition();
@@ -2964,18 +3056,16 @@ export class XTermPvs extends Backbone.Model {
      * absolute position = (1-based) position within the canvas used for rending the console
      * relative position = (1-based) position wrt the command prompt
      */
-    abs2rel (pos: { x: number, y: number }/*, opt?: { includePrompt?: boolean }*/): Position {
+    abs2rel (pos: { x: number, y: number } | { character: number, line: number }): Position {
         const absoluteBase: Position = this.content.getAbsoluteBase();
-        const line: number = pos.y - absoluteBase.line;
+        const cc: number = pos["x"] || pos["character"];
+        const ll: number = pos["y"] || pos["line"];
+        const line: number = ll - absoluteBase.line;
         const res: Position = {
-            character: pos.x,
+            character: cc,
             line
         };
-        // const res: Position = {
-        //     character: /*opt?.includePrompt && */line === 1 ? pos.x - this.prompt.length + 1 : pos.x, // remove prompt if this is the first line
-        //     line
-        // };
-        console.log("abs2rel", { absoluteBase, pos, res, line });
+        console.log("abs2rel", { baseY: this.xterm.buffer.active.baseY, pos, res, line });
         return res;
     }
 
@@ -2984,7 +3074,7 @@ export class XTermPvs extends Backbone.Model {
      * absolute position = (1-based) position within the canvas used for rending the console
      * relative position = (1-based) position wrt the command prompt
      */
-    rel2abs (pos: { x: number, y: number } | { character: number, line: number }/*, opt?: { includePrompt?: boolean }*/): Position {
+    rel2abs (pos: { x: number, y: number } | { character: number, line: number }): Position {
         const absoluteBase: Position = this.content.getAbsoluteBase();
         const cc: number = pos["x"] || pos["character"];
         const ll: number = pos["y"] || pos["line"];
@@ -2993,12 +3083,7 @@ export class XTermPvs extends Backbone.Model {
             character: cc,
             line
         };
-
-        // const res: Position = {
-        //     character: /*!opt?.includePrompt &&*/ ll === 1 ? cc + this.prompt.length + 1 : cc, // add prompt if this is the first line
-        //     line
-        // };
-        console.log("rel2abs", { absoluteBase, pos, res });
+        console.log("rel2abs", { baseY: this.xterm.buffer.active.baseY, pos, res, line });
         return res;
     }
 
@@ -3093,7 +3178,7 @@ export class XTermPvs extends Backbone.Model {
         const canvasX: number = coord.pageX - rect.left;
         const canvasY: number = coord.pageY - rect.top;
         const character: number = Math.ceil(canvasX / actualWidth);
-        const line: number = Math.ceil(canvasY / actualHeight);
+        const line: number = Math.ceil(canvasY / actualHeight) + this.xterm.buffer.active.baseY;
         return { line, character };
     }
 
@@ -3112,23 +3197,21 @@ export class XTermPvs extends Backbone.Model {
     protected didCutSelectedText (opt?: { keepPreviousClipboard?: boolean }): string {
         const absCursorPosition: Position = this.cursorPosition({ absolute: true }); // 1-based char and line
         // if selection is empty, then cut the character at the cursor position
-        if (!this.xterm.hasSelection()) { this.xterm.select(absCursorPosition.character - 1, absCursorPosition.line - 1, 1); } // xterm.select requires 0-based char and line
+        if (!this.xterm.hasSelection()) { return ""; }
         const sel: string = this.xterm.getSelection();
-        console.log({ sel, absCursorPosition });
+        console.log("didCutSelectedText", { sel, absCursorPosition });
         const absSelPos: IBufferRange = this.xterm.getSelectionPosition();
-        const selStart: { x: number, y: number } = absSelPos.start.y < absSelPos.end.y || absSelPos.start.x < absSelPos.end.x ? absSelPos.start : absSelPos.end; 
-        const selEnd: { x: number, y: number } = absSelPos.start.y < absSelPos.end.y || absSelPos.start.x < absSelPos.end.x ? absSelPos.end : absSelPos.start; 
         if (sel?.length > 0) {
             const relSelPos: { start: Position, end: Position } = {
-                start: this.abs2rel(selStart),
-                end: this.abs2rel(selEnd)
+                start: this.abs2rel(absSelPos.start),
+                end: this.abs2rel(absSelPos.end)
             };
             if (relSelPos.start.line > 0) {
                 // split text at selection start/end
                 const text: string = this.content.text();
                 const textBeforeSS: string = this.content.textBefore({ ...relSelPos.start, character: relSelPos.start.character + 1 }).substring(this.prompt.length);
                 const textAfterSE: string = this.content.textAfter({ ...relSelPos.end, character: relSelPos.end.character + 1 });
-                console.log({ selStart, selEnd, relSelPos, text, textBeforeSS, textAfterSE });
+                console.log({ absSelPos, relSelPos, text, textBeforeSS, textAfterSE });
                 // put the two parts together
                 const updatedText: string = textBeforeSS.concat(textAfterSE);
                 this.content.setCommand(updatedText); // this will move the cursor automatically to the end of the pasted text
@@ -3280,6 +3363,16 @@ export class XTermPvs extends Backbone.Model {
                 evt.stopPropagation();
                 return false;
             }
+            // ctrl/meta+z = undo | shift+ctrl/meta+z = redo
+            if (this.inputEnabled && this.modKeyIsActive() && (!isLinux() && evt?.metaKey || isLinux() && evt?.ctrlKey) && (evt.key === "z" || evt.key === "Z")) {
+                const newState: UndoRedoState = evt?.shiftKey ? this.undo.redoWord() : this.undo.undoWord();
+                console.log({ prevState: newState });
+                this.content.setCommand(newState.text);
+                const success: boolean = this.content.cursorTo(newState.cursorPosition);
+                if (success) {
+                    this.moveCursorTo(newState.cursorPosition, { src: evt?.shiftKey ? "redo" : "undo"});
+                }
+            }
             // page up/down scroll contente
             if (evt.key === "PageUp") {
                 this.xterm.scrollLines(-4);
@@ -3386,22 +3479,22 @@ export class XTermPvs extends Backbone.Model {
                         const startY: number = hasSelection ? absSelPos.start.y : absCursorPosition.line - 1; // line where selection start
                         const startX: number = hasSelection ? absSelPos.start.x : absCursorPosition.character - 1; // character where selection starts
                         const endX: number = hasSelection ? absSelPos.end.x : absCursorPosition.character - 1; // character where selection ends
-                        const relCursorPosition: Position = this.cursorPosition();
-                        const newPos: Position = { character: relCursorPosition.character - 1, line: relCursorPosition.line };
+                        const relativeCursorPosition: Position = this.cursorPosition();
+                        const newPos: Position = { character: relativeCursorPosition.character - 1, line: relativeCursorPosition.line };
                         const success: boolean = this.content.cursorTo(newPos);
                         // const relpos: Position = this.abs2rel({ x, y });
                         // const success: boolean = this.content.cursorTo(relpos);
                         if (success) {
                             this.moveCursorTo(newPos, { src: "shift+ArrowLeft"});
                             const absNewPos: Position = this.rel2abs(newPos);
-                            console.log({ absCursorPosition, relCursorPosition, newPos, absNewPos, startX, hasSelection });
+                            console.log({ absCursorPosition, relativeCursorPosition, newPos, absNewPos, startY, hasSelection });
                             if (!hasSelection || absNewPos.character <= startX) {
                                 // expand selection
-                                console.log("expanding", { absSelPos, startX, absNewPos });
+                                console.log("expanding", { absSelPos, selStart: { x: startX - 1, y: startY, len: sel.length + 1 }, absNewPos });
                                 this.xterm.select(startX - 1, startY, sel.length + 1);
                             } else {
                                 // contract selection
-                                console.log("contracting", { absSelPos, startX, absNewPos });
+                                console.log("contracting", { absSelPos, selStart: { x: startX, y: startY, len: sel.length - 1 }, absNewPos });
                                 this.xterm.select(startX, startY, sel.length - 1);
                             }
                         }
@@ -3507,44 +3600,45 @@ export class XTermPvs extends Backbone.Model {
             if (cmd?.length) {
                 const textLines: string[] = this.content.text()?.split("\n");
                 // transform canvas coordinates into a position given as line and characters
-                const pos: Position = this.xy2lc(evt);
+                const xy: Position = this.xy2lc(evt);
+                const pos: Position = this.abs2rel(xy);
                 const characterNumber: number = pos.character;
                 const lineNumber: number = pos.line;
 
                 const cursor: Position = this.cursorPosition();
-                const absoluteCursor: Position = this.cursorPosition({ absolute: true });
                 const textAtCursorLine: string = this.content.textLineAt(cursor.line);
 
                 const homePos: Position = this.content.getHomePosition();
                 const lineStartsAtChar: number = cursor.line <= homePos.line ? homePos.character : 1;
-                const deltaLine: number = lineNumber - absoluteCursor.line;
-                let targetLine: number = cursor.line + deltaLine;
-
+                let targetLine: number = lineNumber;
                 const minChar: number = (targetLine <= homePos.line) ? this.prompt.length + 1 : 1;
                 const maxChar: number = (targetLine > 0 && targetLine <= textLines.length) ? textLines[targetLine - 1].length 
                     : targetLine <= 0 ? minChar
                     : textLines[textLines.length - 1].length;
-
                 let targetCharacter: number = characterNumber - lineStartsAtChar + minChar;
+
+                // move the cursor only to positions within the bounds of the existing text
                 // if trying to move the cursor beyond the limits of the existing text, move cursor at beginning / end of text
                 const minLine: number = 1;
                 const maxLine: number = textLines.length;
                 if (targetLine < minLine) { targetLine = minLine; targetCharacter = minChar; }
                 if (targetLine > maxLine) { targetLine = maxLine; targetCharacter = maxChar + 1; }
-
-                // move the cursor only to positions within the bounds of the existing text
                 // if trying to move beyond the prompt, move to the prompt
                 if (targetCharacter < minChar) { targetCharacter = minChar; }
                 // if trying to move beyond the end of the line, move to the first white space at the end of the line (unless the line is empty)
                 if (targetCharacter > maxChar ) { targetCharacter = (textAtCursorLine.length === this.prompt.length) ? minChar : maxChar + 1; }
                 // move cursor
-                this.moveCursorTo({ line: targetLine, character: targetCharacter }, { src: "mousedown event" });
-                this.content.cursorTo({ line: targetLine, character: targetCharacter });
+                console.log({ pos, cursor, targetCharacter, targetLine, maxChar, maxLine, textLines });
+                const success: boolean = this.content.cursorTo({ line: targetLine, character: targetCharacter });
+                if (success) {
+                    this.moveCursorTo({ line: targetLine, character: targetCharacter }, { src: "mousedown event" });
+                }
             }            
         });
         $(document).on("mouseup", (evt: JQuery.MouseUpEvent) => {
             if (isDragging && this.xterm.hasSelection()) {
-                // move mouse to selection end
+                // try to move cursor to selection end
+                const cmd: string = this.content.command();
                 const selStart: Position = this.abs2rel(this.xterm.getSelectionPosition().start);
                 const selEnd: Position = this.abs2rel(this.xterm.getSelectionPosition().end);
                 const absPosition: Position = this.xy2lc(evt);
@@ -3554,10 +3648,35 @@ export class XTermPvs extends Backbone.Model {
                     Math.abs(selStart.character - candidatePosition.character) < Math.abs(selEnd.character - candidatePosition.character) ?
                         selStart : selEnd
                             : selEnd;
-                // console.log({ targetPosition });
-                if (targetPosition.line > 0 || (targetPosition.line === 0 && targetPosition.character > this.prompt.length)) {
-                    this.moveCursorTo(targetPosition, { src: "mouseup event"});
-                    this.content.cursorTo(targetPosition);
+                let targetLine: number = targetPosition.line;
+                let targetCharacter: number = targetPosition.character + 1;
+
+                const textLines: string[] = cmd.split("\n");
+                const textAtCursorLine: string = this.content.textLineAt(selStart.line);
+
+                const homePos: Position = this.content.getHomePosition();
+                // const lineStartsAtChar: number = selStart.line <= homePos.line ? homePos.character : 1;
+                const minChar: number = (targetLine <= homePos.line) ? this.prompt.length + 1 : 1;
+                const maxChar: number = (targetLine > 0 && targetLine <= textLines.length) ? textLines[targetLine - 1].length 
+                    : targetLine <= 0 ? minChar
+                    : textLines[textLines.length - 1].length;
+
+                // move the cursor only to positions within the bounds of the existing text
+                // if trying to move the cursor beyond the limits of the existing text, move cursor at beginning / end of text
+                const minLine: number = 1;
+                const maxLine: number = textLines.length;
+                if (targetLine < minLine) { targetLine = minLine; targetCharacter = minChar; }
+                if (targetLine > maxLine) { targetLine = maxLine; targetCharacter = maxChar + 1; }
+                // if trying to move beyond the prompt, move to the prompt
+                if (targetCharacter < minChar) { targetCharacter = minChar; }
+                // if trying to move beyond the end of the line, move to the first white space at the end of the line (unless the line is empty)
+                if (targetCharacter > maxChar ) { targetCharacter = (textAtCursorLine.length === this.prompt.length) ? minChar : maxChar + 1; }
+
+                console.log({ targetPosition, selStart, selEnd });
+                const finalPosition: Position = { character: targetCharacter, line: targetLine };
+                const success: boolean = this.content.cursorTo(finalPosition);
+                if (success) {
+                    this.moveCursorTo(finalPosition, { src: "mouseup event"});
                 }
             }
             // reset mouse state variables
