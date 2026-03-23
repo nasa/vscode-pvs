@@ -2110,13 +2110,18 @@ const xtermjsColorThemes: { dark: ITheme, light: ITheme } = {
  * Search logic for xterm-pvs
  */
 export class SearchWidget {
+    // pointer to xterm
+    protected xterm: XTerm;
     // search addon
     protected search: SearchAddon = new SearchAddon();
     // placeholder text for search widget
     readonly placeholder: string = "Find...";
     // constructor
     constructor (xterm: XTerm) {
+        // load addon
         xterm.loadAddon(this.search);
+        // save pointer to xterm
+        this.xterm = xterm;
         // append search widget
         $(".terminal-search").append(this.searchWidgetTemplate);
     }
@@ -2144,6 +2149,32 @@ export class SearchWidget {
         console.log("[xterm-pvs] findNext", { searchInput });
         return this.search?.findNext(searchInput, searchOptions); // the current sequent is at the bottom of the document so we need to use find previous to start from the current sequent
     }
+    /**
+     * Utility function, hides search bar
+     */
+    public hideSearchBar () {
+        $(document).find(".simple-find-part.visible-transition").css({ top: "45px" });
+    }
+    /**
+     * Utility function, reveals search bar
+     */
+    public revealSearchBar () {
+        $(document).find(".simple-find-part.visible-transition").css({ top: "0px" });
+    }
+    /**
+     * Utility function, finds next match of search input
+     */
+    public searchFindNext () {
+        const searchInput: string = this.getSearchInputFromWidget();
+        this.findPrevious(searchInput); // the current sequent is at the bottom of the document so we need to use find previous to start from the current sequent
+    }
+    /**
+     * Utility function, finds previous match of search input
+     */
+    public searchFindPrev () {
+        const searchInput: string = this.getSearchInputFromWidget();
+        this.findPrevious(searchInput);
+    }
     // utility function, install handlers
     installHandlers (): void {
         // search handlers
@@ -2152,16 +2183,14 @@ export class SearchWidget {
             this.findPrevious(searchInput); // the current sequent is at the bottom of the document so we need to use find previous to start from the current sequent
         });
         $(document).find("#searchNext").on("click", (evt: JQuery.ClickEvent) => {
-            const searchInput: string = this.getSearchInputFromWidget();
-            this.findNext(searchInput);
+            this.searchFindNext();
         });
         $(document).find("#searchPrev").on("click", (evt: JQuery.ClickEvent) => {
-            const searchInput: string = this.getSearchInputFromWidget();
-            this.findPrevious(searchInput);
+            this.searchFindPrev();
         });
         $(document).find("#closeSearch").on("click", (evt: JQuery.ClickEvent) => {
-            console.log("closing search...");
-            $(document).find(".simple-find-part.visible-transition").css({ top: "45px" });
+            this.hideSearchBar();
+            this.xterm.focus();
         });
     }
     protected searchWidgetTemplate: string = `
@@ -3762,10 +3791,12 @@ export class XTermPvs extends Backbone.Model {
                 // ideally, we would like to use the default vscode search widget, but there seems to be no way to make it trigger events or get data out of it with the current APIs
                 console.log("xterm-pvs search / keydown event on window", { evt });
                 evt.stopPropagation();
-            }
-            if (evt.key === "Enter") {
-                const searchInput: string = this.search.getSearchInputFromWidget();
-                this.search?.findPrevious(searchInput); // the current sequent is at the bottom of the document so we need to use find previous to start from the current sequent
+            } else if (evt.key === "Escape") {
+                this.search.hideSearchBar();
+                // place focus on the terminal
+                this.focus();
+            } else if (evt.key === "Enter") {
+                this.search.searchFindPrev();
             }
         });
     }
