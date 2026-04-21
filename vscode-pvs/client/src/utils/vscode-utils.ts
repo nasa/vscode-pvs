@@ -1198,6 +1198,14 @@ export function copyToClipboard (txt: string, opt?: { msg: string, useDialog?: b
 }
 
 /**
+ * Utility function, returns the content of the system clipboard
+ */
+export async function readFromClipboard (): Promise<string> {
+    const txt: string = await vscode.env.clipboard.readText();
+    return txt;
+}
+
+/**
  * Utility function, clears the system clipboard
  */
 export function clearClipboard (): void {

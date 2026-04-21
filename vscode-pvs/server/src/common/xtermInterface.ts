@@ -6,9 +6,11 @@ export enum XTermEvent {
     closeConsole = "closeConsole",
     escapeKeyPressed = "escapeKeyPressed",
     didCopyText = "didCopyText",
-    proofExplorerBack = "proof-explorer.back", // F4
-    proofExplorerForward = "proof-explorer.forward", //F6
-    proofExplorerRun = "proof-explorer.run", // F5
+    didCutText = "didCutText",
+    didPasteText = "didPasteText",
+    proofExplorerBack = "proof-explorer.back", // ctrl+ArrowUp / ctrl+shift+ArrowUp / command+ArrowUp
+    proofExplorerForward = "proof-explorer.forward", // ctrl+ArrowDown / ctrl+shift+ArrowDown / command+ArrowDown
+    proofExplorerRun = "proof-explorer.run",
     proofExplorerEdit = "proof-explorer.edit", // F2
     click = "click"
 };
@@ -31,7 +33,8 @@ export enum XTermCommands {
     running = "running",
     autocompleteWithEnter = "autocompleteWithEnter",
     helpStar = "helpStar",
-    helpVSCodePlot = "helpVSCodePlot"
+    helpVSCodePlot = "helpVSCodePlot",
+    pasteText = "pasteText"
 };
 
 export interface XTermMessage {

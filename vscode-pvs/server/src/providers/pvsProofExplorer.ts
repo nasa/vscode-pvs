@@ -499,7 +499,7 @@ export class PvsProofExplorer {
 					// if (i > 0 || affectedProofStates.length === 1) {
 					// 	await this.onStepExecuted({ proofState, currCmd, args: command, lastSequent: i === affectedProofStates.length - 1 }, opt);
 					// }
-					const qed: boolean = await this.checkProofTermination({ proofState, args: command }, opt);
+					const qed: boolean = await this.checkProofTermination({ proofState, args: command });
 					if (!qed && (affectedProofStates.length === 1 || i > 0)) {
 						await this.onStepExecuted({ proofState, currCmd, args: command, lastSequent: i === affectedProofStates.length - 1 }, opt);
 					}
@@ -1002,12 +1002,12 @@ export class PvsProofExplorer {
 	/**
 	 * Utility function, checks if the proof terminated, e.g., because the proof is complete (QED) or because the user entered 'quit'
 	 */
-	async checkProofTermination (desc: { proofState: PvsProofState, args?: PvsProofCommand }, opt?: { feedbackToTerminal?: boolean }): Promise<boolean> {
+	async checkProofTermination (desc: { proofState: PvsProofState, args?: PvsProofCommand }): Promise<boolean> {
 		if (desc?.proofState) {
 			// get command and proof state
 			let userCmd: string = desc.args ? desc.args.cmd : null; // command entered by the user
 			const currCmd: string = desc.proofState["curr-cmd"];
-			const cmd: string = isSameCommand("(propax)", currCmd) ? userCmd : (currCmd || userCmd);
+			const cmd: string = isSameCommand("(propax)", currCmd) ? (userCmd || currCmd) : (currCmd || userCmd);
 			this.mrpProofState = desc.proofState;
 			
 			// identify active node in the proof tree
@@ -2974,7 +2974,7 @@ export class PvsProofExplorer {
 	/**
 	 * Utility function, activates the proof loaded in the view (i.e., sets the first node as active)
 	 */
-	startProof(opt?: { autorun?: boolean }): void {
+	async startProof(opt?: { autorun?: boolean }): Promise<boolean> {
 		opt = opt || {};
 		if (this.root) {
 			this.autoRunFlag = !!opt.autorun;
@@ -3002,6 +3002,9 @@ export class PvsProofExplorer {
 			// this.dirtyFlag = false;
 			this.runningFlag = false;
 
+			// check if proof is trivially true
+			const qed: boolean = await this.checkProofTermination({ proofState: this.initialProofState });
+
 			// start the proof
 			if (this.root.children && this.root.children.length) {
 				// this.setActiveNode({ selected: this.root.children[0] });
@@ -3010,9 +3013,8 @@ export class PvsProofExplorer {
 				this.activeNode.proofState = this.root.proofState;
 				// this.activeNode.tooltip = this.root.tooltip;	
 			}
-
 			if (this.autoRunFlag) {
-				this.run();
+				await this.run();
 			} else {
 				const evt: ProofExecDidStartProof = { action: "did-start-proof" };
 				this.connection?.sendNotification(serverEvent.proverEvent, evt);
@@ -3020,9 +3022,10 @@ export class PvsProofExplorer {
 
 			// console.log(`[${fsUtils.generateTimestamp()}] `+`[proof-explorer] Starting proof for ${this.formula.formulaName}`,
 			// 	{ currentSequent: this.root.sequentDescriptor, initialSequent: this.initialProofState });
-		} else {
-			console.warn(`[proof-explorer] Warning: unable to activate selected proof (root node is null)`);
-		}
+			return true;
+		} // else
+		console.warn(`[proof-explorer] Warning: unable to activate selected proof (root node is null)`);
+		return false;
 	}
 
 	/**
@@ -3212,7 +3215,7 @@ export class PvsProofExplorer {
 					this.connection.sendNotification(serverEvent.proverEvent, evt);
 				}
 				// re-start proof in proof explorer
-				this.startProof();
+				await this.startProof();
 				return true;
 			} else {
 				const evt: ProofExecDidOpenProof = {
@@ -3261,7 +3264,7 @@ export class PvsProofExplorer {
 				};
 				this.connection?.sendNotification(serverEvent.proverEvent, evt);
 				// re-start proof in proof explorer
-				this.startProof();
+				await this.startProof();
 				return true;
 			} else {
 				const evt: ProofExecDidImportProof = {

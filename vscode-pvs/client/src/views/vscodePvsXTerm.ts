@@ -73,6 +73,7 @@ export enum XTermPvsEvent {
 
 const HELP_PANEL_LINE_HEIGHT: number = 20; //px
 const DEFAULT_HELP_PANEL_LINES: number = 2;
+const SEARCH_PANEL_LINE_HEIGHT: number = 20; //px
 
 function getHtmlTemplate (sessionType: SessionType, opt?: { integratedHelpSize?: number }): string {
     const lines: number = opt?.integratedHelpSize || vscodeUtils.getIntegratedHelpSetting() || DEFAULT_HELP_PANEL_LINES;
@@ -95,6 +96,9 @@ function getHtmlTemplate (sessionType: SessionType, opt?: { integratedHelpSize?:
     {{/each}}
 
     <style>
+    .terminal-search {
+        height:${SEARCH_PANEL_LINE_HEIGHT}px;
+    }
     .terminal-help {
         height:${lines * HELP_PANEL_LINE_HEIGHT}px;
     }
@@ -107,6 +111,7 @@ function getHtmlTemplate (sessionType: SessionType, opt?: { integratedHelpSize?:
     <!--<div id="terminal" class="animate__animated animate__fadeIn"></div>-->
     <div id="terminal"></div>
     <div class="spacer"></div>
+    <div class="terminal-search p-0"></div>
     <div class="terminal-help p-0"></div>
 
     <script>
@@ -1210,6 +1215,26 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                                             if (message?.data?.length) {
                                                 vscodeUtils.showStatusBarMessage(`Selected text copied to clipboard.`);
                                                 // vscodeUtils.showInformationMessage(`Selected text copied to clipboard.`);
+                                                vscodeUtils.copyToClipboard(message.data);
+                                            }
+                                            break;
+                                        }
+                                        case XTermEvent.didCutText: {
+                                            if (message?.data?.length) {
+                                                vscodeUtils.showStatusBarMessage(`Selected text cut to clipboard.`);
+                                                vscodeUtils.copyToClipboard(message.data);
+                                            }
+                                            break;
+                                        }
+                                        case XTermEvent.didPasteText: {
+                                            const txt: string = await vscodeUtils.readFromClipboard();
+                                            if (txt?.length) {
+                                                vscodeUtils.showStatusBarMessage(`Clipboard content pasted to console.`);
+                                                const message: XTermMessage = {
+                                                    command: XTermCommands.pasteText,
+                                                    data: txt
+                                                };
+                                                this.panel?.webview?.postMessage(message);
                                             }
                                             break;
                                         }
@@ -1322,7 +1347,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         XTermCommands.showHelpMessage,
                         XTermCommands.running,
                         XTermCommands.autocompleteWithEnter,
-                        XTermCommands.helpVSCodePlot
+                        XTermCommands.helpVSCodePlot,
+                        XTermCommands.pasteText
                     ],
                     xtermEvents: [
                         XTermEvent.sendText,
@@ -1332,6 +1358,8 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         XTermEvent.proofExplorerRun,
                         XTermEvent.proofExplorerEdit,
                         XTermEvent.didCopyText,
+                        XTermEvent.didCutText,
+                        XTermEvent.didPasteText,
                         XTermEvent.escapeKeyPressed,
                         XTermEvent.click
                     ],

@@ -15,7 +15,9 @@ SBCL_SRC=$(SBCL_PATH)/src
 SBCL=$(SBCL_PATH)/bin/sbcl
 
 PVS_GIT=https://github.com/SRI-CSL/PVS
-PVS_COMMIT=5284756f3c463e1279461fd2010ceb303943e716
+#PVS_COMMIT=5284756f3c463e1279461fd2010ceb303943e716
+# PVS_COMMIT=bd559e1e37095063c256f701e3afed8542e5f357
+PVS_COMMIT=1331ccc41c885e16789e19ff9b18cb049451a8d8
 PVS_FOLDER=pvs-8.0
 PVS_PATH=$(INSTALLATION_PATH)/$(PVS_FOLDER)
 PVS=$(PVS_PATH)/pvs
@@ -38,6 +40,7 @@ install-pvs: install-sbcl
 		echo -e "\033[0;32m** PVS found at $(PVS) **\033[0m";\
 	else \
 		echo -e "\033[0;32m** Installing PVS to $(PVS_PATH) **\033[0m";\
+		echo -e "\033[0;32m** Checking out version PVS 8.0 ($(PVS_GIT)/tree/$(PVS_COMMIT)) **\033[0m";\
 		(\
 			mkdir -p $(INSTALLATION_PATH) &&\
 			cd $(INSTALLATION_PATH) &&\
@@ -48,6 +51,7 @@ install-pvs: install-sbcl
 			make clean &&\
 			make SBCL=$(SBCL) EMACS="$(EMACS_APP)" &&\
 			echo -e "\033[0;32m** PVS ready at $(PVS) **\033[0m";\
+			echo -e "\033[0;32m** All done! You can now close this terminal window. **\033[0m";\
 		) ||\
 		echo -e "\033[0;31m** ERROR PVS could not be installed at $(PVS) **\033[0m";\
 	fi

@@ -1,11 +1,12 @@
 {
 	"name": "xterm-pvs",
 	"author": "Paolo Masci",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"dependencies": {
-		"@xterm/addon-canvas": "^0.6.0",
-		"@xterm/addon-search": "^0.14.0",
-		"@xterm/xterm": ">=5.4.0",
+		"@vscode/codicons": "^0.0.44",
+		"@xterm/addon-search": "^0.16.0",
+		"@xterm/addon-webgl": "^0.19.0",
+		"@xterm/xterm": "^6.0.0",
 		"animate.css": "^4.1.1",
 		"backbone": "^1.4.0",
 		"bootstrap": "^4.6.0",
@@ -18,6 +19,8 @@
 	"devDependencies": {
 		"@types/backbone": "^1.4.10",
 		"@types/jquery": "^3.5.5",
+		"css-loader": "^7.1.2",
+		"style-loader": "^4.0.0",
 		"typescript": "^5.8.3",
 		"webpack": "^5.38.1",
 		"webpack-cli": "^4.7.0"

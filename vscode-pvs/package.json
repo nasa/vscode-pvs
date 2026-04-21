@@ -1965,24 +1965,28 @@
 				"when": "resourceLangId == pvs"
 			},
 			{
-				"key": "F2",
-				"command": "proof-explorer.edit-node",
-				"note": "edit proof command in proof explorer"
-			},
-			{
-				"key": "F5",
-				"command": "proof-explorer.run-proof",
-				"note": "run proof in proof explorer"
-			},
-			{
-				"key": "F6",
+				"key": "cmd+right",
 				"command": "proof-explorer.forward",
-				"note": "step proof in proof explorer"
+				"note": "step proof in proof explorer",
+				"when": "isMac"
 			},
 			{
-				"key": "F4",
+				"key": "cmd+left",
 				"command": "proof-explorer.back",
-				"note": "one step back in proof explorer"
+				"note": "one step back in proof explorer",
+				"when": "isMac"
+			},
+			{
+				"key": "ctrl+right",
+				"command": "proof-explorer.forward",
+				"note": "step proof in proof explorer",
+				"when": "isLinux"
+			},
+			{
+				"key": "ctrl+left",
+				"command": "proof-explorer.back",
+				"note": "one step back in proof explorer",
+				"when": "isLinux"
 			}
 		],
 		"languages": [
@@ -2107,7 +2111,7 @@
 	},
 	"devDependencies": {
 		"@types/chai": "^4.3.0",
-		"@types/mocha": "^9.0.0",
+		"@types/mocha": "^10.0.10",
 		"@types/node": "^20.11.1",
 		"@types/vscode": "^1.76.0",
 		"@typescript-eslint/eslint-plugin": "^5.10.0",
@@ -2116,7 +2120,7 @@
 		"assert": "^2.0.0",
 		"chai": "^4.3.4",
 		"eslint": "^8.7.0",
-		"mocha": "^9.1.4",
+		"mocha": "^11.7.5",
 		"ts-node": "^10.9.2"
 	},
 	"resolutions": {
