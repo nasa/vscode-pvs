@@ -43,7 +43,9 @@ VSCode-PVS for PVSv8.0 should be manually installed as follows.
    download single files using command line interface, but from a
    terminal, try the following 
    ```
-   latest=`curl https://raw.githubusercontent.com/nasa/vscode-pvs/refs/heads/master/releases/vscode-pvs-1.0-latest.vsix` && `curl -O https://raw.githubusercontent.com/nasa/vscode-pvs/refs/heads/master/releases/${latest}`
+   latest=`curl https://raw.githubusercontent.com/nasa/vscode-pvs/refs/heads/master/releases/vscode-pvs-1.0-latest.vsix`\
+   && `curl -O https://raw.githubusercontent.com/nasa/vscode-pvs/refs/heads/master/releases/${latest}`\
+   && echo "*** Latest Version of VSCode-PVS: `pwd`/${latest}"
    ```
 2. In VSCode, click on the Extensions icon in the Activity Bar 
 3. Click on the `...` menu in the title bar, and use `Install from VSIX` to select the downloaded .vsix file
