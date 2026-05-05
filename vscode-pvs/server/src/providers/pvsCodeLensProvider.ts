@@ -71,7 +71,7 @@ export class PvsCodeLensProvider {
             const fileExtension: string = fsUtils.getFileExtension(document.uri);
             const contextFolder: string = fsUtils.getContextFolder(document.uri);
             
-            let match: RegExpMatchArray = null;
+            let match: RegExpMatchArray | null = null;
             let codeLens: CodeLens[] = [];
             const content: string = document.txt.replace(utils.commentRegexp, "");
 
@@ -80,7 +80,7 @@ export class PvsCodeLensProvider {
             if (fileExtension === ".pvs") {
                 const regex: RegExp = new RegExp(utils.theoryOrDatatypeRegexp);
                 while (match = regex.exec(content)) {
-                    if (match.length > 1 && match[1]) {
+                    if (match?.length > 1 && match[1]) {
                         const theoryName: string = match[1];
                             
                         const docUp: string = content.slice(0, match.index + theoryName.length);
@@ -148,7 +148,7 @@ export class PvsCodeLensProvider {
             if (fileExtension === ".pvs" || fileExtension === ".tccs") {
                 const regex: RegExp = new RegExp(utils.theoremRegexp);
                 while (match = regex.exec(content)) {
-                    if (match.length > 1 && match[1]) {
+                    if (match?.length > 1 && match[1]) {
                         const formulaName: string = match[1];
                         const matchParams: RegExpMatchArray = new RegExp(utils.theoremParamsRegexp).exec(match[0].trim());
                         const blanks: number = match[0].replace(matchParams[0], "").replace(formulaName, "").length;
@@ -332,10 +332,10 @@ export class PvsCodeLensProvider {
                             }
                         });
 
-                        const matchProoflite: RegExpMatchArray = utils.proofliteRegexp({
+                        const matchProoflite: RegExpMatchArray | null = utils.proofliteRegexp({
                             theoryName, formulaName
                         }).exec(content);
-                        const prooflite: string = matchProoflite && matchProoflite.length ? matchProoflite[0].trim() : null;
+                        const prooflite: string | null = matchProoflite && matchProoflite.length ? matchProoflite[0].trim() : "";
                     
                         const insertProofliteArgs: CopyProofliteRequest = {
                             fileName,

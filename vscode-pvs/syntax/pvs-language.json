@@ -55,6 +55,10 @@
 			"name": "keyword"
 		},
 		{
+			"match": "\\b_[Tt][Ee][Ss][Tt]_\\b",
+			"name": "keyword"
+		},
+		{
 			"match": "\\(\\#|\\#\\)|\\[\\#|\\#\\]|\\:\\=|\\<?\\=\\>|\\-\\>",
 			"name": "keyword"
 		},

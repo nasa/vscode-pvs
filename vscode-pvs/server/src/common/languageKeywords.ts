@@ -56,7 +56,7 @@ export function regExpSource(v: Array<string>): string {
 					return "\\b(?!" + elem + "[\\+\\-])"
 							+ elem + "\\b|\\b" + elem + "[\\+\\-]";
 				}
-				const op: string = elem.includes("?") ? "?"
+				const op: string | null = elem.includes("?") ? "?"
 									: elem.includes("+") ? "+" 
 									: elem.includes("!") ? "!" : null;
 				return (op) ? "\\b" + elem.replace(op, `\\${op}`)
@@ -96,7 +96,7 @@ export const INNER_DECLARATION_KEYWORDS = [
 	"COROLLARY", "DATATYPE",
 	"FACT",
 	"FORMULA", "FUNCTION",
-	"JUDGEMENT", "LEMMA", "LAW",
+	"JUDGEMENT", "LEMMA", "LAW", "_TEST_",
 	"OBLIGATION", 
 	"POSTULATE", "PROPOSITION", "SUBLEMMA",
 	"THEOREM", "TABLE",

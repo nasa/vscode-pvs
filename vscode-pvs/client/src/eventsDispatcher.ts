@@ -940,7 +940,7 @@ Disclaimer: the logs could contain information about the system, such as name of
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.install-pvs", async () => {
             this.statusBar.hideinstallpvsButton();
-            const success: boolean = await this.packageManager.pvsInstallationWizard();
+            const success: boolean = await this.packageManager.pvsInstallationWizard() && await this.packageManager.nasalibInstallationWizard();
             if (!success) {
                 this.statusBar.showInstallPvsButton();
             }
@@ -2118,7 +2118,7 @@ Disclaimer: the logs could contain information about the system, such as name of
                     // msg += `\nThe error occurred while executing method [${opt.method}](${opt.method})`; // vscode is unable to render marked strings in dialogs
                     msg += `\nThe error occurred while executing the following method ${opt.method}`;
                 }
-                vscodeUtils.showCriticalErrorMessage("PVS failed. Please restart using M-x reboot-pvs.");
+                // vscodeUtils.showCriticalErrorMessage("PVS failed. Please restart using M-x reboot-pvs.");
                 vscodeUtils.showFailure(msg, src, opt.log);
             }
         });
