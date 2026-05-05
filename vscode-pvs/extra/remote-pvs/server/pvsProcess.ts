@@ -24,6 +24,7 @@ interface PvsProcessOptions {
 export class PvsProcess {
     protected pvsProcess: ChildProcess | null = null;
     protected pvsPath: string;
+    protected criticalError: boolean = false;
 
     /**
      * Current status of the PVS process; `undefined` indicates that the current status cannot be determined (for example, because the process is starting but not yet ready).
@@ -173,7 +174,8 @@ export class PvsProcess {
 
     private handleStderrData(data: string): void {
         const dataNoLineBreaks = data.replace(/\n/g, ' ');
-        if (/debugger invoked on/gi.test(dataNoLineBreaks)) {
+        if (!this.criticalError && /debugger invoked on/gi.test(dataNoLineBreaks)) {
+            this.criticalError = true; // this will prevent repeated reporting of errors
             this.sendToClient({msg: "PVS entered the debugger. Please use M-x reboot-pvs to restart the process.", src: "pvs",type:"server-call", method: "pvsErrorManager.notifyPvsFailure"});
         }
     }
