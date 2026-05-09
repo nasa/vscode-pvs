@@ -1515,7 +1515,7 @@ export class PvsProxy {
 	 * @param desc pvs file descriptor:
 	 *   contextFolder, fileName, fileExtension, optional fileContent
 	 */
-	async typecheckFile(desc: PvsFile, opt?: { externalServer?: boolean, progressReporter?: (msg: string) => void, force?: boolean }): Promise<PvsResponse> {
+	async typecheckFile(desc: PvsFile, opt?: { externalServer?: boolean, progressReporter?: (msg: string) => void/*, force?: boolean*/ }): Promise<PvsResponse> {
 		opt = opt || {};
 		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
 			let fname: string = this.fileRef(desc);
@@ -1540,7 +1540,8 @@ export class PvsProxy {
 			// typecheck file
 			await this.changeContext({contextFolder: desc.contextFolder});
 			// console.log('Typechecking ', fname);
-			let res: PvsResponse = await this.pvsRequest('typecheck', (!!opt.force?[<PvsFile>desc, "", "true"]:[<PvsFile>desc]), opt.progressReporter);
+			// let res: PvsResponse = await this.pvsRequest('typecheck', (!!opt.force?[<PvsFile>desc, "", "true"]:[<PvsFile>desc]), opt.progressReporter);
+			let res: PvsResponse = await this.pvsRequest('typecheck', [<PvsFile>desc, "", "true"], opt.progressReporter);
 			if (res && (res.error && res.error.data) || res.result) {
 				if (res.error) {
 					// the typecheck error might be generated from an imported file --- we need to check res.error.file_name
