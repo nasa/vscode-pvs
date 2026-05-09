@@ -70,6 +70,7 @@ describe("pvs-proxy", () => {
         label(`can list pvs-server methods`);
         const response: PvsResponse = await pvsProxy?.listMethodsRequest();
         const methods: string[] = [
+            'add-prover-hook',
             'add-pvs-library',
             'all-proofs-of-formula',
             'change-context',
@@ -167,9 +168,17 @@ describe("pvs-proxy", () => {
 
 
     /**
-     * This test fails intermittently with the following error
-        {
-            error: {
+     * This test fails intermittently with the following errors
+        error: {
+            code: -32700,
+            message: 'PVS Error',
+            data: 'Lock on package COMMON-LISP violated when interning assert while in package PVS.\n' +
+            'See also:\n' +
+            '  The SBCL Manual, Node "Package Locks"\n' +
+            '  The ANSI Standard, Section 11.1.2.1.2'
+        }
+        
+        error: {
                 code: -32700,
                 message: 'PVS Error',
                 data: 'The value\n  NIL\nis not of type\n  PVS::CONTEXT-ENTRY'
@@ -187,7 +196,7 @@ describe("pvs-proxy", () => {
             theoryName: "sqrt"
         };
         const response: PvsResponse = await pvsProxy?.getDefaultProofScript(formula);
-        // console.dir(response, { depth: null });
+        console.dir(response, { depth: null });
         expect(response).not.to.be.undefined;
         expect(response?.result).to.be.undefined;
         expect(response?.error).not.to.be.undefined;
