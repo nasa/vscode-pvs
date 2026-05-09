@@ -138,6 +138,10 @@ describe("test-pvs-context", () => {
 
     //-- all tests below this line are completed successfully
 
+    /**
+     * THis test fails with the following code
+     * error: { code: -32700, message: 'PVS Error', data: 'update-context: 2' }
+     */
     it(`can show tccs for alaris_th`, async () => {
         await pvsProxy?.quitAllProofs();
 
@@ -154,7 +158,7 @@ describe("test-pvs-context", () => {
             contextFolder: path.join(baseFolder, "alaris2l"),
             theoryName: "alaris_th"
         });
-        // console.dir(response);
+        console.dir(response);
         expect(response).not.to.be.undefined;
         expect(response?.result).not.to.be.undefined;
         expect(response?.error).to.be.undefined;
