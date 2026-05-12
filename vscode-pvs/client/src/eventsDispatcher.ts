@@ -820,11 +820,11 @@ export class EventsDispatcher {
         context.subscriptions.push(commands.registerCommand("vscode-pvs.show-version-dialog", () => {
             this.statusBar.showVersionDialog({ downloadButtons: true });
         }));
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.reboot-pvs", async () => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.reboot-pvs", async (info?: string) => {
             // ask the user confirmation before restarting pvs
 			const yesNo: string[] = [ "Yes", "No" ];
-			const msg: string = `Reboot pvs?\n\nThis action can resolve situations where the server crashed or is not responding.`;
-			const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesNo[0])
+			const msg: string = info || `Reboot pvs?\n\nThis action can resolve situations where the server crashed or is not responding.`;
+			const ans: string | undefined = await vscode.window.showInformationMessage(msg, { modal: true }, yesNo[0])
 			if (ans === yesNo[0]) {
                 const currentContext: string = vscodeUtils.getRootPath();
                 const req = { 
@@ -838,17 +838,20 @@ export class EventsDispatcher {
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.interrupt-prover", async () => {
             // ask the user confirmation before restarting pvs
-            if (this.proofExplorer) {
+            if (this.proofExplorer.isRunning()) {
                 this.proofExplorer.queryPauseProof();
             } else {
                 const yesNo: string[] = [ "Yes", "No" ];
                 const msg: string = `Interrupt the execution of the current proof command?`;
-                const ans: string = await vscode.window.showInformationMessage(msg, { modal: true }, yesNo[0])
+                const ans: string | undefined = await vscode.window.showInformationMessage(msg, { modal: true }, yesNo[0])
                 if (ans === yesNo[0]) {
                     const action: ProofExecInterruptProver = { action: "interrupt-prover" };
                     this.client.sendRequest(serverRequest.proverCommand, action);
                 }
             }
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.interrupt-pvs", async () => {
+            commands.executeCommand("vscode-pvs.reboot-pvs", "Interrupt the execution of the current PVS command?");
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.ready", () => {
             this.statusBar.ready();
@@ -857,6 +860,12 @@ export class EventsDispatcher {
             if (this.xterm) {
                 this.xterm?.write("(show-hidden-formulas)");
                 this.xterm?.sendTextToServer("(show-hidden-formulas)");
+            }
+        }));
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.show-expanded-sequent", async (desc: { cmd: string }) => {
+            if (this.xterm) {
+                this.xterm?.write("(show-expanded-sequent)");
+                this.xterm?.sendTextToServer("(show-expanded-sequent)");
             }
         }));
         context.subscriptions.push(commands.registerCommand("xterm-pvs.send-command", async (desc: { cmd: string }) => {

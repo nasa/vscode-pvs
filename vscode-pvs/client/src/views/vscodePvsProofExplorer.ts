@@ -1823,6 +1823,13 @@ export class VSCodePvsProofExplorer extends Explorer {
 	}
 
 	/**
+	 * Returns true if proof explorer is active
+	 */
+	isActive (): boolean {
+		return !!this.root;
+	}
+
+	/**
 	 * Function inherited from tree data provider
 	 * @param item A node in the proof tree 
 	 */

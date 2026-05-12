@@ -2671,8 +2671,8 @@ export class PvsProxy {
 			console.log(await this.tunnel.destroy());
 			this.tunnel = null;
 		}
-		if (!this.remoteActive && this.secondaryConnReady())
-			await this.sendRequestOnSecondaryConn('quit-all-proof-sessions');
+		// if (!this.remoteActive && this.secondaryConnReady())
+		// 	await this.sendRequestOnSecondaryConn('quit-all-proof-sessions'); // <<<< commenting out this for now, quit-all-proof-sessions triggers an unrecoverable error in pvs
 		if(this.webSocket){
 			await this.webSocket.close();
 			await this.webSocket.terminate();

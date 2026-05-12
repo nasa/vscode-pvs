@@ -101,6 +101,7 @@ const cmds: string[] = [
 	"about", // show release notes
 
 	"show-hidden-formulas",
+	"show-expanded-sequent",
 	"status-proofchain", "spc",
 
 	"x-show-proof",
@@ -347,6 +348,10 @@ export class VSCodePvsEmacsBindingsProvider {
 				}
 				case "show-hidden-formulas": {
 					commands.executeCommand('vscode-pvs.show-hidden-formulas');
+					break;
+				}
+				case "show-expanded-sequent": {
+					commands.executeCommand('vscode-pvs.show-expanded-sequent');
 					break;
 				}
 				case "nf": {

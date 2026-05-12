@@ -3343,7 +3343,7 @@ export class XTermPvs extends Backbone.Model {
                 meta: !!evt?.metaKey
             };
             // ctrl+c interrupts the prover. This combo is enabled only when the prover is running.
-            if (this.runningFlag && evt?.ctrlKey && evt.key === "c") {
+            if (/*this.runningFlag && */evt?.ctrlKey && evt.key === "c") {
                 this.trigger(XTermEvent.sendText, { data: interruptCommand });
                 return false;
             }

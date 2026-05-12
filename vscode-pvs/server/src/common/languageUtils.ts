@@ -3307,7 +3307,7 @@ export function getHints (type: SessionType, req?: { activeLine?: string, lastSt
 
 // utility function, checks if open brackets match closed brackets
 export interface CheckParResult { success: boolean, msg: string }
-export function checkPar (content: string, opt?: { includeStringContent?: boolean }): CheckParResult {
+export function checkPar (content: string | null | undefined, opt?: { includeStringContent?: boolean }): CheckParResult {
 	let par: number = 0;
 	let quotes: number = 0;
 	let txt: string = content?.trim() || "";
