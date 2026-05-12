@@ -11,7 +11,7 @@ The environment redefines the way developers interact with PVS, and better align
 <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png" width="800">
 
 ## Latest version
-The file [vscode-pvs-1.0-latest](/releases/vscode-pvs-1.0-latest.vsix) in [VSCode-PVS/releases](/releases) points to the
+The file [vscode-pvs-8](/releases/vscode-pvs-8.vsix) in [VSCode-PVS/releases](/releases) points to the
 current development binary release of VSCode-PVS for [PVS8.0](https://github.com/SRI-CSL/PVS).
 The release [vscode-pvs-1.0.65](/releases/previous-releases/vscode-pvs-1.0.65.vsix) is
 the final stable binary release for [PVS 7.1](http://pvs.csl.sri.com/).
@@ -38,12 +38,12 @@ the final stable binary release for [PVS 7.1](http://pvs.csl.sri.com/).
 VSCode-PVS for PVSv8.0 should be manually installed as follows. 
 
 1. Download
-   [vscode-pvs-1.0-latest](/releases/vscode-pvs-1.0-latest.vsix) from
+   [vscode-pvs-8](/releases/vscode-pvs-8.vsix) from
    [VSCode-PVS/releases](/releases). GitHub doesn't make it easy to
    download single files using command line interface, but from a
    terminal, try the following 
    ```
-   latest=`curl https://raw.githubusercontent.com/nasa/vscode-pvs/refs/heads/master/releases/vscode-pvs-1.0-latest.vsix`\
+   latest=`curl https://raw.githubusercontent.com/nasa/vscode-pvs/refs/heads/master/releases/vscode-pvs-8.vsix`\
    && `curl -O https://raw.githubusercontent.com/nasa/vscode-pvs/refs/heads/master/releases/${latest}`\
    && echo "*** Latest Version of VSCode-PVS: `pwd`/${latest}"
    ```
