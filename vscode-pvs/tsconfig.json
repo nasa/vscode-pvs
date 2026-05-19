@@ -6,6 +6,7 @@
 		"rootDir": "src",
 		"lib": [ "es7" ],
 		"sourceMap": true,
+		"strictNullChecks": false,
 		"types": [
 			"handlebars", "mocha"
 		]

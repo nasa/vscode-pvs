@@ -19,7 +19,8 @@
             "node_modules/@types"
         ],
         "diagnostics": true,
-		"allowJs": true
+		"allowJs": true,
+		"strictNullChecks": false
 	},
 	"include": [
 		"./src/**/*",

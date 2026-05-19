@@ -7,6 +7,7 @@
 		"lib": ["es6", "dom"],
 		"sourceMap": true,
 		"types": [],
+		"strictNullChecks": false,
 		"typeRoots": [
             "node_modules/@types"
         ]
