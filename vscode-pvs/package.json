@@ -1965,13 +1965,13 @@
 				"when": "resourceLangId == pvs"
 			},
 			{
-				"key": "cmd+right",
+				"key": "cmd+alt+right",
 				"command": "proof-explorer.forward",
 				"note": "step proof in proof explorer",
 				"when": "isMac"
 			},
 			{
-				"key": "cmd+left",
+				"key": "cmd+alt+left",
 				"command": "proof-explorer.back",
 				"note": "one step back in proof explorer",
 				"when": "isMac"

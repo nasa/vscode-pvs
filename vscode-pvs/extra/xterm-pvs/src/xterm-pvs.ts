@@ -3338,9 +3338,9 @@ export class XTermPvs extends Backbone.Model {
         this.xterm.attachCustomKeyEventHandler ((evt: KeyboardEvent): boolean => {
             // console.log("[xterm-pvs] attachCustomKeyEventHandler", { evt, sessionType: this.sessionType, inputEnabled: this.inputEnabled });
             this.modKeys = {
-                alt: !!evt?.altKey,
+                alt: !!evt?.altKey, // Option or ⌥ on macOS
                 ctrl: !!evt?.ctrlKey,
-                meta: !!evt?.metaKey
+                meta: !!evt?.metaKey // command in Mac
             };
             // ctrl+c interrupts the prover. This combo is enabled only when the prover is running.
             if (/*this.runningFlag && */evt?.ctrlKey && evt.key === "c") {
@@ -3387,13 +3387,13 @@ export class XTermPvs extends Backbone.Model {
                 return false;
             }
             // ctrl+ArrowDown / ctrl+shift+ArrowDown / command+ArrowDown = proof-explorer.forward
-            if (this.inputEnabled && this.modKeyIsActive() && (!isLinux() && evt?.metaKey || isLinux() && evt?.ctrlKey) && (evt.key === "ArrowDown" || evt.key === "ArrowRight")) {
+            if (this.inputEnabled && this.modKeyIsActive() && (!isLinux() && evt?.metaKey && evt?.altKey || isLinux() && evt?.ctrlKey) && (evt.key === "ArrowDown" || evt.key === "ArrowRight")) {
                 this.trigger(XTermEvent.proofExplorerForward);
                 evt.stopPropagation();
                 return false;
             }
             // ctrl+ArrowUp / ctrl+shift+ArrowUp / command+ArrowUp = proof-explorer.back
-            if (this.inputEnabled && this.modKeyIsActive() && (!isLinux() && evt?.metaKey || isLinux() && evt?.ctrlKey) && (evt.key === "ArrowUp" || evt.key === "ArrowLeft")) {
+            if (this.inputEnabled && this.modKeyIsActive() && (!isLinux() && evt?.metaKey && evt?.altKey || isLinux() && evt?.ctrlKey) && (evt.key === "ArrowUp" || evt.key === "ArrowLeft")) {
                 this.trigger(XTermEvent.proofExplorerBack);
                 evt.stopPropagation();
                 return false;
