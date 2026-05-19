@@ -52,6 +52,9 @@ import { Extension, Progress } from 'vscode';
 import { PvsLanguageClient } from '../pvsLanguageClient';
 import { readdirSync, existsSync, mkdirSync, copyFileSync, readFileSync, writeFileSync} from 'fs';
 
+// extension name
+export const extensionName: string = "@ext:paolomasci.vscode-pvs-8"; 
+
 // vscode task
 export type ProgressTask = (progress: Progress<{ message?: string; increment?: number }>, token: CancellationToken) => Thenable<void>;
 // task resolution function
@@ -61,7 +64,7 @@ export type RunningTask = { resolve: () => void };
  * Returns vscode-pvs extension info
  */
 export function getVSCodePvsExtensionInfo (): VSCodePvsVersionDescriptor {
-    const info: Extension<PvsLanguageClient> = vscode.extensions.getExtension("paolomasci.vscode-pvs");
+    const info: Extension<PvsLanguageClient> | undefined = vscode.extensions.getExtension("paolomasci.vscode-pvs");
     if (info?.packageJSON) {
         return {
             name: info.packageJSON.name,
@@ -1427,7 +1430,7 @@ export function minimizeIntegratedTerminal (): void {
  * Utility function, opens vscode-pvs settings
  */
 export function openVscodePvsSettings (): void {
-    vscode.commands.executeCommand('workbench.action.openSettings', '@ext:paolomasci.vscode-pvs');
+    vscode.commands.executeCommand('workbench.action.openSettings', extensionName);
 }
 
 /**
