@@ -78,7 +78,7 @@ export class PvsCodeLensProvider {
             // typecheck-file | evaluate-in-pvsio | view-as-markdown
             // use a simple match on the theory declaration, so the commands show up even if the theory does not parse (e.g., because of missing END theoryname)
             if (fileExtension === ".pvs") {
-                const regex: RegExp = new RegExp(utils.theoryOrDatatypeRegexp);
+                const regex: RegExp = new RegExp(utils.theoryRegexp);
                 while (match = regex.exec(content)) {
                     if (match?.length > 1 && match[1]) {
                         const theoryName: string = match[1];
