@@ -62,6 +62,7 @@ const cmds: string[] = [
 	"pr", "prove",
 	"pri", "prove-importchain",
 	"prt", "prove-theory",
+	"ppe", "prettyprint-expanded",
 	"pvsio",
 
 	"insert-prooflite-script",
@@ -250,6 +251,12 @@ export class VSCodePvsEmacsBindingsProvider {
 				case "prove-theory": {
 					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
 					commands.executeCommand('vscode-pvs.prove-theory', desc);
+					break;
+				}
+				case "ppe":
+				case "prettyprint-expanded": {
+					desc.fileExtension = ".pvs"; // force file extension, in the case the command is invoked from the .tccs file
+					commands.executeCommand('vscode-pvs.prettyprint-expanded', desc);
 					break;
 				}
 				case "insert-prooflite-script": {
