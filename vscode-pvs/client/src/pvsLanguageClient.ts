@@ -552,7 +552,7 @@ export class PvsLanguageClient { //implements vscode.Disposable {
 				vscodeUtils.declutterVscode();
 
 				// set readonly files (e.g., tccs)
-				vscodeUtils.setReadonlyFiles([ ".tccs", ".summary" ]);
+				vscodeUtils.setReadonlyFiles([ ".tccs", ".summary", ".ppe" ]);
 
 				// update status bar
 				this.statusBar.clear();

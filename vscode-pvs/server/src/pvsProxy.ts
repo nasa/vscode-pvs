@@ -1065,8 +1065,8 @@ export class PvsProxy {
 		return this.mathObjectsCache.types;
 	}
 
-	fileRef(desc: PvsFile): string {
-		return path.join(desc.contextFolder, desc.fileName + ".pvs");
+	fileRef(desc: PvsFile, opt?: { excludeExtension?: boolean }): string {
+		return path.join(desc.contextFolder, `${opt?.excludeExtension ? desc.fileName : desc.fileName + ".pvs"}`);
 	}
 
 	folderRefRemote(desc: ContextFolder): string {
@@ -1577,6 +1577,20 @@ export class PvsProxy {
 				}
 			}
 
+			return res;
+		}
+		return null;
+	}
+
+	/**
+	 * shows prettyprint-expanded version of the theories in a pvs file
+	 * @param desc pvs file
+	 */
+	async prettyprintExpanded (desc: PvsFile, opt?: { externalServer?: boolean, progressReporter?: (msg: string) => void }): Promise<PvsResponse> {
+		opt = opt || {};
+		if (desc && desc.fileName && desc.fileExtension && desc.contextFolder) {
+			let fileRef: string = this.fileRef(desc, { excludeExtension: true });
+			let res: PvsResponse = await this.pvsRequest('prettyprint-expanded', [fileRef], opt.progressReporter);
 			return res;
 		}
 		return null;

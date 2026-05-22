@@ -177,8 +177,10 @@ export async function previewTextDocument (name: string, content: string, opt?: 
     // const preview: vscode.Uri = vscode.Uri.parse(`untitled:${fname}`);
 
     const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
-    edit.createFile(preview, { overwrite: true });
-    edit.insert(preview, new vscode.Position(0, 0), content);
+    const encoder = new TextEncoder();
+    const contents: Uint8Array = encoder.encode(content);
+    edit.createFile(preview, { overwrite: true, contents });
+    // edit.insert(preview, new vscode.Position(0, 0), content);
     let success: boolean = await vscode.workspace.applyEdit(edit);
     // FIXME: applyEdit fails if the document is already open and active in the editor, understand why this is the case.
     if (!success) {

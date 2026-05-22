@@ -128,6 +128,14 @@ export class PvsCodeLensProvider {
                                 arguments: [ pvsFile ]
                             }
                         });
+                        codeLens.push({
+                            range,
+                            command: {
+                                title: "prettyprint-expanded",
+                                command: "vscode-pvs.prettyprint-expanded",
+                                arguments: [ pvsFile ]
+                            }
+                        });
                         // add codelens for theory documentation if the theory does not include any doc header
                         // const includesDoc: boolean = utils.includesTheoryTag(theoryName, docUp);
                         // if (!includesDoc) {

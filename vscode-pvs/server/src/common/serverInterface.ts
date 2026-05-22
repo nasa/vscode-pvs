@@ -461,6 +461,13 @@ export declare interface FindSymbolDeclarationResponse {
 	req: FindSymbolDeclarationRequest,
 	ans: PvsDefinition[]
 }
+export declare interface PrettyPrintExpandedRequest {
+	file: PvsFile
+}
+export declare interface PrettyPrintExpandedResponse {
+	req: PrettyPrintExpandedRequest,
+	ans: PvsFile
+}
 export interface SearchResult extends PvsFile {
 	line: number,
 	libName?: string
@@ -523,6 +530,7 @@ export const serverRequest = {
 	parseFileWithFeedback: "pvs.parse-file.with-feedback",
 	parseWorkspace: "pvs.parse-workspace",
 	parseWorkspaceWithFeedback: "pvs.parse-workspace.with-feedback",
+	prettyprintExpanded: "pvs.prettyprint-expanded",
 	typecheckWorkspace: "pvs.typecheck-workspace",
 	typecheckWorkspaceWithFeedback: "pvs.typecheck-workspace.with-feedback",
 	listContext: "pvs.list-context",

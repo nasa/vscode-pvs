@@ -58,7 +58,9 @@ import {
 	StatusProofChain, DumpPvsFilesRequest, DumpPvsFilesResponse, UndumpPvsFilesRequest, 
 	UndumpPvsFilesResponse, DumpFileDescriptor, PvsDocRequest, PvsDocKind, PvsDocDescriptor, PvsDocResponse,
 	remoteDetailsDesc,
-	TypeCheckFileRequest
+	TypeCheckFileRequest,
+	PrettyPrintExpandedRequest,
+	PrettyPrintExpandedResponse
 } from './common/serverInterface'
 import { PvsCompletionProvider } from './providers/pvsCompletionProvider';
 import { PvsDefinitionProvider } from './providers/pvsDefinitionProvider';
@@ -498,8 +500,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			const response = await this.pvsProxy.evaluateInPvsIoSession({sessionId: pvsIoStartResponse.result.id, expr: req.expr, evaluateAsLisp: false});
 			await this.pvsProxy.evaluateInPvsIoSession({sessionId: pvsIoStartResponse.result.id, expr: "quit", evaluateAsLisp: false});
 			this.connection?.sendNotification(serverRequest.evalExpression, { req, response });
-		} else
-				this.connection?.sendNotification(serverRequest.evalExpression, { req, response: pvsIoStartResponse });
+		} else {
+			this.connection?.sendNotification(serverRequest.evalExpression, { req, response: pvsIoStartResponse });
+		}
 	}
 	/**
 	 * Evaluator command handler -- this is used during interactive pvsio sessions
@@ -1648,6 +1651,7 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				if (this.pvsProxy?.isProtectedFolder(desc.contextFolder)) {
 					const cdesc: PvsContextDescriptor = await this.getPreludeDescriptor();
 					if (cdesc) {
+						// @ts-ignore
 						return cdesc[fsUtils.desc2fname(desc)];
 					} else {
 						console.error('[pvs-language-server.listTheories] Error: could not read file descriptor for protected file ', desc);
@@ -1923,7 +1927,9 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 			try {
 				return fsUtils.readFile(fileName);
 			} catch (readError) {
+				// @ts-ignore
 				console.error(`[pvs-language-server] Warning: Error while reading file ${fileName} (${readError.message})`);
+				// @ts-ignore
 				this.connection?.sendNotification("pvs-error", `Error while reading file ${fileName} (${readError.message})`);
 			}
 		} else {
@@ -2549,6 +2555,20 @@ export class PvsLanguageServer extends fsUtils.PostTask {
 				const ans: PvsDefinition[] = await this.definitionProvider.findSymbolDefinitionInTheory(req?.theory, req?.symbolName);
 				const res: FindSymbolDeclarationResponse = { req, ans };
 				this.connection?.sendRequest(serverEvent.findSymbolDeclarationResponse, res);
+			});
+
+			// prettyprint-expanded request
+			this.connection?.onRequest(serverRequest.prettyprintExpanded, async (req: PrettyPrintExpandedRequest) => {
+				if (req?.file?.fileName) {
+					console.log(`[${fsUtils.generateTimestamp()}] `+`[pvsLanguageServer] responding request ${serverRequest.prettyprintExpanded} - param: ${JSON.stringify(req)} `); // #DEBUG
+					const taskId: string = `prettyprint-expanded-${req.file.fileName}${req.file.fileExtension}`;
+					this.notifyStartImportantTask({ id: taskId, msg: `Generating prettyprint-expanded version of ${req.file.fileName}${req.file.fileExtension}` });
+
+					const ans: PvsResponse = await this.pvsProxy.prettyprintExpanded(req.file, { progressReporter: (msg: string) => {this.notifyProgressImportantTask({ id: taskId, msg: msg, increment: -1})}});
+					const res: PrettyPrintExpandedResponse = { req, ans: { ...req.file, fileExtension: ".ppe", fileContent: ans?.result || "" }};
+					this.notifyEndImportantTask({ id: taskId });
+					this.connection?.sendNotification(serverRequest.prettyprintExpanded, res);
+				}
 			});
 
 			// prover commands

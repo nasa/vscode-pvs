@@ -53,7 +53,8 @@ import {
     FormulaDescriptor, quickFixReplaceCommand, QuickFixReplace, QuickFixAddImporting, 
     quickFixAddImportingCommand, VSCodePvsVersionDescriptor, DumpPvsFilesRequest, 
     DumpPvsFilesResponse, UndumpPvsFilesRequest, UndumpPvsFilesResponse, FollowLink,
-    TypeCheckFileRequest
+    TypeCheckFileRequest,
+    PrettyPrintExpandedResponse
 } from "./common/serverInterface";
 import { window, commands, ExtensionContext, ProgressLocation, Selection, Uri, workspace } from "vscode";
 import * as vscode from 'vscode';
@@ -1108,7 +1109,7 @@ Disclaimer: the logs could contain information about the system, such as name of
             }
         }));
 
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.pvsio-web", async (resource: PvsTheory | { path: string }, opt?: { force?: boolean }) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.pvsio-web", async (resource: PvsTheory /*| { path: string }*/, opt?: { force?: boolean }) => {
             let req: StartXTermEvaluatorRequest = resource && resource["theoryName"] ? <PvsTheory> resource : null;
             if (!req) {
                 const activeEditor: vscode.TextEditor = vscodeUtils.getActivePvsEditor();
@@ -1204,8 +1205,20 @@ Disclaimer: the logs could contain information about the system, such as name of
                 // vscode.commands.executeCommand("workbench.action.quickOpen", desc.fname);
             }
         }));
+        // prettyprint-expanded
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.prettyprint-expanded", (desc: PvsFile) => {
+            if (desc?.fileName) {
+                this.client.sendRequest(serverRequest.prettyprintExpanded, { file: desc }); // async call
+                this.client.onNotification(serverRequest.prettyprintExpanded, (res: PrettyPrintExpandedResponse) => {
+                    vscodeUtils.previewTextDocument(res.ans.fileName + res.ans.fileExtension, res.ans.fileContent, { 
+                        contextFolder: res.ans.contextFolder, 
+                        viewColumn: vscode.ViewColumn.Beside
+                    });
+                });
+            }
+        }));
         // view-as-markdown
-        context.subscriptions.push(commands.registerCommand("vscode-pvs.view-as-markdown", (desc: PvsTheory) => {
+        context.subscriptions.push(commands.registerCommand("vscode-pvs.view-as-markdown", (desc: PvsFile) => {
             if (desc?.fileName) {
                 this.fileViewer.openAsMarkdownPreview(desc); // async call
                 // vscode.commands.executeCommand("workbench.action.quickOpen", desc.fname);
