@@ -14,9 +14,10 @@ SBCL_PATH=$(INSTALLATION_PATH)/$(SBCL_FOLDER)
 SBCL_SRC=$(SBCL_PATH)/src
 SBCL=$(SBCL_PATH)/bin/sbcl
 
+PVS_VERSION=8.1
 PVS_GIT=https://github.com/SRI-CSL/PVS
-# PVS_COMMIT=becb015354a1a0be3e07c814c2df1de993d90505
-PVS_FOLDER=pvs-8.0
+PVS_COMMIT=51914cce8af0e84e49362b46b77bdc4a8ab1366a
+PVS_FOLDER=pvs-$(PVS_VERSION)
 PVS_PATH=$(INSTALLATION_PATH)/$(PVS_FOLDER)
 PVS=$(PVS_PATH)/pvs
 
@@ -38,7 +39,7 @@ install-pvs: install-sbcl
 		echo -e "\033[0;32m** PVS found at $(PVS) **\033[0m";\
 	else \
 		echo -e "\033[0;32m** Installing PVS to $(PVS_PATH) **\033[0m";\
-		echo -e "\033[0;32m** Checking out version PVS 8.0 ($(PVS_GIT)/tree/$(PVS_COMMIT)) **\033[0m";\
+		echo -e "\033[0;32m** Checking out version PVS $(PVS_VERSION) ($(PVS_GIT)/tree/$(PVS_COMMIT)) **\033[0m";\
 		(\
 			mkdir -p $(INSTALLATION_PATH) &&\
 			cd $(INSTALLATION_PATH) &&\

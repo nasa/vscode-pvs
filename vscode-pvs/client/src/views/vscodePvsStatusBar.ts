@@ -294,7 +294,7 @@ export class VSCodePvsStatusBar {
                 extras.push(this.pvsVersionInfo["lisp-version"]);
             }
             if (this.pvsVersionInfo["nasalib-version"]) {
-                extras.push(this.pvsVersionInfo["nasalib-version"]);
+                extras.push("NASALib " + this.pvsVersionInfo["nasalib-version"]);
             }
             if (extras.length) {
                 msg += ` (${extras.join(" + ")})`;

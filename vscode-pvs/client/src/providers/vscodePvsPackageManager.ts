@@ -77,7 +77,7 @@ export class VSCodePvsPackageManager {
     protected firstRun: boolean = true;
 
 	// default pvs folder/version
-	protected DEFAULT_PVS_VERSION: string = "8.0";
+	protected DEFAULT_PVS_VERSION: string = "8.1";
 	protected DEFAULT_PVS_FOLDER: string = `pvs-${this.DEFAULT_PVS_VERSION}`;
 	protected DEFAULT_INSTALLATION_FOLDER: string = `~/PVS`;
 	protected DEFAULT_NASALIB_VERSION: string = "8.0";
@@ -300,7 +300,7 @@ export class VSCodePvsPackageManager {
 						: vscodeUtils.getConfiguration("pvs.path");
             let baseFolder: string = fsUtils.tildeExpansion(userDefinedInstallationFolder) || fsUtils.getContextFolder(pvsPath) || defaultInstallationFolder;
 
-			const info: { version: string, url: string } = { version: "8.0", url: "https://github.com/SRI-CSL/PVS" }; //await this.listPvsVersionsWithProgress();
+			const info: { version: string, url: string } = { version: this.DEFAULT_PVS_VERSION, url: "https://github.com/SRI-CSL/PVS" }; //await this.listPvsVersionsWithProgress();
 			if (info?.version && info?.url) {
 				// download and install pvs
 				// const desc: { fname: string } = await this.downloadWithProgress("PVS", {
