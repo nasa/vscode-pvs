@@ -70,7 +70,8 @@ export class PvsPackageManager {
         { fname: "interface--pvs-emacs.lisp", description: "Ensures each log message starts in a new line and print also date of timestamp" },
         { fname: "rules.lisp", description: "Uses format-if to print help on proof commands" },
         { fname: "patch-20260101-context--avoids-lock-on-package-when-intern-assert.lisp", description: "Avoids LOCK ON PACKAGE error when reading prf file"},
-        { fname: "prettyprint-expanded.lisp", description: "defrequest for prettyprint-expanded" }
+        { fname: "prettyprint-expanded.lisp", description: "defrequest for prettyprint-expanded" },
+        { fname: "save-proof-info.lisp", description: "defrequest for save proof" }
     ];
 
     /**
