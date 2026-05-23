@@ -75,10 +75,13 @@ install: install-tsc
 	npm install
 
 build-nasalib-decls:
-	cd server/src/common/nasalib-utils && make build-nasalib-decls
+	cd server/src/core/nasalib-utils && make build-nasalib-decls
 
 nasalib-decls:
-	cd server/src/common/nasalib-utils && make nasalib-decls
+	nasalib-lookup-table
+
+nasalib-lookup-table:
+	cd server/src/core/nasalib-utils && make nasalib-lookup-table
 
 test-proxy:
 	npm run test-proxy

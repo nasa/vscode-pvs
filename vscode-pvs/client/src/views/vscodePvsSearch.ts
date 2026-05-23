@@ -439,7 +439,7 @@ ul, #myUL {
         <ul class="nested">
         {{#each this}}
         <li>
-            <a class="result-item" href="{{contextFolder}}/{{fileName}}{{fileExtension}}" {{#if line}}line="{{line}}"{{/if}} style="white-space:nowrap;">{{theoryName}}</a>
+            <a class="result-item" href="{{../../nasalibPath}}/{{contextFolder}}/{{fileName}}{{fileExtension}}" {{#if line}}line="{{line}}"{{/if}} style="white-space:nowrap;">{{theoryName}}</a>
         </li>
         {{/each}}
         </ul>
@@ -521,12 +521,12 @@ export class VSCodePvsSearch {
     // nasalib path
     protected nasalibPath: string;
 
-    // TODO restate caching in final version @M3
-    // // nasalib data, cached in advance to speed up rendering
-    // readonly nasalibLibraries: LibraryMap = nasalib_lookup_table.folders;
-    // readonly nasalibStats: LookUpTableStats = nasalib_lookup_table.stats;
-    protected nasalibLibraries: LibraryMap = {};
-    protected nasalibStats: LookUpTableStats;
+    // nasalib data, cached in advance to speed up rendering
+    readonly nasalibLibraries: LibraryMap = nasalib_lookup_table.folders;
+    readonly nasalibStats: LookUpTableStats = nasalib_lookup_table.stats;
+    protected nasalibContextFolder: string = "";
+    // protected nasalibLibraries: LibraryMap = {};
+    // protected nasalibStats: LookUpTableStats;
 
     // pvs library data
     protected pvsLibraries: LibraryMap = {};
@@ -738,7 +738,7 @@ export class VSCodePvsSearch {
 	 */
     protected async loadPvsLibraryDescriptors (): Promise<void> {
         this.pvsLibraries = {};
-        this.nasalibLibraries = {} ; // #TODO remove when using cached version @M3
+        // this.nasalibLibraries = {} ; // remove when using cached version @M3
         let currentLibraryMap: LibraryMap;
         const libraryFolders: string[] = vscodeUtils.getPvsLibraryPaths();
         let nTheories: number = 0;
@@ -746,50 +746,55 @@ export class VSCodePvsSearch {
 		for (let i = 0; i < libraryFolders?.length; i++) {
             const currentLibFolder: string = libraryFolders[i];
             const isNasalib: boolean = fsUtils.containsNasalib(currentLibFolder);
-            currentLibraryMap = (isNasalib?this.nasalibLibraries:this.pvsLibraries); // #TODO remove when using cached version @M3
-			const contextFolders: string[] = fsUtils.listSubFolders(currentLibFolder)?.map(elem => {
-                return path.join(currentLibFolder, elem);
-            });
-			for (let k = 0; k < contextFolders?.length; k++) {
-				const desc: PvsContextDescriptor = await fsUtils.getContextDescriptor(contextFolders[k], {
-					listTheorems: false, 
-					includeTccs: false
-				});
-                const files: string[] = Object.keys(desc?.fileDescriptors);
-                for (let f = 0; f < files?.length; f++) {
-                    const contextFolder: string = desc.fileDescriptors[files[f]].contextFolder;
-                    const contextFolderName: string = fsUtils.getContextFolderName(contextFolder);
-                    if (desc.fileDescriptors[files[f]]?.theories?.length) {
-        				currentLibraryMap[contextFolderName] = currentLibraryMap[contextFolderName] || [];
-                        currentLibraryMap[contextFolderName] = currentLibraryMap[contextFolderName].concat(desc.fileDescriptors[files[f]]?.theories?.map(elem => {
-                            return {
-                                theoryName: elem.theoryName,
-                                line: elem.position.line,
-                                contextFolder: elem.contextFolder,
-                                fileName: elem.fileName,
-                                fileExtension: elem.fileExtension
-                            };
-                        }));
-                        // #TODO remove when using cached version @M3
-                        if (isNasalib)
-                            nTheories += desc.fileDescriptors[files[f]]?.theories?.length;
-                        else
-                            nNASALibTheories += desc.fileDescriptors[files[f]]?.theories?.length;
+            if (isNasalib) { // remove this condition when using lookup table
+                this.nasalibContextFolder = currentLibFolder;
+            } else {
+                currentLibraryMap = (isNasalib ? this.nasalibLibraries : this.pvsLibraries); // remove when using cached version @M3
+                const contextFolders: string[] = fsUtils.listSubFolders(currentLibFolder)?.map(elem => {
+                    return path.join(currentLibFolder, elem);
+                });
+                for (let k = 0; k < contextFolders?.length; k++) {
+                    const desc: PvsContextDescriptor = await fsUtils.getContextDescriptor(contextFolders[k], {
+                        listTheorems: false, 
+                        includeTccs: false
+                    });
+                    const files: string[] = Object.keys(desc?.fileDescriptors);
+                    for (let f = 0; f < files?.length; f++) {
+                        const contextFolder: string = desc.fileDescriptors[files[f]].contextFolder;
+                        const contextFolderName: string = fsUtils.getContextFolderName(contextFolder);
+                        if (desc.fileDescriptors[files[f]]?.theories?.length) {
+                            currentLibraryMap[contextFolderName] = currentLibraryMap[contextFolderName] || [];
+                            currentLibraryMap[contextFolderName] = currentLibraryMap[contextFolderName].concat(desc.fileDescriptors[files[f]]?.theories?.map(elem => {
+                                return {
+                                    theoryName: elem.theoryName,
+                                    line: elem.position.line,
+                                    contextFolder: elem.contextFolder,
+                                    fileName: elem.fileName,
+                                    fileExtension: elem.fileExtension
+                                };
+                            }));
+                            // #TODO remove when using cached version @M3
+                            if (isNasalib) {
+                                nNASALibTheories += desc.fileDescriptors[files[f]]?.theories?.length;
+                            } else {
+                                nTheories += desc.fileDescriptors[files[f]]?.theories?.length;
+                            }
+                        }
                     }
+                    // TODO: sort theory names?
                 }
-                // TODO: sort theory names?
-			}
+            }
 		}
         this.pvslibStats = {
             version: "User-defined libraries",
             folders: this.pvsLibraries ? Object.keys(this.pvsLibraries).length : 0,
             theories: nTheories
         };
-        this.nasalibStats = {
-            version: "NASALib libraries",
-            folders: this.nasalibLibraries ? Object.keys(this.nasalibLibraries).length : 0,
-            theories: nNASALibTheories
-        }; // #TODO remove when using cached version @M3
+        // this.nasalibStats = { // remove when using cached version @M3
+        //     version: "NASALib libraries",
+        //     folders: this.nasalibLibraries ? Object.keys(this.nasalibLibraries).length : 0,
+        //     theories: nNASALibTheories
+        // }; 
     }
 	/**
 	 * Internal function, loads prelude libraries descriptors
