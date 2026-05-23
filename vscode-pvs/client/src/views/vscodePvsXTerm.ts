@@ -1280,7 +1280,7 @@ export class VSCodePvsXTerm extends Backbone.Model implements Terminal {
                         // reveal the panel 
                         this.panel.reveal(ViewColumn.Active, false); // false allows the webview to steal the focus
                         
-                        commands.executeCommand("workbench.action.positionPanelBottom");
+                        // commands.executeCommand("workbench.action.positionPanelBottom");
 
                         // set language to pvs
                         vscodeUtils.setEditorLanguageToPVS();

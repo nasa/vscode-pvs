@@ -1423,9 +1423,10 @@ export function setEditorLanguageToPVS (): void {
 export function minimizeIntegratedTerminal (): void {
     // VSCode does not have a function workbench.action.toggleMinimizePanel.
     // The function is here emulated by reducing the panel size 10 times, which is sufficient to minimize the panel in most cases.
-    for (let i = 0; i < 10; i++) {
-        vscode.commands.executeCommand("workbench.action.terminal.resizePaneDown");
-    }
+    // for (let i = 0; i < 10; i++) {
+    //     vscode.commands.executeCommand("workbench.action.terminal.resizePaneDown");
+    // }
+    vscode.commands.executeCommand("workbench.action.closePanel"); // this closes the bottom panel
 }
 
 /**
