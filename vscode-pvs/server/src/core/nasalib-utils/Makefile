@@ -6,6 +6,9 @@ build-nasalib-decls:
 	cd ../pvs-parser/javaTarget/out && javac -Xlint -classpath ../../../lib/antlr-4.9.3-complete.jar:./ *.java
 	xargs < $(file) java -jar ../../../out/core/lib/PvsParser.jar > nasalib-decls.json
 
-nasalib-decls:
+nasalib-lookup-table:
 	rsync nasalib-decls.json ../../../out/core/nasalib-utils/
 	node ../../../out/core/nasalib-utils/process-decls
+
+nasalib-decls:
+	make nasalib-lookup-table
