@@ -1000,15 +1000,15 @@ export async function getPvsTheory (resource: PvsFormula | PvsTheory | FormulaIt
  */
 export async function getPvsWorkspace (resource: ContextFolder | WorkspaceOverviewItem | { path: string }): Promise<ContextFolder | null> {
 	if (resource) {
-        if (resource["contextValue"]) {
+        if ((<WorkspaceOverviewItem>resource)["contextValue"]) {
             return {
                 contextFolder: (<TheoryItem> resource).contextFolder
             };    
-        } else if (resource["path"]) {
+        } else if ((<{ path: string }>resource)["path"]) {
             return {
-                contextFolder: fsUtils.getContextFolder(resource["path"])
+                contextFolder: fsUtils.getContextFolder((<{ path: string }>resource)["path"])
             };
-		} else if (resource["contextFolder"]) {
+		} else if ((<ContextFolder>resource)["contextFolder"]) {
             resource = <ContextFolder> resource;
             return resource;
         }
