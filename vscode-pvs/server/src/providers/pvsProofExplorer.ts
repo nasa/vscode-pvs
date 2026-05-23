@@ -493,7 +493,7 @@ export class PvsProofExplorer {
 				//           affectedProofStates[0] is the pre-state, i.e., proof state before the application of the proof command.
 				//           we don't need to process affectedProofStates[0] with onStepExecuted because the proof step has not been executed on that proof state
 				for (let i = 0; i < affectedProofStates.length; i++) {
-					const currCmd: string = response.result[0]["curr-cmd"];
+					// const currCmd: string = response.result[0]["curr-cmd"];
 					const proofState: PvsProofState = response.result[i]; // process proof commands
 					// if (i === 0) { await this.checkProofTermination({ proofState, args: command }, opt); }
 					// if (i > 0 || affectedProofStates.length === 1) {
@@ -501,7 +501,7 @@ export class PvsProofExplorer {
 					// }
 					const qed: boolean = await this.checkProofTermination({ proofState, args: command });
 					if (!qed && (affectedProofStates.length === 1 || i > 0)) {
-						await this.onStepExecuted({ proofState, currCmd, args: command, lastSequent: i === affectedProofStates.length - 1 }, opt);
+						await this.onStepExecuted({ proofState, /*currCmd, */args: command, lastSequent: i === affectedProofStates.length - 1 }, opt);
 					}
 				}
 				// if a proof is running, then iterate
@@ -1073,14 +1073,15 @@ export class PvsProofExplorer {
 				return true;
 			}
 		}
+		return false;
 	}
 
-	async onStepExecuted (desc: { proofState: PvsProofState, currCmd: string, args?: PvsProofCommand, lastSequent: boolean }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
+	async onStepExecuted (desc: { proofState: PvsProofState, /*currCmd: string,*/ args?: PvsProofCommand, lastSequent: boolean }, opt?: { feedbackToTerminal?: boolean }): Promise<void> {
 		if (desc?.proofState) {
 			// get command and proof state
 			let userCmd: string = desc.args ? desc.args.cmd : null; // command entered by the user
-			const currCmd: string = desc.currCmd;
-			const cmd: string = currCmd || userCmd;
+			const currCmd: string = desc.proofState["curr-cmd"]; //desc.currCmd;
+			const cmd: string = isSameCommand("(propax)", currCmd) ? (userCmd || currCmd) : (currCmd || userCmd);
 			this.mrpProofState = desc.proofState;
 			
 			// identify active node in the proof tree
@@ -3729,14 +3730,16 @@ export abstract class ProofItem extends TreeItem {
 		if (this.children) {
 			for (let i = 0; i < this.children.length; i++) {
 				const child: ProofNodeX = this.children[i].getNodeXStructure();
-				res.rules.push({
-					id: child.id,
-					branch: child.branch,
-					name: child.name,
-					type: child.type,
-					rules: child.rules,
-					parent: this.id
-				});
+				if (child?.name && !isSameCommand("(propax)", child.name)) { // do not add (propax)
+					res.rules.push({
+						id: child.id,
+						branch: child.branch,
+						name: child.name,
+						type: child.type,
+						rules: child.rules,
+						parent: this.id
+					});
+				}
 			}
 		}
 		return res;
