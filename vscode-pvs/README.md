@@ -23,8 +23,9 @@ VSCode-PVS is a new integrated development environment for creating, evaluating 
 - [Outline View](): Interactive tree view showing the outline of the pvs file open in the editor. Point-and-click actions can be used to jump to definitions.
 - [Workspace Explorer](): Interactive tree view showing all theories in the current workspace, name and status of theorems and typecheck conditions.
 - [Proof Explorer](): Interactive tree view for viewing and editing the current proof.
-- [Prover Terminal](): An integrated terminal for interacting with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
-- [Proof Mate](): Helper tool, designed to suggest proof commands that can be used to make progress with the current proof.
+- [Prover Console](): An integrated terminal for interacting with the theorem prover. Auto-completion is provided (using the TAB key) for prover commands, as well as access to the commands history.
+- [Evaluator Console](): An integrated terminal for evaluating PVS expressions in PVSio.
+- [Proof Mate](): Helper tool, provides functionalities for suggesting proof commands, sketching proof attempts, and repairing broken proofs during interactive proof sessions.
 - [Prototype Builder](): Rapid prototyping toolkit, for building interactive visual simulations based on PVS specifications.
 
 

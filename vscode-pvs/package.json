@@ -1,9 +1,9 @@
 {
-	"name": "vscode-pvs-8",
+	"name": "vscode-pvs8",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.66-20260523",
+	"version": "1.0.67",
 	"author": "NASA LaRC Formal Methods Team",
-	"displayName": "PVS",
+	"displayName": "PVS-8",
 	"icon": "icons/pvs-icon-alt.png",
 	"license": "NASA-1.3",
 	"notices": {
@@ -22,7 +22,7 @@
 		"Programming Languages"
 	],
 	"keywords": [
-		"vscode-pvs",
+		"vscode-pvs-8",
 		"pvs",
 		"prototype verification system",
 		"theorem prover",

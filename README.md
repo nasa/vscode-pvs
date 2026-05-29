@@ -1,7 +1,5 @@
 # VSCode-PVS: An Integrated Development Environment for the Prototype Verification System
 
-[![version](https://vsmarketplacebadges.dev/version/paolomasci.vscode-pvs.png)](https://marketplace.visualstudio.com/items?itemName=paolomasci.vscode-pvs)
-[![installs](https://vsmarketplacebadges.dev/installs-short/paolomasci.vscode-pvs.png)](https://marketplace.visualstudio.com/items?itemName=paolomasci.vscode-pvs)
 [![license](https://img.shields.io/badge/license-NASA-blue.svg)](https://opensource.org/licenses/NASA-1.3)
 [![chat](https://img.shields.io/badge/Chat%20on-PVS%20Google%20Group-blue.svg)](https://groups.google.com/g/pvs-group)
 
@@ -11,10 +9,9 @@ The environment redefines the way developers interact with PVS, and better align
 <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png" width="800">
 
 ## Latest version
-The file [vscode-pvs-8](/releases/vscode-pvs-8.vsix) in [VSCode-PVS/releases](/releases) points to the
-current development binary release of VSCode-PVS for [PVS8.0](https://github.com/SRI-CSL/PVS).
-The release [vscode-pvs-1.0.65](/releases/previous-releases/vscode-pvs-1.0.65.vsix) is
-the final stable binary release for [PVS 7.1](http://pvs.csl.sri.com/).
+The latest release [vscode-pvs-8](/releases/vscode-pvs-8.vsix) of VSCode-PVS works with [PVSv8](https://github.com/SRI-CSL/PVS) and is available on the Visual Studio Code MarketPlace. The binary vsix file can also be downloaded from [VSCode-PVS/releases](/releases).
+
+The release [vscode-pvs-1.0.65](/releases/previous-releases/vscode-pvs-1.0.65.vsix) is the final stable binary release for [PVSv7.1](http://pvs.csl.sri.com/)
 
 ## Publications
 - Paolo Masci and César Muñoz, [An Integrated Development Environment for the Prototype Verification System](https://dx.doi.org/10.4204/EPTCS.310.5), Electronic Proceedings in Theoretical Computer Science (EPTCS), Vol. 310, pp. 35-49, 2019 [[PDF](https://arxiv.org/pdf/1912.10632v1)][[BibTeX](https://dblp.org/rec/journals/corr/abs-1912-10632.html?view=bibtex)]
@@ -32,16 +29,25 @@ the final stable binary release for [PVS 7.1](http://pvs.csl.sri.com/).
 ## Requirements
 - Linux or Intel Mac
 - NodeJS (v12.16.1 or greater) https://nodejs.org/en/download
-- Visual Studio Code (v1.49.0 or greater) https://code.visualstudio.com
+- Visual Studio Code (v1.76.0 or greater) https://code.visualstudio.com
+- SBCL https://www.sbcl.org
 
-## Installation instructions - PVSv8.0
-VSCode-PVS for PVSv8.0 should be manually installed as follows. 
+## Installation Instructions
+
+### Automatic Installation from the MarketPlace (Recommended)
+VSCode-PVS for PVSv8 can be installed from the Visual Studio Code Marketplace.
+- Search `pvs-8` in https://marketplace.visualstudio.com
+- Select `install`
+
+Note: When installing VSCode-PVS for the first time, the extension will check if PVSv8 is present in your system. If PVSv8 is not present, VSCode-PVS will show a dialog and try to download and install it. If VSCode-PVS fail to download and install PVSv8, please try the manual installation described below.
+
+
+### Manual Installation
+VSCode-PVS for PVSv8 can be installed manually using the following steps. 
 
 1. Download
    [vscode-pvs-8](/releases/vscode-pvs-8.vsix) from
-   [VSCode-PVS/releases](/releases). GitHub doesn't make it easy to
-   download single files using command line interface, but from a
-   terminal, try the following 
+   [VSCode-PVS/releases](/releases), using the following command in a terminal window:
    ```
    latest=`curl https://raw.githubusercontent.com/nasa/vscode-pvs/refs/heads/master/releases/vscode-pvs-8.vsix`\
    && `curl -O https://raw.githubusercontent.com/nasa/vscode-pvs/refs/heads/master/releases/${latest}`\
@@ -52,25 +58,8 @@ VSCode-PVS for PVSv8.0 should be manually installed as follows.
 <p><img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/how-to-install-vscode-pvs.gif" width="600">
 </p>
 
-Please note that VSCode-PVS for PVSv8.0 requires
-- Latest version of [PVSv8.0](https://github.com/SRI-CSL/PVS)
-- Latest version of [NASALibv8.0](https://github.com/nasa/pvslib)
 
 Once PVSv8.0 and NASALibv8.0 are installed in your machine, you can link them up by indicating their locations in the VSCode-PVS settings.
-
-## Installation instructions - PVSv7.1
-<p>
-VSCode-PVS for PVSv7.1 can be installed from the Visual Studio Code Marketplace. Search `pvs` in https://marketplace.visualstudio.com and select `install`
-<br><br><img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/how-to-install-vscode-pvs-from-marketplace.gif" width="600">
-</p>
-
-<p>
-When installing VSCode-PVS for the first time, the extension will check if PVSv7.1 is present in your system. If PVSv7.1 is not present, VSCode-PVS will show a dialog and try to download and install it. Should VSCode-PVS fail to download and install PVSv7.1, please try the following two steps:
-</p>
-
-1. Download PVS Allegro v7.1 for [MacOS](https://pvs.csl.sri.com/license.html?tgzfile=pvs7.1.0-ix86_64-Linux-allegro.tgz) or [Linux](https://pvs.csl.sri.com/license.html?tgzfile=pvs-6.0-ix86_64-Linux-allegro.tgz)
-2. Follow the installation instructions reported in the `INSTALL` file included in the downloaded PVS package. 
-3. Once PVSv7.1 is installed in your machine, you can link up PVS and VSCode-PVS by indicating the location of the PVS executables in the VSCode-PVS settings.
 
 ## Updating VSCode-PVS
 - VSCode-PVS will be automatically updated every time we publish a new release in the marketplace.
@@ -112,6 +101,24 @@ The main functionalities provided by the environment are as follows:
 <br><br> <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-rapid-prototyping.gif" width="600">
 
 <br>
+
+
+
+## VSCode-PVS for PVSv7.1
+<p>
+VSCode-PVS for PVSv7.1 has been deprecated in favor of the new VSCode-PVS-8 extension for PVSv8. The old extension, however, is still available on the Visual Studio Code Marketplace. If you would still like to use it, search `pvs` in https://marketplace.visualstudio.com to find it, and click `install` to install it.
+<br><br><img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/how-to-install-vscode-pvs-from-marketplace.gif" width="600">
+</p>
+
+<p>
+When downloading the extension for the first time, the extension will check if PVSv7.1 is present in your system, otherwise it will try to download and install it. Should VSCode-PVS fail to automatically download and install PVSv7.1, please try the following two steps:
+</p>
+
+1. Download PVS Allegro v7.1 for [MacOS](https://pvs.csl.sri.com/license.html?tgzfile=pvs7.1.0-ix86_64-Linux-allegro.tgz) or [Linux](https://pvs.csl.sri.com/license.html?tgzfile=pvs-6.0-ix86_64-Linux-allegro.tgz)
+2. Follow the installation instructions reported in the `INSTALL` file included in the downloaded PVS package. 
+3. Once PVSv7.1 is installed in your machine, you can link up PVS and VSCode-PVS by indicating the location of the PVS executables in the VSCode-PVS settings.
+
+
 
 ## Structure
 ```
@@ -181,6 +188,8 @@ Copyright 2019 United States Government as represented by the Administrator of t
 
 
 ## Contacts
-* Paolo Masci (NIA) (paolo.masci@nianet.org)
-* Aaron Dutle (NASA LaRC) (aaron.m.dutle@nasa.gov)
+* Paolo Masci (paolo.m.masci@nasa.gov)
+* Mariano M. Moscato (mariano.m.moscato@nasa.gov)
+* Cesar A. Munoz (cesar.a.munoz@nasa.gov)
+* Aaron Dutle (aaron.m.dutle@nasa.gov)
 
