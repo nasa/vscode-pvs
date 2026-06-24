@@ -326,7 +326,7 @@ export class VSCodePvsStatusBar {
     showVersionInfo (): void {
         if (this.pvsVersionInfo) {
             this.versionInfo.icon("");
-            this.versionInfo.text(this.pvsVersionInfo["pvs-version"]);
+            this.versionInfo.text(`PVS ${this.pvsVersionInfo["pvs-version"]}`);
             this.versionInfo.command("vscode-pvs.show-version-dialog");
         }
         this.versionInfo.show();

@@ -40,7 +40,7 @@ import * as fsUtils from '../common/fsUtils';
 import * as path from 'path';
 import * as utils from '../common/languageUtils';
 import * as os from 'os';
-import { FormulaItem, TheoryItem, WorkspaceOverviewItem } from "../views/vscodePvsWorkspaceExplorer";
+import { FormulaItem, OverviewItem, TheoryItem, WorkspaceOverviewItem } from "../views/vscodePvsWorkspaceExplorer";
 import { 
     PvsTheory, FileDescriptor, ContextFolder, PvsFormula, GotoFileDescriptor, Position, Range, 
     QuickFixReplace, QuickFixAddImporting, VSCodePvsVersionDescriptor, PvsDocKind
@@ -945,28 +945,29 @@ export async function quickFixAddImporting (quickfix: QuickFixAddImporting): Pro
  */
 export async function getPvsTheory (resource: PvsFormula | PvsTheory | FormulaItem | TheoryItem | { path: string }): Promise<PvsTheory | null> {
 	if (resource) {
-        if (resource["contextValue"]) {
+        if ((<TheoryItem>resource)["contextValue"]) {
             return {
                 contextFolder: (<TheoryItem> resource).contextFolder,
                 fileName: (<TheoryItem> resource).fileName,
                 fileExtension: (<TheoryItem> resource).fileExtension,
                 theoryName: (<TheoryItem> resource).theoryName
             };    
-        } else if (resource["path"]) {
-            const content: string = await fsUtils.readFile(resource["path"]);
+        } else if ((<{ path: string }>resource)["path"]) {
+            const resource_path: string = (<{ path: string }>resource).path;
+            const content: string = await fsUtils.readFile(resource_path);
             if (content) {
                 const activeEditor: vscode.TextEditor = getActivePvsEditor();
                 const line: number = (activeEditor?.selection?.active) ?
                     activeEditor.selection.active.line : 0;
                 const theoryName: string = fsUtils.findTheoryName(content, line);
                 return {
-                    contextFolder: fsUtils.getContextFolder(resource["path"]),
-                    fileName: fsUtils.getFileName(resource["path"]),
-                    fileExtension: fsUtils.getFileExtension(resource["path"]),
+                    contextFolder: fsUtils.getContextFolder(resource_path),
+                    fileName: fsUtils.getFileName(resource_path),
+                    fileExtension: fsUtils.getFileExtension(resource_path),
                     theoryName
                 };
             }
-		} else if (resource["contextFolder"]) {
+		} else if ((<PvsTheory>resource)["contextFolder"]) {
             resource = <PvsTheory> resource;
             if (!resource["theoryName"]) {
                 resource.fileExtension = (resource.fileExtension === ".summary") ? ".pvs" : resource.fileExtension;
@@ -985,11 +986,11 @@ export async function getPvsTheory (resource: PvsFormula | PvsTheory | FormulaIt
                 }
             }
             return {
-                        contextFolder: resource.contextFolder,
-                        fileName: resource.fileName,
-                        fileExtension: resource.fileExtension,
-                        theoryName: resource.theoryName
-                    };
+                contextFolder: resource.contextFolder,
+                fileName: resource.fileName,
+                fileExtension: resource.fileExtension,
+                theoryName: resource.theoryName
+            };
         }
     }
     return null;
@@ -1324,7 +1325,7 @@ function resource2desc (resource: string | {
             // resource is of type FormulaItem or OverviewItem
             if (resource.contextValue.endsWith("-overview")) {
                 return {
-                    contextFolder: resource["getContextFolder"](),
+                    contextFolder: (<OverviewItem>resource)["getContextFolder"](),
                     fileName: null,
                     fileExtension: null,
                     theoryName: null,

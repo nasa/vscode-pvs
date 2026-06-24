@@ -866,6 +866,8 @@ export interface NasalibDownloadDescriptor { pvsPath: string };
 export const sriUrl: string = "www.csl.sri.com";
 export const pvsUrl: string = "pvs.csl.sri.com";
 export const pvsDownloadUrl: string = `https://${pvsUrl}/downloads/`;
+export const pvs8Url: string = "github.com/SRI-CSL/PVS";
+export const pvs8DownloadUrl: string = `https://${pvs8Url}/releases/`
 export const NASALibUrl: string = "https://github.com/nasa/pvslib";
 export const NASALibGithubBranch: string = "v8.0";
 export const NASALibGithubFile: string = `https://github.com/nasa/pvslib/archive/${NASALibGithubBranch}.zip`;

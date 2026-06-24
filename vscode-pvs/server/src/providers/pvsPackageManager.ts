@@ -199,7 +199,7 @@ export class PvsPackageManager {
      * The list is ordered by version number (the most recent version is in position 0).
      */
     static async listDownloadableVersionsWithProgress (connection: Connection, req: ListVersionsWithProgressRequest): Promise<ListVersionsWithProgressResponse> {
-        const cmd: string = fsUtils.lsPvsVersions();
+        const cmd: string = fsUtils.lsPvsVersions({ version: "8.1" });
 
         const res: DownloadWithProgressResponse = {
             progressInfo: true,
@@ -209,14 +209,17 @@ export class PvsPackageManager {
         try {
             const ls: Buffer = execSync(cmd);
             if (ls) {
-                const out: string = ls.toLocaleString().trim();
+                const osName: string = fsUtils.getOs().version;
+                const archName: string = fsUtils.getArch();
+                const out: string = ls.toLocaleString().trim().replace("/SRI-CSL/PVS/tree/", "");
+                const stdOut: string = `https://github.com/SRI-CSL/PVS/releases/download/${out}/${out.replace(/8.\d*/, "")}-${osName}-${archName}.tgz`;
                 const res: DownloadWithProgressResponse = {
                     progressInfo: true,
-                    stdOut: out + "\n"
+                    stdOut
                 };
                 connection?.sendNotification(serverRequest.listVersionsWithProgress, { req, res });
-                return { versions: [ out ] };
-                // return fsUtils.parseLsPvsVersions(res);
+                return { versions: [ stdOut ] };
+                // return fsUtils.parseLsPvsVersions(out);
             }
         } catch (error) {
             const res: DownloadWithProgressResponse = {

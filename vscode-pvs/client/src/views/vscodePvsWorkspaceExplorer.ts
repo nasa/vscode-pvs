@@ -228,7 +228,7 @@ class LoadingItem extends TreeItem {
 		this.timer = null;
 	}
 }
-abstract class OverviewItem extends TreeItem {
+export abstract class OverviewItem extends TreeItem {
 	contextValue: string = "abstract-overview";
 	contextFolder: string;
 	name: string;

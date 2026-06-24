@@ -950,9 +950,13 @@ Disclaimer: the logs could contain information about the system, such as name of
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.install-pvs", async () => {
             this.statusBar.hideinstallpvsButton();
-            const success: boolean = await this.packageManager.pvsInstallationWizard() && await this.packageManager.nasalibInstallationWizard();
+            const success: boolean = await this.packageManager.pvsInstallationWizard();
             if (!success) {
                 this.statusBar.showInstallPvsButton();
+            } else {
+                setTimeout(async () => {
+                    await this.packageManager.nasalibInstallationWizard();
+                }, 2000);
             }
         }));
 
@@ -1301,14 +1305,14 @@ Disclaimer: the logs could contain information about the system, such as name of
                         const possibleContent = activeEditor?.document?.getText();
                         const info: { content: string, line: number } = // (resource["path"]) 
                         !possibleContent
-                        ? { content: fsUtils.readFile(resource["path"]), line: 0 }
+                        ? { content: fsUtils.readFile((<{ path: string }>resource)["path"]), line: 0 }
                             : { content: activeEditor?.document?.getText(), line: activeEditor?.selection?.active?.line };
                         const theoryName: string = fsUtils.findTheoryName(info.content, info.line);
                         desc.theoryName = theoryName;
                     }
                     if (desc.theoryName) {
                         const selection: Selection = activeEditor?.selection;
-                        const expr: string = resource["expr"] || activeEditor?.document?.getText(selection);
+                        const expr: string = (<{ expr: string }>resource)["expr"] || activeEditor?.document?.getText(selection);
                         if (expr) {
                             const request: EvalExpressionRequest = {
                                 contextFolder: desc.contextFolder,
@@ -1530,7 +1534,7 @@ Disclaimer: the logs could contain information about the system, such as name of
                 }
             }
             const desc: PvsTheory = await vscodeUtils.getPvsTheory(resource);
-            const formulaName: string = resource["formulaName"]?.split("_TCC")[0];
+            const formulaName: string = (<{ formulaName: string }>resource)["formulaName"]?.split("_TCC")[0];
             if (desc?.theoryName && formulaName) {
                 opt = opt || {};
                 // ask the user confirmation before discharging

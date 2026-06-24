@@ -45,7 +45,8 @@ import {
 	FileDescriptor, FileList, FormulaDescriptor, Position, ProofDescriptor,
 	ProofFile, ProofNode, ProofStatus, PvsContextDescriptor, PvsDownloadDescriptor,
 	pvsDownloadUrl, PvsFileDescriptor,
-	PvsFormula, PvsTheory, TheoryDescriptor, Downloader, ShellCommand, LookUpTable, PvsTypeDecl, PvsFile, PvsProofState, SFormula
+	PvsFormula, PvsTheory, TheoryDescriptor, Downloader, ShellCommand, LookUpTable, PvsTypeDecl, PvsFile, PvsProofState, SFormula,
+	pvs8DownloadUrl
 } from '../common/serverInterface';
 import {
 	commentRegexp, endTheoryOrDatatypeRegexp, formulaRegexp, getIcon,
@@ -813,16 +814,23 @@ export type OsVersion = { version?: OsName, error?: string };
 export function getOs (): OsVersion {
 	try {
 		if (process.platform === 'linux' || process.platform === 'freebsd' || process.platform === 'openbsd' || process.platform === 'sunos' || process.platform === 'aix') {
-			return { version: 'Linux' };
+			return { version: 'linux' };
 		} else if (process.platform === 'darwin') {
-			return { version: 'MacOSX' };
+			return { version: 'macos' };
 		}
 		return { version: process.platform };
 	} catch (err) {
-		const error: string = err.message + "Unable to detect OS version. This problem is likely due to missing dependency 'node' (please download node from https://nodejs.org/)";
+		const error: string = (err instanceof Error) ? err.message + "Unable to detect OS version. This problem is likely due to missing dependency 'node' (please download node from https://nodejs.org/)" : err?.toString();
 		console.log(`[${generateTimestamp()}] `+`[pvs-server] ${error}`);
 		return { error };
 	}
+}
+
+/**
+ * Utility function, detects the platform architecture
+ */
+export function getArch (): string {
+	return os.arch();
 }
 
 /**
@@ -2229,22 +2237,23 @@ export async function saveSummary (fname: string, theoryName: string, summary: s
 
 /**
  * Utility function, creates the command for downloading the list of pvs versions
+ * curl -s https://github.com/SRI-CSL/PVS/releases | grep -m 1 /SRI-CSL/PVS/tree/pvs8.1-master
+ * 
  */
-export function lsPvsVersions (): string {
+export function lsPvsVersions (opt?: { version?: string }): string {
 	const osName: { version?: string, error?: string } = getOs();
 	if (osName && osName.version) {
-		const preferredVersion: string = "7.1.0";//"ge7a69672"; //"g762f82aa"; //"ga3f9dbb7";//"g03fe2100";
-		const shellCommand: ShellCommand = getDownloadCommand(pvsDownloadUrl);
+		const preferredVersion: string = opt?.version || "8.1";
+		const shellCommand: ShellCommand = getDownloadCommand(pvs8DownloadUrl);
 		if (shellCommand?.cmd) {
 			let lsCommand: string = `${shellCommand.cmd} ${shellCommand.args?.join(" ") }`;
 			if (shellCommand.cmd === "wget") {
 				lsCommand += " -O- "; // this is needed to redirect the output of wget to stdout, otherwise wget will write a file
 			}
-			lsCommand += `| grep -oE '(pvs.*\.tgz)\"' `
-				+ `| sed 's/"$//' `
-				+ `| grep ${preferredVersion} `
-				+ `| grep ${osName.version} `
-				+ `| grep allegro`;
+			lsCommand += ` | grep -m 1 /SRI-CSL/PVS/tree/pvs8.1-master | sed -En 's/.*href="\([^"]*\)".*/\\1/p'`;
+			// lsCommand += `| grep -oE '(pvs${preferredVersion}.*\.tgz)\"' `
+			// 	+ `| sed 's/"$//' `
+			// 	+ `| grep ${osName.version} `;
 			return lsCommand;
 		}
 	}
@@ -2261,7 +2270,7 @@ export function parseLsPvsVersions (str: string): PvsDownloadDescriptor[] {
 		const versions: PvsDownloadDescriptor[] = elems?.map((fileName: string) => {
 			const match: RegExpMatchArray = /pvs-?([\d\.\-]+)\-\w+/.exec(fileName);
 			const version: string = (match && match.length > 1) ? match[1].replace(/\-/g,".") : null;
-			const url: string = (pvsDownloadUrl.endsWith("/") ? pvsDownloadUrl : pvsDownloadUrl + "/") + fileName;
+			const url: string = fileName;//(pvsDownloadUrl.endsWith("/") ? pvsDownloadUrl : pvsDownloadUrl + "/") + fileName;
 			return { url, fileName, version };
 		});
 		return versions;
