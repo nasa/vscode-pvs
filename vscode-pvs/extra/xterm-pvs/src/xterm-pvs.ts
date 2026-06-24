@@ -2351,8 +2351,10 @@ export class XTermPvs extends Backbone.Model {
     protected lineHeight: number = 1.2; // normal line height is 20% larger than font size
     protected fontFamily: string = DEFAULT_FONT_FAMILY;
     // protected xtermLineHeight: number = 1.45; // line height rendered in xterm, measured experimentally by inspecting the DOM
-
     protected paddingBottom: number = 0;
+
+    // debounce timer
+    protected debounceTimer: NodeJS.Timeout = null;
 
     // status of the mod keys
     protected modKeys: ModKeys = {
@@ -3912,7 +3914,7 @@ export class XTermPvs extends Backbone.Model {
             const nLines: number = data?.split("\n")?.length;
             // console.log("[xterm-pvs] write content", { data, nLines });
             this.content.writeData(data);
-            // console.log("[xterm-pvs] render ", { data });
+            console.log("[xterm-pvs] render ", { data });
             this.renderData(data);
             // console.log("[xterm-pvs] done with rendering!");
             this.restoreCursorPosition();
@@ -3945,6 +3947,7 @@ export class XTermPvs extends Backbone.Model {
             let content: string = data.replace(/\n/g, "\r\n");
             if (content) {
                 const renderLines: string[] = content.split("\n");
+                console.log("renderData", { renderLines, len: renderLines.length });
 
                 // resize terminal before writing, 
                 // to avoid line wrapping or rendering characters outside the field of view
@@ -3955,13 +3958,14 @@ export class XTermPvs extends Backbone.Model {
                     if (lineLen > maxCol) { maxCol = lineLen; }
                 }
                 this.resizeCol(maxCol);
+                // NOTE: the following lines have been commented out -- in xtermjs 6.0 they seem to cause rendering issues (vscode-pvs issue 154 "Strange behavior when typing a proof command")
                 // const maxLine: number = Math.max(this.content.maxLineNumber(), this.xterm.rows);
                 // add rows if needed
-                if (renderLines.length) {
-                    this.saveCursorPosition();
-                    this.xterm.write("\r\n".repeat(renderLines.length));
-                    this.restoreCursorPosition();
-                }
+                // if (renderLines.length) {
+                //     this.saveCursorPosition();
+                //     this.xterm.write("\r\n".repeat(renderLines.length));
+                //     this.restoreCursorPosition();
+                // }
 
                 // apply syntax highlighting if the text does not already contain any syntax highlighting
                 content = colorUtils.isPlainText(content) ? this.applySyntaxHighlighting(content, this.colorTheme) : content;
@@ -3982,9 +3986,13 @@ export class XTermPvs extends Backbone.Model {
     resizeCol (nCols: number): void {
         const maxCols: number = nCols > this.xterm.cols ? nCols : this.xterm.cols;
         if (maxCols > this.xterm.cols) {
-            // console.log("[xterm-pvs] Resizing xterm rows", { from: this.xterm.cols, to: maxCols });
-            this.xterm.resize(maxCols, this.xterm.rows);
-            // console.log("[xterm-pvs] Done with resizing", { to: maxCols });
+            console.log("[xterm-pvs] Resizing xterm rows", { from: this.xterm.cols, to: maxCols });
+            // debouncing calls to xterm.resize
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = setTimeout(() => {
+                this.xterm.resize(maxCols, this.xterm.rows);
+                console.log("[xterm-pvs] Done with resizing", { to: maxCols });
+            }, 250);
         }
     }
 
