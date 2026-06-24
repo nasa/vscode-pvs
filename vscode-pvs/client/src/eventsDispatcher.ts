@@ -90,6 +90,9 @@ export class EventsDispatcher {
     // protected vscodePvsTerminal: VSCodePvsTerminal;
     protected xterm: VSCodePvsXTerm;
 
+    // debounce timer
+    protected uiDebouncer: NodeJS.Timeout = null;
+
     protected proofMate: VSCodePvsProofMate;
     protected logger: VSCodePvsLogger;
     protected packageManager: VSCodePvsPackageManager;
@@ -871,8 +874,16 @@ export class EventsDispatcher {
         }));
         context.subscriptions.push(commands.registerCommand("xterm-pvs.send-command", async (desc: { cmd: string }) => {
             if (this.xterm && desc?.cmd?.trim()) {
-                this.xterm?.write(desc.cmd);
-                this.xterm?.sendTextToServer(desc.cmd);
+                if (this.uiDebouncer) {
+                    // do nothing - this prevents double clicks on the widget
+                } else {
+                    // wait 300ms to rule out double click
+                    this.uiDebouncer = setTimeout(async () => {
+                        this.xterm?.write(desc.cmd);
+                        await this.xterm?.sendTextToServer(desc.cmd);
+                        this.uiDebouncer = null;
+                    }, 300);
+                }
             }
         }));
         context.subscriptions.push(commands.registerCommand("vscode-pvs.interrupt-and-quit-prover", async () => {
