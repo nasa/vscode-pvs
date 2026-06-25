@@ -9,7 +9,7 @@ The environment redefines the way developers interact with PVS, and better align
 <img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/vscode-pvs-screenshot.png" width="800">
 
 ## Latest version
-The latest release [vscode-pvs-8](/releases/vscode-pvs-8.vsix) of VSCode-PVS works with [PVSv8](https://github.com/SRI-CSL/PVS) and is available on the Visual Studio Code MarketPlace. The binary vsix file can also be downloaded from [VSCode-PVS/releases](/releases).
+The latest release [vscode-pvs8](/releases/vscode-pvs8.vsix) of VSCode-PVS works with [PVSv8](https://github.com/SRI-CSL/PVS) and is available on the Visual Studio Code MarketPlace. The binary vsix file can also be downloaded from [VSCode-PVS/releases](/releases).
 
 The release [vscode-pvs-1.0.65](/releases/previous-releases/vscode-pvs-1.0.65.vsix) is the final stable binary release for [PVSv7.1](http://pvs.csl.sri.com/)
 
@@ -36,7 +36,7 @@ The release [vscode-pvs-1.0.65](/releases/previous-releases/vscode-pvs-1.0.65.vs
 
 ### Automatic Installation from the MarketPlace (Recommended)
 VSCode-PVS for PVSv8 can be installed from the Visual Studio Code Marketplace.
-- Search `pvs-8` in https://marketplace.visualstudio.com
+- Search `pvs8` in https://marketplace.visualstudio.com
 - Select `install`
 
 Note: When installing VSCode-PVS for the first time, the extension will check if PVSv8 is present in your system. If PVSv8 is not present, VSCode-PVS will show a dialog and try to download and install it. If VSCode-PVS fail to download and install PVSv8, please try the manual installation described below.
@@ -46,10 +46,10 @@ Note: When installing VSCode-PVS for the first time, the extension will check if
 VSCode-PVS for PVSv8 can be installed manually using the following steps. 
 
 1. Download
-   [vscode-pvs-8](/releases/vscode-pvs-8.vsix) from
+   [vscode-pvs8](/releases/vscode-pvs8.vsix) from
    [VSCode-PVS/releases](/releases), using the following command in a terminal window:
    ```
-   latest=`curl https://raw.githubusercontent.com/nasa/vscode-pvs/refs/heads/master/releases/vscode-pvs-8.vsix`\
+   latest=`curl https://raw.githubusercontent.com/nasa/vscode-pvs/refs/heads/master/releases/vscode-pvs8.vsix`\
    && `curl -O https://raw.githubusercontent.com/nasa/vscode-pvs/refs/heads/master/releases/${latest}`\
    && echo "*** Latest Version of VSCode-PVS: `pwd`/${latest}"
    ```
@@ -106,7 +106,7 @@ The main functionalities provided by the environment are as follows:
 
 ## VSCode-PVS for PVSv7.1
 <p>
-VSCode-PVS for PVSv7.1 has been deprecated in favor of the new VSCode-PVS-8 extension for PVSv8. The old extension, however, is still available on the Visual Studio Code Marketplace. If you would still like to use it, search `pvs` in https://marketplace.visualstudio.com to find it, and click `install` to install it.
+VSCode-PVS for PVSv7.1 has been deprecated in favor of the new VSCode-PVS8 extension for PVSv8. The old extension, however, is still available on the Visual Studio Code Marketplace. If you would still like to use it, search `pvs` in https://marketplace.visualstudio.com to find it, and click `install` to install it.
 <br><br><img src="https://github.com/nasa/vscode-pvs/raw/master/vscode-pvs/screenshots/how-to-install-vscode-pvs-from-marketplace.gif" width="600">
 </p>
 
