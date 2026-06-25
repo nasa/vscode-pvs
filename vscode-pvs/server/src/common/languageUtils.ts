@@ -3651,6 +3651,8 @@ export function isInvalidCommand (result: { commentary: string | string[] }): bo
 	];
 	const isInvalid = (cmd: string): boolean => {
 		if (cmd) {
+            // remove comments added by the user
+            cmd = cmd.replace(/\n;;;.+/g, "");
 			for (let i = 0; i < proverErrorMessages.length; i++) {
 				if (cmd.includes(proverErrorMessages[i])) {
 					return true;
@@ -3658,13 +3660,14 @@ export function isInvalidCommand (result: { commentary: string | string[] }): bo
 			}
 		}
 		return false;
-	}
+	}    
 	if (result && result.commentary) {
 		if (typeof result.commentary === "string") {
 			return isInvalid(result.commentary);
 		} else if (typeof result.commentary === "object") {
 			return result.commentary.length
 				&& typeof result.commentary[0] === "string"
+                && !result.commentary[0].includes("Adding comment") // this is necessary to skip cases where the user is adding a comment
 				&& result.commentary.filter((comment: string)=> {
 					return isInvalid(comment);
 				}).length > 0;

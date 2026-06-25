@@ -1,5 +1,13 @@
 ## ChangeLog
-### 1.0.66 (2025.05.23)
+### 1.0.68 (2026.06.24)
+- Updated PVS installation wizard to download PVS binaries from github (master branch)
+- Fixed latent rendering bugs in prover console
+
+### 1.0.67 (2026.05.29)
+- Updated NASALib lookup table to the latest version
+- Minor bug fixes
+
+### 1.0.66 (2026.05.23)
 First public release of vscode-pvs-8 for PVS version 8.
 - Syntax highlighting: PVS keywords and library functions are automatically highlighted.
 - Autocompletion and code snippets: Tooltips suggesting function names and language keywords are automatically presented in the editor when placing the mouse over a symbol name. Code snippets are provided for frequent modeling blocks, e.g., if-then-else.
