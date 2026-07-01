@@ -1,7 +1,7 @@
 {
 	"name": "vscode-pvs8",
 	"description": "Integrates the PVS theorem proving system into Visual Studio Code",
-	"version": "1.0.67",
+	"version": "1.0.68",
 	"author": "NASA LaRC Formal Methods Team",
 	"displayName": "PVS-8",
 	"icon": "icons/pvs-icon-alt.png",
@@ -2117,9 +2117,9 @@
 		"@typescript-eslint/eslint-plugin": "^8.61.0",
 		"@typescript-eslint/parser": "^8.61.0",
 		"@vscode/vsce": "^2.32.0",
-		"assert": "^2.0.0",
+		"assert": "^2.1.0",
 		"chai": "^6.2.2",
-		"eslint": "^10.4.1",
+		"eslint": "^10.5.0",
 		"mocha": "^11.7.6",
 		"ts-node": "^10.9.2"
 	},
